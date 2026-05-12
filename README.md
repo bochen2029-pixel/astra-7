@@ -33,8 +33,8 @@ The AI bundle is system prompt plus harness plus light fine-tune. The harness ha
 ## Distribution
 
 - **Code:** this repository, MIT licensed
-- **AI Bundle:** Hugging Face (coming soon)
-- **Game:** Steam (coming soon), free, no DRM, no monetization, no telemetry
+- **AI Bundle:** [bochen2079/ASTRA-7](https://huggingface.co/bochen2079/ASTRA-7) on Hugging Face. Apache 2.0 for bundle artifacts; base model licenses apply to derived weights. Placeholder; LoRA pending training.
+- **Game:** Steam (Coming Soon), free, no DRM, no monetization, no telemetry
 
 ## Documentation
 

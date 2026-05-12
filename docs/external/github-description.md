@@ -40,12 +40,14 @@ Secondary:
 
 ## Website Field
 
-Steam Coming Soon page (TBD).
+Set to the Hugging Face model page until Steam Coming Soon URL is live:
+<https://huggingface.co/bochen2079/ASTRA-7>
 
 ## Pinned External Links
 
 - Steam (Coming Soon): TBD
-- Hugging Face (AI Bundle): TBD
+- Hugging Face (AI Bundle): <https://huggingface.co/bochen2079/ASTRA-7>
+- GitHub repository: <https://github.com/bochen2029-pixel/astra-7>
 - Project canon: [CLAUDE.md](../../CLAUDE.md)
 
 ## Notes on Voice

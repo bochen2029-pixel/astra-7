@@ -85,9 +85,9 @@ Secondary candidates:
 
 ## External Links
 
-- Source code: GitHub repository (TBD)
-- AI bundle: Hugging Face (TBD)
-- Project canon: CLAUDE.md in the GitHub repository
+- Source code: <https://github.com/bochen2029-pixel/astra-7>
+- AI bundle: <https://huggingface.co/bochen2079/ASTRA-7>
+- Project canon: <https://github.com/bochen2029-pixel/astra-7/blob/main/CLAUDE.md>
 
 ## Curation Notes
 
