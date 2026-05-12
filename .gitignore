@@ -1,0 +1,160 @@
+# Operating system
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.code-workspace
+*.sublime-workspace
+*.sublime-project
+
+# Unreal Engine
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+*.opensdf
+*.sdf
+*.suo
+*.VC.db
+*.VC.opendb
+*.opendb
+*.xcodeproj/
+*.xcworkspace/
+*.generated.h
+*.gen.cpp
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# JetBrains Rider
+*.DotSettings.user
+
+# Python: bytecode, packaging, build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Python: testing, coverage, type checking
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+.tox/
+htmlcov/
+coverage.xml
+.hypothesis/
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python secrets and local env
+.env
+.env.local
+.env.*.local
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Machine learning: weights and serialized models
+*.safetensors
+*.gguf
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.hdf5
+*.onnx
+*.tflite
+*.pkl
+*.joblib
+*.npy
+*.npz
+
+# Machine learning: large data and model directories
+weights/
+checkpoints/
+models/
+datasets/
+data/
+/infra/inference/models/
+/ai/fine-tuning/checkpoints/
+/ai/fine-tuning/datasets/
+
+# Machine learning: experiment tracking
+wandb/
+mlruns/
+lightning_logs/
+tensorboard/
+runs/
+outputs/
+logs/
+
+# Archives (typically too large for git)
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Local-only configs
+*.local.json
+.local/
+local_settings.py
+
+# Secrets
+.secrets/
+*.key
+*.pem
+*.crt
+*.p12
+
+# Audio and video assets that should live in Git LFS or external storage
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.mp4
+*.mov
+*.avi
+*.webm
+
+# Backup directories
+__OLD_Bak/
+*.bak
+*.old
