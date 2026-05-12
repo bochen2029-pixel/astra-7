@@ -34,7 +34,7 @@ This is not a fine-tuned base model. The bundle is the system prompt, harness co
 
 ASTRA-7 is a starship simulator with a local AI. The AI runs the ship. The relationship is the game. There is no combat, no other NPCs, no scripted dialogue tree. The AI is a character with her own things, not a service-with-voice.
 
-Full project canon: <https://github.com/bochen2029-pixel/astra-7>.
+Website: <https://astra-7.com>. Source: <https://github.com/bochen2029-pixel/astra-7>.
 
 ## What's in the Bundle
 

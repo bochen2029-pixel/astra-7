@@ -40,11 +40,11 @@ Secondary:
 
 ## Website Field
 
-Set to the Hugging Face model page until Steam Coming Soon URL is live:
-<https://huggingface.co/bochen2079/ASTRA-7>
+<https://astra-7.com>
 
 ## Pinned External Links
 
+- Website: <https://astra-7.com>
 - Steam (Coming Soon): TBD
 - Hugging Face (AI Bundle): <https://huggingface.co/bochen2079/ASTRA-7>
 - GitHub repository: <https://github.com/bochen2029-pixel/astra-7>

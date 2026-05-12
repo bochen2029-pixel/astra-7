@@ -85,6 +85,7 @@ Secondary candidates:
 
 ## External Links
 
+- Website: <https://astra-7.com>
 - Source code: <https://github.com/bochen2029-pixel/astra-7>
 - AI bundle: <https://huggingface.co/bochen2079/ASTRA-7>
 - Project canon: <https://github.com/bochen2029-pixel/astra-7/blob/main/CLAUDE.md>

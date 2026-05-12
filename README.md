@@ -2,6 +2,8 @@
 
 > A ship, one human, one mind, the long voyage.
 
+**Website:** <https://astra-7.com>
+
 A solitary starship simulator with a living AI companion. Free, open-source, single-player. No combat. No aliens. No other NPCs. The starship is the AI's body. The AI is real, running locally on your machine. The relationship is the game.
 
 ## Vision
@@ -32,6 +34,7 @@ The AI bundle is system prompt plus harness plus light fine-tune. The harness ha
 
 ## Distribution
 
+- **Website:** <https://astra-7.com>
 - **Code:** this repository, MIT licensed
 - **AI Bundle:** [bochen2079/ASTRA-7](https://huggingface.co/bochen2079/ASTRA-7) on Hugging Face. Apache 2.0 for bundle artifacts; base model licenses apply to derived weights. Placeholder; LoRA pending training.
 - **Game:** Steam (Coming Soon), free, no DRM, no monetization, no telemetry
