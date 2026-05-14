@@ -158,3 +158,10 @@ local_settings.py
 __OLD_Bak/
 *.bak
 *.old
+
+# Local agent session artifacts (Claude Code, etc.)
+data-*-batch-*/
+
+# Stray AI-generated images at project root (move to assets/ to commit)
+/Gemini_Generated_Image_*.jpg
+/Gemini_Generated_Image_*.png
