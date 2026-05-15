@@ -1,0 +1,52 @@
+# Wall-clock leak patterns per spec v0.128 §1.2 + §5.7.
+#
+# Format: one regex per line. Lines starting with '#' are comments; blank
+# lines are ignored. Add severity by appending '| warn' (default is 'strip').
+# Patterns are matched case-insensitively at scan time.
+#
+# These patterns catch wall-clock references that must NEVER leak into ASTRA's
+# perception bundle or speech: ISO dates, calendar idioms, weekday/month names,
+# clock times, real-time datetime keywords. ASTRA experiences only τ_ship and
+# t_cosmic — wall-clock invariance is a core spec lock (§1.2).
+#
+# Day 3 v0: minimum unambiguous set. Day N+ expands as scenarios surface edge
+# cases. Words like "morning" / "today" / "tomorrow" are intentionally NOT
+# here because they have legitimate in-fiction uses (Watch 47 Morning, "today's
+# diagnostic" within τ_ship-anchored prose). Add them only on a confirmed leak
+# scenario.
+
+# ISO 8601 dates and datetimes
+\b\d{4}-\d{2}-\d{2}\b
+\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?\b
+
+# Clock times: 24-hour HH:MM (00:00 .. 23:59); 12-hour with AM/PM; HH:MM:SS.
+# 24-hour pattern uses explicit ranges so it won't false-positive on e.g. "8:60".
+\b(?:[01]?\d|2[0-3]):[0-5]\d\b
+\b\d{1,2}:\d{2}\s?(AM|PM|am|pm)\b
+\b\d{1,2}:\d{2}:\d{2}\s?(AM|PM|am|pm)?\b
+\b\d{1,2}\s?(AM|PM)\b
+
+# Month names (English)
+\b(January|February|March|April|June|July|August|September|October|November|December)\b
+# 'May' omitted from the line above because 'may' is a high-frequency English modal verb.
+# Match 'May' only when followed by a day-of-month number to reduce false positives.
+\bMay\s+\d{1,2}\b
+
+# Weekday names (English)
+\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b
+
+# Calendar/datetime keywords
+\bdatetime\b
+\bISO\s?8601\b
+\bcalendar\b
+\bweekday\b
+\bweekend\b
+\btimezone\b
+\bUTC\b
+\bGMT\b
+\bUNIX(-?time(?:stamp)?)?\b
+\bepoch\s+seconds\b
+
+# Year references — bare 4-digit years that look like AD/CE years (1900-2099).
+# Match only when not preceded by a magnitude unit like 'ly' or 'pc'.
+(?<![\d.])\b(19|20)\d{2}\b

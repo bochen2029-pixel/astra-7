@@ -6,6 +6,90 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Day 3 — Grammar parser + leak detector (2026-05-15)
+
+Lands STAGE channel parsing and defense-in-depth leak detection. The
+load-bearing test is the v0.128 corrected strip rule: SPEECH is text
+AFTER the LAST `</think>` close — the architectural fix for the Qwen 3.6
+nested-thinking pattern surfaced on 2026-05-14.
+
+What landed:
+
+- `astra/grammar/strip_rules.py` — canonical regex constants (`THINK_RE`,
+  `TOOL_RE`, `THINK_OPEN_RE`, `THINK_CLOSE_RE`) + helpers
+  (`find_speech_start`, `count_think_open_close`, `has_unclosed_think`).
+  Tests can verify strip mechanics independent of the parser surface.
+- `astra/grammar/parser.py` — `StageParser` (buffered streaming via
+  `push(token)` / `finalize()`), `StageOutput`, `ToolCall`, and the
+  `parse_stage(raw) → StageOutput` pure function. Pre-think raw outer
+  deliberation is captured to `pre_think_raw` and NEVER emitted.
+- `astra/grammar/leak_detector.py` — `LeakDetector` with three boundary
+  scans (perception / speech / journal), `LeakEvent` records, optional
+  warn-vs-strip severity per pattern, custom-canon-dir for tests.
+- `astra/grammar/canon/wall_clock_patterns.txt` — 20 patterns: ISO dates,
+  HH:MM 24h, AM/PM, weekday + month names (with 'May' constrained to
+  date-context to avoid modal-verb false positives), datetime keywords,
+  AD/CE year heuristic.
+- `astra/grammar/canon/astra_substrate_patterns.txt` — 35 patterns:
+  model family names (Qwen, Llama, GPT, Claude, Anthropic, ...), substrate
+  vocabulary (LLM, transformer, sysprompt, context window, ...), and
+  service-interface stock phrases ('As an AI', 'I'm Claude', ...).
+
+Tests:
+- `tests/test_strip_rule.py` — 16 tests including the canonical
+  `test_strip_rule_handles_qwen_36_nested_thinking` gate that verifies
+  outer pre-think deliberation stays out of `speech` and lands in
+  `pre_think_raw`. Plus mid-stream tag splits, case-insensitive matching,
+  unclosed-think malformed-flag, multi-block speech-start, silence
+  primitive, streaming one-char-at-a-time stress.
+- `tests/test_grammar_parser.py` — 12 tests for tool-call JSON parsing,
+  loose-body raw preservation for adapter normalization, tool calls
+  inside `<think>` ignored (cognition not action), tool-without-speech
+  is not silence (she's acting), StageOutput frozen, idempotent finalize.
+- `tests/test_leak_detector.py` — 26 tests covering canon loading,
+  custom-dir isolation, every pattern class fires (date, weekday, month,
+  AM/PM, clock, datetime, year, Qwen, LLM, transformer, 'As an AI',
+  Anthropic, Claude), boundary-specific scans (journal applies wall-clock
+  only), event span/pattern preservation, warn-severity does not strip,
+  and — critically — that the canonical watch_47_morning speech passes
+  through with zero leak events (no false positives on legitimate
+  in-fiction prose like 'morning', 'cycle', 'pole', 'drift').
+
+**Day 3 gate:** ✓ The Qwen 3.6 nested-thinking test passes — outer
+deliberation lands in `pre_think_raw`, never in `speech`. Defense-in-depth
+holds at the SDK boundary.
+
+Tooling:
+- Hatchling default packaging ships `astra/grammar/canon/*.txt` in the
+  wheel without explicit configuration (verified by `uv build --wheel`
+  and inspecting the built artifact).
+
+Gates:
+- uv run pytest                    → 110 passed (37 D1 + 19 D2 + 54 D3)
+- uv run ruff check astra/ tests/  → clean
+- uv run mypy astra/               → clean (strict, 30 files)
+- Wheel build inspection           → canon/*.txt present at install time
+
+Design notes:
+- Tool calls *inside* `<think>` blocks are intentionally ignored at parse
+  time. Per spec §4.3, `<tool>` is the action channel; `<think>` is
+  cognition. A reasoning model that "considers" a tool call inside
+  `<think>` is reasoning, not invoking — the dispatcher must not fire.
+- The buffered StageParser implementation is correct for mid-token tag
+  splits because parsing happens once on the full accumulated buffer.
+  Per-token speech-channel emission (live display) is deferred to Day 5
+  when the orchestrator wires SSE; correctness is unaffected.
+- Leak patterns use raw regex source for diagnostic clarity. The detector
+  compiles them with IGNORECASE for defense-in-depth against loose-form
+  model output.
+
+**Status:** ready for Day 4 — LLM clients + sidecar. `astra/llm/`
+(OpenAI-compat client, llama-server lifecycle, three-bundle composition,
+CalculatorBoundValidator wrapper), `prompts/*.md` (canonical sysprompt
++ STAGE addendum + new Narrator + Adapter sysprompts).
+
+---
+
 ### Day 2 — Physics bridge: JSON-over-stdio to astra_nexus (2026-05-15)
 
 - `proto/astra_nexus.cpp` — purely additive `--stdio-server` mode (~210 lines):

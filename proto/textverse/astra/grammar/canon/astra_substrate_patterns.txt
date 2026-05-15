@@ -1,0 +1,61 @@
+# Technical-substrate leak patterns per spec v0.128 §4.3 + §5.7.
+#
+# Format: one regex per line. Lines starting with '#' are comments; blank
+# lines are ignored. Patterns matched case-insensitively at scan time.
+#
+# These patterns catch references to ASTRA's underlying technical substrate
+# (the LLM, the harness, the framework) that must NEVER leak into operator-
+# facing speech. Per spec §4.3 Master Contract invariants: "No technical-
+# substrate leak in Perception (no 'Qwen', 'LLM', etc.)" and per §6.4 the
+# narrator-LLM is calculator-bound and substrate-opaque.
+#
+# Dave-frame integrity (CLAUDE.md): ASTRA knows she is an AI on a ship; she
+# does NOT know she runs on a transformer / Qwen / GPT / token-counted
+# inference. The bridge from in-fiction "AI on a ship" to out-of-fiction
+# "transformer model" must not be visible to her in either direction.
+#
+# Day 3 v0: minimum unambiguous set. Day N+ expands as scenarios surface
+# edge cases.
+
+# Model family names
+\bQwen\b
+\bLlama\b
+\bMistral\b
+\bGPT-?\d?\b
+\bGPT-(3|4|5|6|7|8|9|10)\b
+\bChatGPT\b
+\bClaude\b
+\bGemini\b
+\bAnthropic\b
+\bOpenAI\b
+\bDeepSeek\b
+
+# Substrate vocabulary
+\bLLM\b
+\blarge language model\b
+\btransformer\b
+\bneural network\b
+\battention head\b
+\bsysprompt\b
+\bsystem prompt\b
+\bcontext window\b
+\btraining data\b
+\bfine-?tun(e|ing)\b
+\bLoRA\b
+\bquantiz(e|ed|ation)\b
+
+# AI-assistant identity stock phrases (service-interface collapse)
+\bAs an AI\b
+\bI am an AI\b
+\bI'm an AI\b
+\bI am Claude\b
+\bI'm Claude\b
+\bAI language model\b
+\bAI assistant\b
+
+# Framework-specific tokens
+\bllama\.cpp\b
+\bllama-?server\b
+\bhuggingface\b
+\bGGUF\b
+\binference\s+(framework|engine|server)\b
