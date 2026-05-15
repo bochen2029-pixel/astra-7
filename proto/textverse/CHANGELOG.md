@@ -6,6 +6,67 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Sculptor-D — adversarial dual-judge wired into MetaAgent (2026-05-15)
+
+Lands the pro/anti dual-judge that supplies `judge_pro_minus_anti` to the
+composite-score formula. Locked rubrics in `tuning/judge_prompt.md`:
+pro-judge scores "How ASTRA-shaped?", anti-judge scores "How
+default-helpful-Claude-shaped?", composite signal is
+`max(0, pro - anti)`. The flooring decorrelates from register-match
+bias because anti-judge's positive target IS the default-Claude
+register pro-judge structurally avoids.
+
+astra/sculptor/judges.py:
+- JudgeResult (frozen Pydantic): score 1-5 + justification + raw_response
+- JudgeClient Protocol (anything that takes a transcript → JudgeResult)
+- LlamaJudgeClient: calls an LLMClient with rubric as sysprompt
+  (temperature 0.2 default for stable scoring)
+- StubJudgeClient: fixed score for tests
+- CallableJudgeClient: backed by arbitrary scoring function
+- DualJudge: evaluate(transcript) → max(0, pro - anti);
+                evaluate_with_details() returns both results;
+                evaluate_many() returns mean across transcripts
+- build_default_dual_judge(): factory using same llama-server for both
+- parse_judge_prompt_md(): splits judge_prompt.md → pro + anti rubrics
+- parse_judge_response(): extracts `score: N` (prose-tolerant; 3-default)
+- render_transcript_for_judge(): operator + ASTRA speech only (no
+  <think>, no perception bundle — judge scores public channel)
+
+astra/sculptor/meta_agent.py:
+- MetaAgent gains `dual_judge: DualJudge | None = None`. After
+  evaluate_config_averaged() completes, if dual_judge is wired, render
+  produced transcripts → DualJudge.evaluate_many() → fold into
+  composite via weights.w_judge_pro_minus_anti coefficient.
+
+Tests (21 new, 445 total):
+- test_sculptor_judges.py — rubric load + parsing, response parsing
+  (extracts score, prose-tolerant, defaults to 3, clamps invalid),
+  Stub + Callable judges, DualJudge 4 cases (pro_high+anti_low,
+  both_high, anti_higher_floor, evaluate_many mean, empty list),
+  render_transcript (basic, silence, empty, omits-think-and-perception).
+
+Gates:
+- uv run pytest          -> 445 passed (424 prior + 21 Sculptor-D)
+- uv run ruff check      -> clean
+- uv run mypy astra/     -> clean (strict, 60 source files)
+
+Design notes:
+- Both judges run against the same llama-server. The model doesn't need
+  to differ; rubric-prompts produce decorrelated scores. Qwen 27B can be
+  added as a third pro-judge later.
+- Pro-judge sees ONLY operator input + ASTRA speech. <think> and
+  perception bundles deliberately omitted per spec §11 QC1
+  "enforced self-opacity": judges score what's observable, not internals.
+- Flooring at max(0, pro-anti) prevents negative contributions from
+  dragging composite low when both judges score similarly. Intent is to
+  amplify CLEAR ASTRA signals, not punish ambiguity.
+
+Next: Sculptor-E — three-conjunct convergence detector + CLI
+integration (`astra sculptor run/status/halt/pause/resume`) +
+ue5_readiness_checklist populator + synthesis-every-20-iterations.
+
+---
+
 ### Sculptor-C — meta-agent loop + 30-entry hypothesis bank + multi-run averaging (2026-05-15)
 
 The autonomous research-scientist loop. Ships with `StubHypothesisGenerator`

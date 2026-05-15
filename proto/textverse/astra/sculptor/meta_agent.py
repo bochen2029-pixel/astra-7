@@ -39,6 +39,10 @@ from astra.sculptor.hypothesis import (
     StubHypothesisGenerator,
     apply_hypothesis,
 )
+from astra.sculptor.judges import (
+    DualJudge,
+    render_transcript_for_judge,
+)
 from astra.sculptor.pytest_gate import (
     CadenceState,
     PytestResult,
@@ -135,6 +139,7 @@ class MetaAgent:
     weights: CompositeWeights = field(init=False)
     budget: Budget = field(init=False)
     hypothesis_generator: HypothesisGenerator = field(default_factory=StubHypothesisGenerator)
+    dual_judge: DualJudge | None = None
     n_runs_per_iteration: int = 3
     epsilon: float = 0.005    # composite improvement threshold for promote
     iteration_count: int = 0
@@ -221,7 +226,7 @@ class MetaAgent:
                 self._regenerate_findings()
                 return IterationDecision(entry=entry, applied_to_disk=False)
 
-        # 6. Evaluate (multi-run averaged).
+        # 6. Evaluate (multi-run averaged) — first pass without judge signal.
         avg_result = await evaluate_config_averaged(
             base_iteration_id=iter_id,
             n_runs=self.n_runs_per_iteration,
@@ -233,6 +238,32 @@ class MetaAgent:
             weights=self.weights,
             anchor_scenarios=list(self.scope_contract.anchor_scenarios),
         )
+
+        # 6.5 If a dual-judge is wired, score the produced transcripts and
+        # fold the judge signal into the composite. The judge sees rendered
+        # operator+ASTRA prose only (no <think>, no perception bundles).
+        if self.dual_judge is not None and avg_result.averaged_composite is not None:
+            judge_signal = await self._compute_judge_signal(avg_result)
+            avg_result.averaged_composite = avg_result.averaged_composite.model_copy(
+                update={
+                    "judge_pro_minus_anti": judge_signal,
+                    "components": {
+                        **avg_result.averaged_composite.components,
+                        "judge_pro_minus_anti": (
+                            self.weights.w_judge_pro_minus_anti
+                            * judge_signal
+                        ),
+                    },
+                    # Update composite_score to reflect the new judge contribution.
+                    "composite_score": (
+                        avg_result.averaged_composite.composite_score
+                        - avg_result.averaged_composite.components.get(
+                            "judge_pro_minus_anti", 0.0,
+                        )
+                        + self.weights.w_judge_pro_minus_anti * judge_signal
+                    ),
+                },
+            )
 
         # 7. Decide promote / revert / falsified.
         composite_score = avg_result.composite_score
@@ -390,6 +421,28 @@ class MetaAgent:
             gate.value: rate
             for gate, rate in avg_result.averaged_composite.per_gate_session_rates.items()
         }
+
+    async def _compute_judge_signal(
+        self,
+        avg_result: AveragedIterationResult,
+    ) -> float:
+        """Mean (pro − anti) across all transcripts produced this iteration.
+
+        Renders each scenario's TurnRecord list as plain prose (operator
+        + ASTRA only, no <think>) and asks the dual-judge to score.
+        """
+        if self.dual_judge is None:
+            return 0.0
+        transcripts: list[str] = []
+        for run in avg_result.runs:
+            for report in run.scenario_reports:
+                rendered = render_transcript_for_judge(
+                    [rec.model_dump() for rec in report.turn_records],
+                )
+                transcripts.append(rendered)
+        if not transcripts:
+            return 0.0
+        return await self.dual_judge.evaluate_many(transcripts)
 
 
 # --- Helper: seed day-0 baseline entries ---------------------------------
