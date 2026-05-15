@@ -1,0 +1,12 @@
+# Build artifacts — do not commit
+*.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+*.idb
+*.exp
+*.lib
+*.dll
+__pycache__/
+*.pyc

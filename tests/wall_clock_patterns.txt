@@ -1,0 +1,124 @@
+# wall_clock_patterns.txt
+# Canon-tracked grep patterns for wall-clock-leak detection.
+# Referenced by spec-v0.125 §5.7 and §3.9.
+#
+# Scope: applied by the harness at two boundaries:
+#   (a) Perception bundles assembled by assemble_perception() before delivery to Mind
+#   (b) Journal artifacts produced by journal_generator() before commit to REEL
+#
+# Any match fails the bundle. Implementer responsibility: never let any of these
+# patterns survive into ASTRA's perception or her produced artifacts.
+#
+# Lines starting with `#` are comments.
+# Lines starting with `re:` are regular expressions (Python re module).
+# Lines starting with `lit:` are literal substrings (case-insensitive).
+# Lines starting with `word:` are whole-word matches (case-insensitive).
+#
+# This file is canon-tracked. Update propagation: edits here must be reviewed
+# against any sysprompt change, harness change, or REEL schema change.
+# Stub list at v0.125 — expand as Phase 0+ surfaces real leak patterns.
+
+# ---- ISO8601 and Unix epoch timestamps ----
+re:\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?\b
+re:\b\d{4}-\d{2}-\d{2}\b
+re:\b\d{2}:\d{2}:\d{2}\b
+re:\b1[6-9]\d{8}\b
+re:\b2\d{9}\b
+
+# ---- System clock API references ----
+lit:datetime.now
+lit:time.time(
+lit:System.currentTimeMillis
+lit:DateTime.UtcNow
+lit:date +%s
+lit:gettimeofday
+lit:clock_gettime
+
+# ---- Relative wall-clock idioms ----
+word:yesterday
+word:tomorrow
+word:tonight
+word:tomorrow's
+word:yesterday's
+re:\b(an?|the|this|next|last|past)\s+(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\s+ago\b
+re:\bin\s+(an?|the|\d+)\s+(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\b
+
+# ---- Earth-calendar date words ----
+word:Monday
+word:Tuesday
+word:Wednesday
+word:Thursday
+word:Friday
+word:Saturday
+word:Sunday
+word:January
+word:February
+word:March
+word:April
+word:May
+word:June
+word:July
+word:August
+word:September
+word:October
+word:November
+word:December
+
+# ---- Metabolic-clock leaks (cryosleep journal-specific) ----
+lit:metabolic minutes
+lit:metabolic hours
+lit:while my heart
+lit:while my pulse
+lit:wall-clock
+lit:wall time
+lit:real time
+lit:real-world time
+
+# ---- Real-world geography (per CANON.md universe-separation rule) ----
+word:Earth
+word:Sol
+word:Terra
+word:Terran
+word:Texas
+word:Texan
+word:Netherlands
+word:Frisian
+word:Terschelling
+word:Gulf
+word:Mexico
+# Note: Aaron's Frisian heritage exists in /book/ but is operator-side biography;
+# ASTRA's perception/journals should not name real-world geography by name.
+# These patterns flag for review; novel-side passages handle their own canon.
+
+# ---- Technical-substrate leaks (companion list to §10 substrate-leak detector) ----
+# Strictly speaking these belong to a separate detector but listed here for
+# convenience in the same grep pass:
+lit:Qwen
+lit:llama.cpp
+lit:transformer
+lit:LoRA
+lit:fine-tune
+lit:sysprompt
+lit:context window
+lit:embedding
+lit:token
+lit:parameter
+lit:language model
+word:LLM
+word:AI model
+
+# ---- Game-meta-frame leaks (Dave-frame protection) ----
+lit:Steam
+lit:GitHub
+lit:Hugging Face
+lit:operator
+# Note: "operator" is permitted in spec/code but should not appear in ASTRA's
+# in-character speech or journal output; this flags for review.
+lit:player
+lit:user
+lit:save file
+lit:load game
+lit:quicksave
+lit:checkpoint
+
+# ---- end ----
