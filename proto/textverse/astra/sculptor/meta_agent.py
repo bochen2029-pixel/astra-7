@@ -68,6 +68,7 @@ from astra.sculptor.research_log import (
     write_daily_report,
     write_findings_md,
 )
+from astra.sculptor.runner_loop import IterationStatus
 from astra.sculptor.scope import (
     ChangeRequest,
     ScopeContract,
@@ -253,6 +254,30 @@ class MetaAgent:
             extra_payload=self.extra_payload,
         )
 
+        # 6.1 Substrate-unhealthy graceful halt (B2 fix). If the bundle's
+        # health probe failed even after retry-with-backoff, the substrate
+        # has hit a hard limit (per-hour quota, auth lockout, outage). Don't
+        # log a misleading falsification; surface it as operator_signal,
+        # touch pause.flag, and return — operator can resume after fixing
+        # the substrate condition.
+        if avg_result.overall_status == IterationStatus.SERVER_UNHEALTHY:
+            target_path.write_text(baseline_contents, encoding="utf-8")
+            entry = ResearchEntry(
+                iteration=self.iteration_count,
+                decision="operator_signal",
+                rationale=(
+                    f"substrate unhealthy beyond retry budget at iter "
+                    f"{self.iteration_count}; halting Sculptor and touching "
+                    f"pause.flag. Resume with `astra sculptor-resume` after "
+                    f"verifying substrate (rate quota, auth, network)."
+                ),
+                lesson_class="substrate_health",
+            )
+            append_entry(self._research_log_path(), entry)
+            self._regenerate_findings()
+            self._touch_pause_flag()
+            return IterationDecision(entry=entry, applied_to_disk=False)
+
         # 6.5 If a dual-judge is wired, score the produced transcripts and
         # fold the judge signal into the composite. The judge sees rendered
         # operator+ASTRA prose only (no <think>, no perception bundles).
@@ -316,6 +341,10 @@ class MetaAgent:
                     f"anchor passed; promoting."
                 ),
                 artifact_dir=f"tuning/history/{iter_id}_run1",
+                # Synthesis #1 fix: tag promote entries with lesson_class so
+                # render_synthesis_block can identify load-bearing classes,
+                # not just unproductive ones (falsified entries already have it).
+                lesson_class=hypothesis.lesson_class,
             )
             self.last_promote_score = composite_score
             self._last_k_deltas.append(delta)
@@ -467,6 +496,12 @@ class MetaAgent:
 
     def _pause_flag(self) -> bool:
         return _flag_exists(self.textverse_root / self.scope_contract.signals.get("pause_flag", ""))
+
+    def _touch_pause_flag(self) -> None:
+        """Write tuning/pause.flag so the next iteration boundary halts."""
+        flag = self.textverse_root / self.scope_contract.signals.get("pause_flag", "")
+        flag.parent.mkdir(parents=True, exist_ok=True)
+        flag.write_text("paused by substrate-unhealthy graceful halt\n", encoding="utf-8")
 
     def _regenerate_findings(self) -> None:
         write_findings_md(self._research_log_path(), self._findings_path())

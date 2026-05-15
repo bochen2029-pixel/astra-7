@@ -6,6 +6,66 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Sculptor: B1 pytest subprocess PATH fix + B2 health() retry + graceful halt + Synthesis #1 labeling fix (2026-05-15)
+
+The first 20-iter `--with-judge` run against Novita surfaced three
+infrastructure findings that needed forward-fixes before a clean run-4.
+All three landed in this single commit (per Bo's "single commit. tests
+included" directive).
+
+**B1 — pytest subprocess PATH** ([astra/sculptor/pytest_gate.py:61](proto/textverse/astra/sculptor/pytest_gate.py:61)):
+- Old: `cmd = ["uv", "run", "pytest", ...]` — bare `uv` fails on systems
+  where uv is installed as a Python module but not on bare PATH (Windows
+  + some Linux configs). Caused two false-positive `bench_regression`
+  reverts in the 20-iter run.
+- New: `cmd = [sys.executable, "-m", "uv", "run", "pytest", ...]` —
+  uses the same Python interpreter Sculptor is running on. Cross-platform.
+- Test: `test_subprocess_uses_python_dash_m_uv` verifies the cmd shape.
+
+**B2.1 — health() retry-with-backoff** ([astra/llm/client.py:237](proto/textverse/astra/llm/client.py:237)):
+- Old: `health()` made a non-retried chat probe. A single 429 → False →
+  whole iteration aborted as SERVER_UNHEALTHY. The 20-iter run had 8
+  iterations cascade like this once Novita's per-hour quota hit at ~iter 12.
+- New: same retry policy as `chat_complete` (max 5 retries, honors
+  Retry-After, exponential backoff capped at 30s).
+- Test: `test_health_retries_chat_probe_on_429` (2× 429 → 200 succeeds).
+
+**B2.2 — graceful halt on sustained substrate-unhealthy** ([astra/sculptor/meta_agent.py:255](proto/textverse/astra/sculptor/meta_agent.py:255)):
+- Old: `evaluate_config_averaged` returning SERVER_UNHEALTHY status got
+  silently logged as a falsified entry with composite=0.0. 8 cascading
+  meaningless entries cluttered the research log.
+- New: detect SERVER_UNHEALTHY, write an `operator_signal` entry naming
+  the condition, touch `tuning/pause.flag`, return cleanly. The log
+  reflects what actually happened (substrate quota), not 8 phantom
+  falsifications. Operator resumes with `astra sculptor-resume` after
+  fixing the substrate condition.
+- Test: `test_metaagent_substrate_unhealthy_writes_operator_signal_and_pause`.
+
+**Synthesis #1 — labeling bug in promote entries** ([astra/sculptor/meta_agent.py:343](proto/textverse/astra/sculptor/meta_agent.py:343)):
+- Old: `build_promote_entry` was called without `lesson_class`, so all
+  promote entries had empty class. `_per_lesson_class_counts` skips
+  empty-class entries → `render_synthesis_block` could only identify
+  unproductive classes (from falsified entries), never load-bearing
+  classes. The 20-iter synthesis correctly listed 4 unproductive classes
+  but reported zero load-bearing — even though tool_valid promoted at
+  iter 3.
+- New: `build_promote_entry` accepts `lesson_class` via **kwargs (it
+  already did via the existing kwarg passthrough); meta_agent now
+  passes `hypothesis.lesson_class` to it. Synthesis can now identify
+  load-bearing classes correctly going forward.
+- Test: extends `test_metaagent_promotes_when_composite_improves` to
+  assert `decision.entry.lesson_class == "state_coherent"`.
+
+**Synthesis #2 — durable negative sampling finding** (research_log.jsonl):
+- Appended via tuning/audit-side python: an `operator_signal` entry
+  with `lesson_class="sampling"` recording: "sampling parameters below
+  detection threshold at composite scale 1.5+ on Qwen 3.6 27B at temp
+  0.7." Per §15.4, durable knowledge IS the deliverable; the negative
+  finding belongs in the research log even though no code changed.
+
+Gates: 476 pytest passing (473 prior + 3 new), ruff clean, mypy strict
+clean. Rollback anchor: tag `pre-sculptor-novita-run-4`.
+
 ### Sculptor Decision 3: no_invented_tool_names — closing the D0-1 baseline (2026-05-15)
 
 The first 20-iter `--with-judge` run produced one new durable promote

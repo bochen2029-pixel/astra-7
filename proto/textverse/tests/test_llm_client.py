@@ -517,3 +517,39 @@ async def test_health_returns_false_on_500(monkeypatch: pytest.MonkeyPatch) -> N
 
     client = LLMClient(base_url="http://test.invalid", sysprompt="sys")
     assert await client.health() is False
+
+
+@pytest.mark.asyncio
+async def test_health_retries_chat_probe_on_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    """B2 fix: when /health returns 404 and the chat probe gets 429
+    (Novita rate-limit), the probe should retry with backoff before
+    reporting unhealthy. The first 20-iter Novita run had 8 iterations
+    abort because health() returned False on a single 429.
+    """
+    call_count = {"get": 0, "post": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET" and request.url.path == "/health":
+            call_count["get"] += 1
+            return httpx.Response(404, text="not found")
+        # Chat probe path
+        call_count["post"] += 1
+        if call_count["post"] < 3:
+            return httpx.Response(429, headers={"retry-after": "0"}, text="rate-limited")
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"role": "assistant", "content": "."}}]},
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_init = httpx.AsyncClient.__init__
+
+    def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
+        kwargs["transport"] = transport
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
+
+    client = LLMClient(base_url="http://test.invalid", sysprompt="sys")
+    assert await client.health() is True
+    assert call_count["post"] == 3   # 2 retries + 1 success

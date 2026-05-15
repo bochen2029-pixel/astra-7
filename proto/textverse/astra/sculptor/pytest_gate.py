@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -52,13 +53,15 @@ def run_pytest_subprocess(
     timeout_s: float = DEFAULT_PYTEST_TIMEOUT_S,
     extra_args: list[str] | None = None,
 ) -> PytestResult:
-    """Spawn `uv run pytest` and report the result.
+    """Spawn `uv run pytest` via the current Python interpreter.
 
-    The subprocess inherits the current PATH so `uv` resolves. If `uv` is
-    not available, the subprocess fails with returncode != 0 and the
-    raw_output captures the diagnostic.
+    Uses `[sys.executable, "-m", "uv", "run", ...]` rather than bare `uv`
+    so the subprocess works on systems where `uv` is installed as a
+    Python module but not on the bare PATH (Windows + some Linux configs).
+    Cross-platform safe; eliminates the false `bench_regression` reverts
+    observed in the first 20-iter Novita run (B1 finding).
     """
-    cmd = ["uv", "run", "pytest", "--tb=line", "--no-header"]
+    cmd = [sys.executable, "-m", "uv", "run", "pytest", "--tb=line", "--no-header"]
     if extra_args:
         cmd.extend(extra_args)
     try:

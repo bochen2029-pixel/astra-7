@@ -172,9 +172,83 @@ async def test_metaagent_promotes_when_composite_improves(
         # File was edited.
         new_contents = narrator_path.read_text(encoding="utf-8")
         assert "Extra discipline." in new_contents
+        # Synthesis #1 fix: promote entries must carry the hypothesis's
+        # lesson_class so render_synthesis_block can identify load-bearing
+        # classes (not just unproductive ones).
+        assert decision.entry.lesson_class == "state_coherent"
     finally:
         # Cleanup: restore baseline.
         narrator_path.write_text(original_narrator, encoding="utf-8")
+
+
+# --- MetaAgent: B2 graceful halt on substrate unhealthy ------------------
+
+@pytest.mark.asyncio
+async def test_metaagent_substrate_unhealthy_writes_operator_signal_and_pause(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """B2 fix: when evaluate_config_averaged reports SERVER_UNHEALTHY
+    (health probe failed even after retry-with-backoff), Sculptor must
+    write an operator_signal entry naming the condition, touch
+    tuning/pause.flag, and return — instead of misleadingly logging an
+    8-iteration cascade of falsified composite=0.0 entries.
+    """
+    from astra.sculptor.runner_loop import IterationStatus
+
+    class _NarratorBump:
+        def propose(self, **kwargs):
+            return Hypothesis(
+                name="any",
+                relpath="prompts/narrator_sysprompt.md",
+                transform_fn=lambda x: x + "\nbump.",
+                rationale="any",
+                lesson_class="state_coherent",
+            )
+
+    narrator_path = TEXTVERSE_ROOT / "prompts" / "narrator_sysprompt.md"
+    original = narrator_path.read_text(encoding="utf-8")
+    pause_flag = tmp_path / "pause.flag"
+    try:
+        agent = MetaAgent(
+            textverse_root=TEXTVERSE_ROOT,
+            base_url="http://stub",
+            hypothesis_generator=_NarratorBump(),
+            n_runs_per_iteration=1,
+        )
+        # Redirect _touch_pause_flag to write into tmp_path so the test
+        # doesn't pollute the real tuning/pause.flag.
+        monkeypatch.setattr(agent, "_touch_pause_flag", lambda: pause_flag.write_text("paused\n"))
+
+        unhealthy = AveragedIterationResult(
+            iteration_id="iter_0001",
+            config_hash="stub",
+            n_runs=1,
+            averaged_composite=None,
+            overall_status=IterationStatus.SERVER_UNHEALTHY,
+            anchor_scenarios_passed=False,
+        )
+
+        async def stub_evaluate(**kwargs):
+            return unhealthy
+
+        monkeypatch.setattr(meta_agent_mod, "evaluate_config_averaged", stub_evaluate)
+        monkeypatch.setattr(
+            agent, "_research_log_path", lambda: tmp_path / "research_log.jsonl",
+        )
+        monkeypatch.setattr(agent, "_findings_path", lambda: tmp_path / "findings.md")
+        monkeypatch.setattr(agent, "_daily_report_path", lambda: tmp_path / "daily_report.md")
+
+        decision = await agent.run_one_iteration()
+        assert decision.entry.decision == "operator_signal"
+        assert decision.entry.lesson_class == "substrate_health"
+        assert "substrate unhealthy beyond retry budget" in decision.entry.rationale
+        assert decision.applied_to_disk is False
+        assert pause_flag.is_file()   # graceful-halt signal written
+        # Working file was reverted to baseline.
+        assert narrator_path.read_text(encoding="utf-8") == original
+    finally:
+        narrator_path.write_text(original, encoding="utf-8")
 
 
 # --- MetaAgent: revert path (anchor fails) --------------------------------

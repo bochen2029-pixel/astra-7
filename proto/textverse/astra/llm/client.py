@@ -241,6 +241,11 @@ class LLMClient:
         Anthropic, OpenAI) don't. When `/health` returns non-200, fall
         back to a minimal chat completion (max_tokens=1) as the liveness
         probe. The fallback also validates auth.
+
+        Same retry-with-backoff policy as `chat_complete`: transient
+        429/503 on the chat-probe path get retried before reporting
+        unhealthy (B2 fix — the first 20-iter Novita run hit per-hour
+        quota mid-run and 8 iterations aborted without retry).
         """
         headers = self._build_headers()
         try:
@@ -255,9 +260,16 @@ class LLMClient:
                     "max_tokens": 1,
                     "temperature": 0.0,
                 }
-                resp2 = await client.post(
-                    self.base_url + self.chat_path, json=probe, headers=headers,
-                )
-                return resp2.status_code == 200
+                for attempt in range(_MAX_RETRIES + 1):
+                    resp2 = await client.post(
+                        self.base_url + self.chat_path, json=probe, headers=headers,
+                    )
+                    if resp2.status_code == 200:
+                        return True
+                    delay = _retry_delay(resp2, attempt)
+                    if delay is None:
+                        return False
+                    await asyncio.sleep(delay)
+                return False
         except httpx.HTTPError:
             return False

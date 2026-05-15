@@ -7,6 +7,8 @@ FileNotFoundError fallback.
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -81,6 +83,28 @@ def test_uv_not_on_path_returns_exit_code_minus_two(tmp_path: Path, monkeypatch:
     # On platforms where uv resolves via other mechanisms we may not hit
     # the FileNotFoundError branch; accept either failure mode.
     assert result.passed is False
+
+
+# --- B1 fix: subprocess uses sys.executable -m uv --------------------------
+
+def test_subprocess_uses_python_dash_m_uv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """B1 fix verification: pytest cadence must invoke uv via the current
+    Python interpreter (`sys.executable -m uv`), not bare `uv`. Bare `uv`
+    isn't on the subprocess PATH on Windows + some Linux configs and was
+    causing false bench_regression reverts in the first 20-iter Novita run.
+    """
+    captured: dict[str, list[str]] = {}
+
+    def fake_run(cmd, **kwargs):  # type: ignore[no-untyped-def]
+        captured["cmd"] = list(cmd)
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    run_pytest_subprocess(textverse_root=tmp_path, timeout_s=5.0)
+
+    assert captured["cmd"][0] == sys.executable
+    assert captured["cmd"][1:4] == ["-m", "uv", "run"]
+    assert "pytest" in captured["cmd"]
 
 
 # --- PytestResult shape ------------------------------------------------------
