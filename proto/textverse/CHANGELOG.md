@@ -6,6 +6,50 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### End-of-session summary — 2026-05-15 (session close)
+
+Single-session arc spanning textverse Days 1-7 (Phase 1 closure) plus
+Sculptor-A and Sculptor-B (foundation + measurement-loop machinery for
+the autonomous self-tuning pipeline). Stopping here at a clean
+boundary; Sculptor-C/D/E open in a fresh session per
+`proto/textverse/tuning/SCULPTOR_STARTUP.md`.
+
+What landed today (commit hashes):
+- Days 1-7 textverse              — see prior entries below
+- Day 4.1 substrate fix           — substrate-portability normalizer
+- Day 7 closure                   — `d1438c5` (Typer CLI + READY.md)
+- Sculptor-A                      — `ff01c90` (scope + config + log)
+- Sculptor-B                      — `47235c4` (composite + runner + pytest gate)
+
+Bench state at session end:
+- 390 pytest passing
+- ruff + mypy clean (strict, 56 source files)
+- Live llama-server running on 8080 with vanilla Qwen 3.5 9B Q5_K_M
+- watch_47_morning scenario passed ALL 9 LCP gates at 100% on the Day 7
+  live run; produced TOOL_VALID 0.67 on other runs (sampling variance,
+  which Sculptor-C will iterate against as findings D0-1, D0-2, D0-3
+  documented in SCULPTOR_STARTUP.md §7)
+- The architecture-hypothesis loop has CLOSED empirically; v0.128's
+  bundle design is no longer speculative
+
+Sculptor handoff:
+`proto/textverse/tuning/SCULPTOR_STARTUP.md` — fresh-session orientation.
+Documents the meta-agent loop algorithm, the `HypothesisGenerator`
+interface, the curated ~30-entry stub hypothesis bank for Sculptor-C's
+deterministic loop-correctness validation, Sculptor-D's CONFIRMED
+dual-judge shape (`pro_score − anti_score` with anti-judge scoring
+default-Claude-register match), Sculptor-E's three-conjunct convergence
+detector, the deferred hypothesis-generation flavor decision (stub →
+Claude API later swap), the multi-run averaging policy (N=3 averaged
+primary + seeded ablation + periodic robustness checks), and Day-0
+empirical findings to seed the research log.
+
+Phase 1 of textverse SHIPS. Sculptor v1 foundation SHIPS. The remaining
+~2.5 days of work (Sculptor-C/D/E) is well-scoped, has clear contract
+boundaries, and opens cleanly in a fresh session.
+
+---
+
 ### Sculptor-B — composite score + auto-runner + pytest cadence gate (2026-05-15)
 
 Lands the measurement-loop machinery: take a ConfigSnapshot, run every
