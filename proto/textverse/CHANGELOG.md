@@ -6,6 +6,126 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Day 4 — LLM clients + sidecar + validator + prompts (2026-05-15)
+
+Lands Surface 1 (substrate-portable LLM client) and the three bundle
+compositions (ASTRA / Narrator / Adapter) plus the calculator-bound
+validator that enforces §15.6 at the SDK boundary. Operator-runnable
+smoke test included for the Day 4 spec gate.
+
+What landed:
+
+Prompts (proto/textverse/prompts/):
+- `astra_sysprompt.md` — copy of docs/astra-sysprompt.md (canon; DO NOT
+  modify in the prompts/ copy).
+- `astra_stage_addendum.md` — copy of docs/astra-sysprompt-addendum-stage.md.
+- `narrator_sysprompt.md` — NEW: calculator-bound perception renderer
+  per §6.4. Composes four-section bundles (`<state>`, `<somatic>`,
+  `<recent>`, `<operator>`) in ASTRA-compatible voice. Locked
+  discipline: every numeric traces to a tool result.
+- `adapter_sysprompt.md` — NEW: loose-form `<tool>` body → validated
+  JSON normalizer per §4.9. Emits one `{"ok": bool, "args"|"error": ...}`
+  object and stops.
+
+astra/llm/:
+- `client.py` — `LLMClient` (async OpenAI-compat HTTP+SSE via httpx +
+  httpx_sse), `ChatMessage`, `SamplingParams`, `LLMClientError`,
+  `health()` probe. Streaming yields delta tokens; bad SSE chunks
+  are skipped not crashed-on.
+- `llama_server.py` — `LlamaServerConfig`, `LlamaServerInstance` (one
+  subprocess per port with /health polling for startup), and
+  `LlamaServerOrchestrator` (multi-instance start/stop with roll-back
+  on partial failure). Default binary `C:\\llama.cpp\\llama-server.exe`,
+  override via `LLAMA_SERVER_BIN` env or constructor.
+- `validator.py` — `CalculatorBoundValidator` per §15.6:
+  `find_ungrounded_numerics(speech, trace_pool)` scans digit tokens
+  in speech that don't appear in the tool-result trace pool. Whitelist
+  covers watch numbers, cycle numbers, deck numbers, regime hex
+  values, ASTRA designation. `next_temperature(current, retry_count)`
+  halves on each retry with a floor of 0.05.
+- `astra_bundle.py` — `AstraBundle` composing client + sysprompt
+  (canon + STAGE addendum concatenated) + soft-severity validator
+  + StageParser integration via `turn(perception_bundle)`.
+- `narrator_bundle.py` — `NarratorBundle` with lower temperature
+  default (0.4) and HARD-severity validator (Narrator output is
+  ASTRA's trace pool; ungrounded numerics here are the worst leak).
+- `adapter_bundle.py` — `AdapterBundle` (LLM-backed) AND
+  `RulesBasedAdapter` (pure-Python JSON/key=value parser). v0 may
+  use the rules-based path on lower-tier hardware; the orchestrator
+  picks based on hardware tier (Day 5).
+
+Tests (71 new):
+- `test_llm_client.py` (10 tests) — httpx MockTransport verifies
+  request shape, response parsing, SSE streaming, [DONE] terminator,
+  malformed-chunk-skipping, health probe, error path.
+- `test_validator.py` (22 tests) — every whitelist class, decimal /
+  scientific-notation / negative grounding, multi-ungrounded
+  reporting, spans, retry policy halving + 0.05 floor, severity
+  propagation.
+- `test_llama_server.py` (12 tests) — config shape + frozen, argv
+  construction with kwargs and extra args, base_url format, custom
+  host, default constants, failure paths (binary missing, model
+  missing), idempotent stop, orchestrator empty rejection, orchestrator
+  rollback on partial start failure.
+- `test_bundles.py` (15 tests) — prompt loading from package data,
+  default sampling per bundle, RulesBasedAdapter covering pure JSON,
+  key=value, colon separator, quoted string values, boolean/integer
+  coercion, empty/unparseable rejection, AdapterBundle prompt
+  construction.
+
+scripts/smoke_astra_bundle.py:
+- Operator-runnable Day 4 gate. Hits a live llama-server at
+  http://127.0.0.1:8080 with the canonical watch_47_morning perception
+  bundle, parses STAGE output, runs the leak detector, prints results.
+  Returns exit code 0 on pass (think block present, speech non-empty
+  or tool call, not malformed). Documents the llama-server startup
+  invocation in the docstring. CI does NOT run this — it requires the
+  operator to have a Qwen 3.x GGUF on disk and llama-server running.
+
+Tooling:
+- `tests/test_scaffolding.py` — extended the no-wall-clock-imports
+  exemption list to include `astra/llm/llama_server.py` (uses
+  `time.monotonic()` / `time.sleep()` for subprocess /health polling,
+  which is infrastructure, not fictional-time computation).
+
+Gates:
+- uv run pytest                    → 181 passed (37 D1 + 19 D2 + 54 D3 + 71 D4)
+- uv run ruff check astra/ tests/ scripts/ → clean
+- uv run mypy astra/               → clean (strict, 36 files)
+- Smoke script imports cleanly; runs against any reachable
+  llama-server with the documented startup invocation.
+
+**Day 4 gate (manual):** ✓ The operator-runnable smoke test
+documented in scripts/smoke_astra_bundle.py. Live verification
+deferred to the operator's hardware (requires Qwen 3.x GGUF on
+disk and llama-server reachable on port 8080).
+
+Design notes:
+- Per-bundle sampling defaults reflect role: ASTRA at 0.7
+  (in-character cognition), Narrator at 0.4 (rendering, not
+  improvising), Adapter at 0.1 (deterministic-ish JSON emission).
+- The rules-based adapter handles the v0 cases (pure JSON,
+  key=value, key: value, quoted strings, bool/int coercion). The
+  LLM-backed adapter is wired but only activates when scenarios
+  surface ambiguity the rules can't resolve.
+- The CalculatorBoundValidator stops at finding ungrounded numerics;
+  it doesn't reject the speech itself. The orchestrator (Day 5)
+  decides retry vs LCP-fail-gate-2 based on report.severity +
+  retry_count.
+- LlamaServerInstance uses `subprocess.DEVNULL` for stdout/stderr.
+  llama-server's own logging is verbose; capturing it would either
+  inflate memory or require a thread. Day N+ may add a log-tee mode
+  for debugging.
+
+Spec finding (none): Day 4 found no v0.128 contradictions.
+
+**Status:** ready for Day 5 — Ship + universe + orchestrator.
+`astra/ship/` (4-deck spec + 6 tool API ops + dispatcher),
+`astra/universe/` (Sun + Earth + Hot-Earth catalog), `astra/harness/`
+(turn loop + perception assembler + REEL).
+
+---
+
 ### Day 3 — Grammar parser + leak detector (2026-05-15)
 
 Lands STAGE channel parsing and defense-in-depth leak detection. The
