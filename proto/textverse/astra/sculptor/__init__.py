@@ -19,6 +19,15 @@ Sculptor-B (auto-runner), Sculptor-C (meta-agent), Sculptor-D
 (dual-judge), Sculptor-E (convergence) land subsequently.
 """
 
+from astra.sculptor.composite import (
+    CompositeResult,
+    CompositeWeights,
+    ScenarioMetrics,
+    composite_to_dict,
+    compute_composite,
+    compute_session_metrics,
+    load_weights,
+)
 from astra.sculptor.config import (
     TRACKED_FILES,
     ConfigSnapshot,
@@ -26,6 +35,12 @@ from astra.sculptor.config import (
     snapshot_from_disk,
     snapshot_from_json,
     snapshot_to_json,
+)
+from astra.sculptor.pytest_gate import (
+    DEFAULT_PYTEST_TIMEOUT_S,
+    CadenceState,
+    PytestResult,
+    run_pytest_subprocess,
 )
 from astra.sculptor.research_log import (
     Decision,
@@ -44,6 +59,11 @@ from astra.sculptor.research_log import (
     write_daily_report,
     write_findings_md,
 )
+from astra.sculptor.runner_loop import (
+    IterationResult,
+    IterationStatus,
+    run_iteration,
+)
 from astra.sculptor.scope import (
     ChangeRequest,
     InvariantSpec,
@@ -54,12 +74,20 @@ from astra.sculptor.scope import (
 )
 
 __all__ = [
+    "DEFAULT_PYTEST_TIMEOUT_S",
     "TRACKED_FILES",
+    "CadenceState",
     "ChangeRequest",
+    "CompositeResult",
+    "CompositeWeights",
     "ConfigSnapshot",
     "Decision",
     "InvariantSpec",
+    "IterationResult",
+    "IterationStatus",
+    "PytestResult",
     "ResearchEntry",
+    "ScenarioMetrics",
     "ScopeContract",
     "ScopeDecision",
     "ScopeEnforcer",
@@ -70,12 +98,18 @@ __all__ = [
     "build_falsified_entry",
     "build_promote_entry",
     "build_scope_refused_entry",
+    "composite_to_dict",
+    "compute_composite",
+    "compute_session_metrics",
     "latest_entry",
     "latest_promote",
     "load_scope_contract",
+    "load_weights",
     "read_entries",
     "render_daily_report",
     "render_findings_md",
+    "run_iteration",
+    "run_pytest_subprocess",
     "snapshot_from_disk",
     "snapshot_from_json",
     "snapshot_to_json",

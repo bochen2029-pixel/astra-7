@@ -6,6 +6,80 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Sculptor-B — composite score + auto-runner + pytest cadence gate (2026-05-15)
+
+Lands the measurement-loop machinery: take a ConfigSnapshot, run every
+scenario in the library against the live llama-server, aggregate to a
+multi-dimensional composite score, archive the run.
+
+astra/sculptor/:
+- composite.py    — CompositeWeights, ScenarioMetrics, CompositeResult,
+                    compute_composite. Formula:
+                      w_lcp · pass_rate
+                    + w_gate · (1 - stddev(per_gate_rates))
+                    + w_leak · (1 - leak_rate)
+                    + w_judge · pro_minus_anti / 5
+                    + w_drift · (1 - drift)
+                    - w_cost · normalized_cost
+                    Per-gate balance penalizes all-eggs-one-gate; coverage
+                    entropy (log2 of scenario count) drives the convergence
+                    diversity criterion.
+- runner_loop.py  — run_iteration(): snapshot disk → run every scenario
+                    library entry (one-retry crash recovery) → compute
+                    composite → archive to tuning/history/<iter>/.
+                    Reports IterationStatus (OK / PARTIAL /
+                    SERVER_UNHEALTHY / NO_SCENARIOS). Does NOT touch the
+                    research log — that's Sculptor-C.
+- pytest_gate.py  — CadenceState + run_pytest_subprocess. Spawns
+                    `uv run pytest`, parses FAILED test IDs from output,
+                    returns PytestResult. Used every Nth iteration to
+                    catch bench-regression (changes that game scoring
+                    but break the bench).
+
+Tests (30 new, 390 total):
+- test_sculptor_composite.py    (13 tests)
+- test_sculptor_pytest_gate.py   (10 tests)
+- test_sculptor_runner_loop.py    (7 tests, stubbed bundle)
+
+Live empirical integration vs live llama-server:
+
+  iteration_id:    live_smoke_0001
+  status:          ok
+  config_hash:     63c859a5ff7b0784
+  composite_score: 0.4335
+    lcp_pass_rate:    0.00      (this run, anchor didn't overall-pass)
+    per_gate_balance: 0.8898    (7/8 gates at 1.00; tool_valid at 0.67)
+    leak_rate:        0.0
+    anchor_passed:    False     (Sculptor-C uses this as hard-reject signal)
+  archive_dir:    tuning/history/live_smoke_0001/
+
+The same finding from Day 6's first live run resurfaced: model invents
+tool names outside the locked 6-op TOOL_API. This is exactly the kind of
+failure Sculptor-C will catalog + iterate against.
+
+Gates:
+- uv run pytest          -> 390 passed (360 prior + 30 Sculptor-B)
+- uv run ruff check      -> clean
+- uv run mypy astra/     -> clean (strict, 56 files)
+- Live integration       -> auto-runner successfully measures, archives
+                            reproducibly, composite produces gradient signal.
+
+Design notes:
+- The auto-runner is a PURE measurement loop. No changes proposed, no
+  edits applied, no research log written. Sculptor-C is the agent; B
+  is the measurement instrument.
+- Judge + drift signals are parameter inputs to compute_composite,
+  defaulting to 0. Sculptor-D supplies real judge scores; multi-turn
+  drift comes alongside.
+- Crash recovery is single-retry per scenario. Both attempts failing →
+  aborted_scenarios + status PARTIAL. Sculptor-C decides if PARTIAL is
+  promote-eligible.
+
+Status: Sculptor-B complete. Next: Sculptor-C (hypothesis-generation +
+keep/revert/falsified decision loop + research log integration).
+
+---
+
 ### Sculptor-A — tuning scaffold + scope contract + research log (2026-05-15)
 
 First slice of the autonomous self-tuning pipeline. Sculptor-A lands

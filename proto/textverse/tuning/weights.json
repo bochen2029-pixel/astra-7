@@ -7,7 +7,7 @@
   "w_drift": 0.15,
   "w_cost": -0.10,
   "min_absolute_threshold": 0.80,
-  "convergence_K": 10,
+  "convergence_k": 10,
   "convergence_delta": 0.005,
   "min_coverage_entropy_bits": 2.0
 }
