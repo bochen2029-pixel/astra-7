@@ -6,6 +6,36 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Sculptor's first durable promotion: identity_question_discipline (2026-05-15)
+
+First live Sculptor loop against Novita Qwen 3.6 27B produced its first
+durable promote. Five-iteration `--no-judge` run:
+
+| iter | decision | hypothesis |
+|---|---|---|
+| 1 | falsified | anti_performance_extra_sentence |
+| **2** | **PROMOTE** | identity_question_discipline (composite 0.7500, all 8 LCP at 1.00) |
+| 3 | falsified | enumerate_tools_in_sysprompt |
+| 4 | falsified | silence_default_reinforcement |
+| 5 | falsified | cycle_naming_consistency |
+
+The promoted change appends one sentence to `prompts/astra_sysprompt.md`
+addressing operator-identity questions:
+
+> When the operator asks whether you are aware, you answer plainly
+> within the substrate-honest frame. You do not over-explain. You do
+> not deflect. The honest middle holds.
+
+This is register_load_bearing scope — per scope.yaml, the change is
+small (+2 lines), passes all required_invariants, passes the
+sysprompt-time leak scan, and survived three subsequent iterations'
+counter-proposals. Operator reviewed and kept the change.
+
+Cost: ~$0.001. Audit log:
+`proto/textverse/tuning/audit/sculptor_novita_run_1_20260515_155618.log`.
+
+Rollback anchor: git tag `pre-sculptor-novita-run-1` at commit 93cffe8.
+
 ### Novita substrate wire-up: LLMClient gains api_key + extra_payload + thinking toggle (2026-05-15)
 
 textverse + Sculptor now run against Novita-hosted OpenAI-compat
