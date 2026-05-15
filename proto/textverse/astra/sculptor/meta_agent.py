@@ -34,6 +34,14 @@ from astra.sculptor.averaging import (
     is_fragile,
 )
 from astra.sculptor.composite import CompositeWeights, load_weights
+from astra.sculptor.convergence import (
+    ConvergenceReport,
+    ConvergenceStatus,
+    check_convergence,
+    render_synthesis_block,
+    write_stuck_diagnostic,
+    write_ue5_readiness_checklist,
+)
 from astra.sculptor.hypothesis import (
     HypothesisGenerator,
     StubHypothesisGenerator,
@@ -355,7 +363,9 @@ class MetaAgent:
                 break
             decision = await self.run_one_iteration()
             final_entry = decision.entry
+            self.maybe_write_synthesis(window=20)
             if self._converged():
+                self.write_convergence_artifacts()
                 break
         # If no iterations ran (e.g. halt at start), synthesize a marker.
         if final_entry is None:
@@ -369,25 +379,71 @@ class MetaAgent:
     # --- Convergence -----------------------------------------------------
 
     def _converged(self) -> bool:
-        """Three-conjunct convergence test per SCULPTOR_STARTUP.md §5.1.
+        """Convergence check delegating to Sculptor-E's check_convergence."""
+        report = self.convergence_status()
+        return report.status == ConvergenceStatus.CONVERGED
 
-        1. Composite Δ < 0.005 for K=10 consecutive iterations
-        2. Coverage entropy ≥ 2.0 bits (currently approximated by library size)
-        3. Composite score ≥ MIN_ABSOLUTE_THRESHOLD (0.80)
+    def convergence_status(self) -> ConvergenceReport:
+        """Build a ConvergenceReport from the current research log."""
+        entries = read_entries(self._research_log_path())
+        return check_convergence(
+            entries=entries,
+            library_dir=self.textverse_root / "astra" / "scenarios" / "library",
+            weights=self.weights,
+        )
+
+    def write_convergence_artifacts(self) -> ConvergenceReport:
+        """If converged or stuck, write the appropriate artifact file.
+
+        - CONVERGED → tuning/ue5_readiness_checklist.md +
+                      tuning/READY_FOR_UE5.md flag
+        - STUCK     → tuning/stuck_diagnostic.md
+        - NOT_YET   → no artifact written
+
+        Returns the ConvergenceReport so the caller can act on it.
         """
-        k_window = self.weights.convergence_k
-        if len(self._last_k_deltas) < k_window:
-            return False
-        recent = self._last_k_deltas[-k_window:]
-        if any(abs(d) >= self.weights.convergence_delta for d in recent):
-            return False
-        if self.last_promote_score < self.weights.min_absolute_threshold:
-            return False
-        # Coverage entropy: library-size proxy (Sculptor-E refines this).
-        import math
-        lib_count = len(list((self.textverse_root / "astra" / "scenarios" / "library").glob("*.yaml")))
-        coverage = math.log2(lib_count) if lib_count >= 2 else 0.0
-        return coverage >= self.weights.min_coverage_entropy_bits
+        report = self.convergence_status()
+        if report.status == ConvergenceStatus.CONVERGED:
+            scenario_count = len(
+                list((self.textverse_root / "astra" / "scenarios" / "library").glob("*.yaml")),
+            )
+            write_ue5_readiness_checklist(
+                self.textverse_root / "tuning" / "ue5_readiness_checklist.md",
+                convergence=report,
+                weights=self.weights,
+                anchor_scenarios=list(self.scope_contract.anchor_scenarios),
+                scenario_count=scenario_count,
+            )
+            ready_flag = self.textverse_root / "tuning" / "READY_FOR_UE5.md"
+            ready_flag.write_text(
+                "# READY_FOR_UE5\n\n"
+                f"Sculptor declared convergence at iteration "
+                f"{report.iteration_count}.\n"
+                f"Composite: {report.composite_score:.4f}\n",
+                encoding="utf-8",
+            )
+        elif report.status == ConvergenceStatus.STUCK:
+            write_stuck_diagnostic(
+                self.textverse_root / "tuning" / "stuck_diagnostic.md",
+                report,
+                self.weights,
+            )
+        return report
+
+    def maybe_write_synthesis(self, window: int = 20) -> None:
+        """Append a synthesis block to findings.md every `window` iterations."""
+        if self.iteration_count % window != 0 or self.iteration_count == 0:
+            return
+        entries = read_entries(self._research_log_path())
+        synthesis = render_synthesis_block(entries, window=window)
+        findings_path = self._findings_path()
+        existing = (
+            findings_path.read_text(encoding="utf-8")
+            if findings_path.is_file()
+            else ""
+        )
+        findings_path.parent.mkdir(parents=True, exist_ok=True)
+        findings_path.write_text(existing + "\n\n" + synthesis, encoding="utf-8")
 
     # --- Internals -------------------------------------------------------
 

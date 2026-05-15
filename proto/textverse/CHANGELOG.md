@@ -6,6 +6,87 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Sculptor v1 COMPLETE — Sculptor-E (convergence + CLI + readiness) (2026-05-15)
+
+The final Sculptor v1 slice. Three-conjunct convergence detector,
+synthesis-every-20-iterations, UE5 readiness checklist populator,
+stuck diagnostic, and `astra sculptor *` CLI surface. **Sculptor v1
+is end-to-end runnable.**
+
+astra/sculptor/convergence.py:
+- ConvergenceStatus (NOT_YET / CONVERGED / STUCK) + ConvergenceReport
+- check_convergence(): pure function applying the three-conjunct rule:
+    1. Gradient vanished: composite Δ < convergence_delta for K=10
+       consecutive promote iterations.
+    2. Coverage met: scenario library entropy ≥
+       min_coverage_entropy_bits (default 2.0 = ≥ 4 scenarios).
+    3. Floor met: composite score ≥ min_absolute_threshold (0.80).
+  All three → CONVERGED; 1+2 met but not 3 → STUCK; else NOT_YET.
+- coverage_entropy_for_library()
+- render_synthesis_block(): one paragraph identifying load-bearing +
+  unproductive hypothesis classes + peak composite. This is what
+  differentiates research-scientist-with-insight from
+  research-scientist-with-notebook.
+- render/write_ue5_readiness_checklist
+- render/write_stuck_diagnostic
+- convergence_one_line for CLI status
+
+astra/sculptor/meta_agent.py:
+- New methods: convergence_status, write_convergence_artifacts (writes
+  ue5_readiness_checklist.md + READY_FOR_UE5.md flag on CONVERGED;
+  stuck_diagnostic.md on STUCK), maybe_write_synthesis (window=20).
+- run_until_done() calls both at the appropriate boundaries.
+
+astra/cli/__main__.py — five new subcommands:
+- astra sculptor-run    (flags: --base-url --max-iterations --n-runs
+                                --with-judge --seed-day0)
+- astra sculptor-status (latest research-log entry + convergence line)
+- astra sculptor-halt   (touch tuning/halt.flag)
+- astra sculptor-pause  (touch tuning/pause.flag)
+- astra sculptor-resume (remove tuning/pause.flag)
+
+Tests (23 new, 468 total):
+- test_sculptor_convergence.py (18): coverage entropy, three-conjunct
+                                     across NOT_YET/CONVERGED/STUCK,
+                                     synthesis identifies load-bearing
+                                     + unproductive classes + peak,
+                                     readiness checklist rendering,
+                                     stuck diagnostic, one-line status.
+- test_sculptor_cli.py          (5): help lists all sculptor commands;
+                                     no-log status; pause/halt/resume
+                                     flag handling.
+
+Gates:
+- uv run pytest          -> 468 passed (445 prior + 23 Sculptor-E)
+- uv run ruff check      -> clean
+- uv run mypy astra/     -> clean (strict, 61 source files)
+
+**Sculptor v1 runnable end-to-end:**
+
+```
+# Start a llama-server with Qwen 3.5 9B per docs/BUILD_NOTES.md
+python -m astra sculptor-run --max-iterations 20 --with-judge
+# Check progress in another shell:
+python -m astra sculptor-status
+# Pause / resume / halt:
+python -m astra sculptor-pause
+python -m astra sculptor-resume
+python -m astra sculptor-halt
+```
+
+The bench is the measurement instrument. The persona is the system
+under test. Sculptor is the autonomous researcher whose lab is the
+bench. The deliverable is durable research knowledge captured in
+research_log.jsonl + findings.md + (eventually) optimized configuration.
+
+Next operator action: choose hypothesis-generation flavor for the swap
+from StubHypothesisGenerator. Three options documented in
+SCULPTOR_STARTUP.md §6.1: Claude API (~$150/converged run); local Qwen
+with anti-register prompt (free, register-match risk mitigated by the
+anti-judge); ensemble (most robust, double cost).
+
+---
+
 ### Sculptor-D — adversarial dual-judge wired into MetaAgent (2026-05-15)
 
 Lands the pro/anti dual-judge that supplies `judge_pro_minus_anti` to the

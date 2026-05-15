@@ -29,6 +29,13 @@ from astra.scenarios import (
     load_scenario_file,
     summary_for_operator,
 )
+from astra.sculptor import (
+    MetaAgent,
+    build_default_dual_judge,
+    read_entries,
+    seed_day0_baseline,
+)
+from astra.sculptor.convergence import convergence_one_line
 
 app_main = typer.Typer(
     name="astra",
@@ -179,6 +186,130 @@ def list_scenarios(
         return
     for path in yaml_paths:
         typer.echo(f"  {path.stem}")
+
+
+@app_main.command()
+def sculptor_run(
+    base_url: str = typer.Option(
+        "http://127.0.0.1:8080",
+        "--base-url", "-u",
+    ),
+    max_iterations: int = typer.Option(
+        200,
+        "--max-iterations", "-N",
+        help="Stop after N iterations regardless of convergence.",
+    ),
+    n_runs: int = typer.Option(
+        3,
+        "--n-runs",
+        help="Sub-runs per iteration for composite averaging (N=3 default).",
+    ),
+    with_judge: bool = typer.Option(
+        False,
+        "--with-judge/--no-judge",
+        help="Wire the dual-judge into the composite. Requires running llama-server.",
+    ),
+    seed_day0: bool = typer.Option(
+        True,
+        "--seed-day0/--no-seed-day0",
+        help="Seed Day-0 baseline findings to research_log before iterating.",
+    ),
+) -> None:
+    """Run the Sculptor meta-agent loop until convergence / halt / budget."""
+    textverse_root = Path(__file__).resolve().parent.parent.parent
+
+    if seed_day0:
+        wrote = seed_day0_baseline(textverse_root)
+        if wrote:
+            typer.echo(f"seeded {wrote} Day-0 baseline findings to research_log")
+
+    dual_judge = None
+    if with_judge:
+        dual_judge = build_default_dual_judge(
+            judge_prompt_path=textverse_root / "tuning" / "judge_prompt.md",
+            base_url=base_url,
+        )
+        typer.echo("dual-judge wired (pro + anti, both on same llama-server)")
+
+    agent = MetaAgent(
+        textverse_root=textverse_root,
+        base_url=base_url,
+        n_runs_per_iteration=n_runs,
+        dual_judge=dual_judge,
+    )
+
+    typer.echo(f"Sculptor starting; max_iterations={max_iterations}, n_runs={n_runs}")
+
+    async def _run() -> None:
+        final = await agent.run_until_done(max_iterations=max_iterations)
+        typer.echo("")
+        typer.echo(f"Sculptor stopped. Final entry: {final.decision} @ iter {final.iteration}")
+        report = agent.convergence_status()
+        typer.echo(convergence_one_line(report))
+
+    asyncio.run(_run())
+
+
+@app_main.command()
+def sculptor_status() -> None:
+    """Print the latest research-log entry + a convergence one-liner."""
+    textverse_root = Path(__file__).resolve().parent.parent.parent
+    log_path = textverse_root / "tuning" / "research_log.jsonl"
+    entries = read_entries(log_path)
+    if not entries:
+        typer.echo("(no Sculptor activity yet)")
+        return
+    latest = entries[-1]
+    typer.echo(f"latest: iter {latest.iteration} | {latest.decision}")
+    if latest.hypothesis:
+        typer.echo(f"hypothesis: {latest.hypothesis[:200]}")
+    if latest.composite_score is not None:
+        typer.echo(f"composite: {latest.composite_score:.4f}")
+    if latest.rationale:
+        typer.echo(f"rationale: {latest.rationale[:200]}")
+
+    from astra.sculptor.composite import load_weights
+    from astra.sculptor.convergence import check_convergence
+    weights = load_weights(textverse_root / "tuning" / "weights.json")
+    report = check_convergence(
+        entries=entries,
+        library_dir=textverse_root / "astra" / "scenarios" / "library",
+        weights=weights,
+    )
+    typer.echo("")
+    typer.echo(convergence_one_line(report))
+
+
+@app_main.command()
+def sculptor_halt() -> None:
+    """Touch tuning/halt.flag. Sculptor will stop at next iteration boundary."""
+    textverse_root = Path(__file__).resolve().parent.parent.parent
+    halt = textverse_root / "tuning" / "halt.flag"
+    halt.parent.mkdir(parents=True, exist_ok=True)
+    halt.write_text("halt\n", encoding="utf-8")
+    typer.echo(f"wrote {halt}")
+
+
+@app_main.command()
+def sculptor_pause() -> None:
+    """Touch tuning/pause.flag. Sculptor will pause at next iteration boundary."""
+    textverse_root = Path(__file__).resolve().parent.parent.parent
+    pause = textverse_root / "tuning" / "pause.flag"
+    pause.parent.mkdir(parents=True, exist_ok=True)
+    pause.write_text("pause\n", encoding="utf-8")
+    typer.echo(f"wrote {pause}")
+
+
+@app_main.command()
+def sculptor_resume() -> None:
+    """Remove tuning/pause.flag if present."""
+    textverse_root = Path(__file__).resolve().parent.parent.parent
+    pause = textverse_root / "tuning" / "pause.flag"
+    if pause.is_file():
+        pause.unlink()
+        typer.echo(f"removed {pause}")
+    else:
+        typer.echo("(no pause.flag present)")
 
 
 def app() -> int:
