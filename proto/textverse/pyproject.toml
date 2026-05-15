@@ -75,6 +75,7 @@ allowed-confusables = ["γ", "β", "ω", "ζ", "α", "τ", "λ", "Ω", "Φ", "χ
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]   # asserts are fine in tests
+"astra/cli/__main__.py" = ["B008"]   # typer.Option / typer.Argument idiom
 
 [tool.ruff.format]
 quote-style = "double"
