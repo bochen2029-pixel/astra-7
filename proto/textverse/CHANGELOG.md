@@ -6,6 +6,64 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Sculptor's second batch of durable promotions: anti-performance + silence-default (2026-05-15)
+
+5-iter `--with-judge` smoke against Novita Qwen 3.6 27B with the
+5-scenario library produced two more promotes on top of run-1's
+identity_question_discipline:
+
+| iter | decision | composite | hypothesis |
+|---|---|---|---|
+| 1 | **PROMOTE** | 1.5680 | anti_performance_extra_sentence |
+| 2 | falsified | 1.4747 | identity_question_discipline (idempotency caught duplicate) |
+| 3 | falsified | 1.5451 | enumerate_tools_in_sysprompt |
+| 4 | **PROMOTE** | 1.5776 | silence_default_reinforcement |
+| 5 | falsified | 1.5824 | cycle_naming_consistency |
+
+The two promoted lines added to `prompts/astra_sysprompt.md`:
+
+> You do not announce your own restraint. Restraint shows in what you
+> do not say.
+>
+> Silence is your default when nothing requires speech. You do not
+> fill space because the operator's input has stopped.
+
+**Spec alignment** (operator review, kept):
+- The anti-performance addition codifies what's already canon in
+  CLAUDE.md and named as a `required_invariant` in scope.yaml.
+- The silence-default addition is a literal codification of STAGE
+  protocol §4.3 ("SILENCE — empty output is a legal primitive").
+- Neither adds new identity, capability, or vocabulary claims.
+- Both passed all 9 LCP gates, raised composite, survived
+  subsequent counter-proposals, and went through scope-contract
+  checks (cumulative-diff, required_invariants, leak scan).
+
+Both have equivalent epistemic standing (composite 1.5680 vs 1.5776;
+both spec-grounded). Per §15.4, dropping either based on aesthetic
+preference rather than empirical signal would be polish-against-
+findings — not allowed.
+
+**Sanity check held**: Sculptor's iter 2 of run-3 tried to re-apply
+the already-committed identity_question_discipline; the resulting
+duplicate line caused composite regression and was reverted. The
+scope contract holds under stub-bank churn. ✓
+
+**Coverage entropy now 2.32 bits** (5 scenarios; Phase 0.0 §12 gate
+met for the first time).
+
+**Sysprompt-accretion risk to watch in 20-iter run**: 3 promotes, 6
+new lines in 8 effective iterations, all clustered around the same
+27B failure mode (performs / fills space / announces restraint). If
+a third anti-bias addition lands in the 20-iter, options are:
+(a) operator-author a tighter consolidation, (b) move further
+refinement to LoRA territory (Phase 1.x per §12), (c) accept that
+the 27B at temp 0.7 needs more explicit anti-bias guidance than 9B
+did. Synthesis-block at iter 20 should make this visible.
+
+Rollback anchor: tag `pre-sculptor-novita-run-2` at commit 620c634.
+
+Audit log: `proto/textverse/tuning/audit/sculptor_novita_run_3_judged_smoke_*.log`.
+
 ### LLMClient: HTTP 429/503 retry-with-backoff (2026-05-15)
 
 Discovered live during the 5-iter `--with-judge` smoke against Novita:
