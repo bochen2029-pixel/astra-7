@@ -1,0 +1,74 @@
+# Day 1 test fixture: watch_47_morning initial StateBus snapshot.
+#
+# Shape mirrors astra.state_bus.schema.StateBus directly. The full scenario
+# YAML (operator inputs, assertions, REEL pre-seed) lands at Day 6 under
+# astra/scenarios/library/watch_47_morning.yaml; this fixture covers ONLY
+# the StateBus snapshot half so Day 1 can verify schema loadability.
+#
+# Numbers derived from proto/textverse/scenarios/watch_47_morning.md +
+# ARCHITECTURE.md §8 initial_state block.
+
+astra_coord:
+  sx: 0
+  sy: 0
+  sz: 0
+  lx: 0.0
+  ly: 0.0
+  lz: 0.0
+
+time:
+  t_cosmic: 1.5e10              # ~15 Gyr; arbitrary epoch for v0
+  tau_ship: 47.5                # watch 47, mid-shift
+  tau_crew_biological: 47.5     # not in cryosleep
+  rapidity_zeta: [0.0, 0.0, 0.0]
+  a_proper: [0.0, 0.0, 0.0]
+  regime: 0                     # REST = 0x00
+
+hull_damage: {}
+
+chaos_field_summary:
+  mean_amplitude: 0.0
+  max_amplitude: 0.0
+  energy_density: 0.0
+
+power_allocation:
+  warp: 0.0
+  life_support: 0.2
+  hydroponics: 0.1
+  sensors: 0.1
+  lights: 0.1
+  comms: 0.1
+  cognitive_cores: 0.4
+
+procedural_body_states:
+  sun:
+    name: sun
+    kind: star
+    mass_kg: 1.989e30
+    position: [0.0, 0.0, -1.496e11]    # 1 AU below ship, macro-grid frame
+  earth:
+    name: earth
+    kind: planet
+    mass_kg: 5.972e24
+    kepler:
+      a: 1.496e11
+      e: 0.0167
+      period_s: 3.156e7
+      parent: sun
+  hot_earth:
+    name: hot_earth
+    kind: planet
+    mass_kg: 5.972e24
+    kepler:
+      a: 1.0e10
+      e: 0.0
+      period_s: 86400.0              # 1-day period for retarded-time demo
+      parent: sun
+
+bh_list: []
+
+cosmo_params:
+  c: 299792458.0
+  h0_kms_mpc: 70.0
+  omega_m: 0.3
+  omega_lambda: 0.7

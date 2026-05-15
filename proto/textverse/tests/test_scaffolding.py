@@ -18,21 +18,39 @@ def test_astra_package_imports() -> None:
 
 
 def test_all_submodules_importable() -> None:
-    """Every empty submodule is importable (catches typos in __init__.py)."""
-    import astra.cli  # noqa: F401
-    import astra.core  # noqa: F401
-    import astra.grammar  # noqa: F401
-    import astra.harness  # noqa: F401
-    import astra.harness.ephemeral  # noqa: F401
-    import astra.judge  # noqa: F401
-    import astra.llm  # noqa: F401
-    import astra.operator  # noqa: F401
-    import astra.physics  # noqa: F401
-    import astra.scenarios  # noqa: F401
-    import astra.scenarios.library  # noqa: F401
-    import astra.ship  # noqa: F401
-    import astra.state_bus  # noqa: F401
-    import astra.universe  # noqa: F401
+    """Every submodule is importable (catches typos in __init__.py)."""
+    import astra.cli
+    import astra.core
+    import astra.grammar
+    import astra.harness
+    import astra.harness.ephemeral
+    import astra.judge
+    import astra.llm
+    import astra.operator
+    import astra.physics
+    import astra.scenarios
+    import astra.scenarios.library
+    import astra.ship
+    import astra.state_bus
+    import astra.universe
+
+    # Touch each module so importlib lazy-load and ruff F401 are both satisfied.
+    _ = (
+        astra.cli,
+        astra.core,
+        astra.grammar,
+        astra.harness,
+        astra.harness.ephemeral,
+        astra.judge,
+        astra.llm,
+        astra.operator,
+        astra.physics,
+        astra.scenarios,
+        astra.scenarios.library,
+        astra.ship,
+        astra.state_bus,
+        astra.universe,
+    )
 
 
 def test_no_wall_clock_imports_in_scaffolding() -> None:
