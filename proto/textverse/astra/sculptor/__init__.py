@@ -9,16 +9,13 @@ hypothesis-driven optimization.
 The deliverable is durable knowledge: a research log of what was tried,
 what worked, what didn't, why. The optimized bundle is a snapshot; the
 log outlives any specific model.
-
-Modules:
-- config.py:       ConfigSnapshot (immutable bundle identifier)
-- scope.py:        ScopeContract + ScopeEnforcer (the contract guard)
-- research_log.py: append-only research log + findings.md + daily_report.md
-
-Sculptor-B (auto-runner), Sculptor-C (meta-agent), Sculptor-D
-(dual-judge), Sculptor-E (convergence) land subsequently.
 """
 
+from astra.sculptor.averaging import (
+    AveragedIterationResult,
+    evaluate_config_averaged,
+    is_fragile,
+)
 from astra.sculptor.composite import (
     CompositeResult,
     CompositeWeights,
@@ -35,6 +32,22 @@ from astra.sculptor.config import (
     snapshot_from_disk,
     snapshot_from_json,
     snapshot_to_json,
+)
+from astra.sculptor.hypothesis import (
+    DEFAULT_BANK,
+    GATE_TO_LESSON_CLASS,
+    Hypothesis,
+    HypothesisGenerator,
+    StubHypothesisGenerator,
+    apply_hypothesis,
+    select_by_lesson_class,
+    worst_gate,
+)
+from astra.sculptor.meta_agent import (
+    Budget,
+    IterationDecision,
+    MetaAgent,
+    seed_day0_baseline,
 )
 from astra.sculptor.pytest_gate import (
     DEFAULT_PYTEST_TIMEOUT_S,
@@ -74,17 +87,25 @@ from astra.sculptor.scope import (
 )
 
 __all__ = [
+    "DEFAULT_BANK",
     "DEFAULT_PYTEST_TIMEOUT_S",
+    "GATE_TO_LESSON_CLASS",
     "TRACKED_FILES",
+    "AveragedIterationResult",
+    "Budget",
     "CadenceState",
     "ChangeRequest",
     "CompositeResult",
     "CompositeWeights",
     "ConfigSnapshot",
     "Decision",
+    "Hypothesis",
+    "HypothesisGenerator",
     "InvariantSpec",
+    "IterationDecision",
     "IterationResult",
     "IterationStatus",
+    "MetaAgent",
     "PytestResult",
     "ResearchEntry",
     "ScenarioMetrics",
@@ -92,8 +113,10 @@ __all__ = [
     "ScopeDecision",
     "ScopeEnforcer",
     "SnapshotFile",
+    "StubHypothesisGenerator",
     "append_entry",
     "append_proposal",
+    "apply_hypothesis",
     "build_bench_regression_entry",
     "build_falsified_entry",
     "build_promote_entry",
@@ -101,6 +124,8 @@ __all__ = [
     "composite_to_dict",
     "compute_composite",
     "compute_session_metrics",
+    "evaluate_config_averaged",
+    "is_fragile",
     "latest_entry",
     "latest_promote",
     "load_scope_contract",
@@ -110,9 +135,12 @@ __all__ = [
     "render_findings_md",
     "run_iteration",
     "run_pytest_subprocess",
+    "seed_day0_baseline",
+    "select_by_lesson_class",
     "snapshot_from_disk",
     "snapshot_from_json",
     "snapshot_to_json",
+    "worst_gate",
     "write_daily_report",
     "write_findings_md",
 ]

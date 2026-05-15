@@ -6,6 +6,76 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Sculptor-C — meta-agent loop + 30-entry hypothesis bank + multi-run averaging (2026-05-15)
+
+The autonomous research-scientist loop. Ships with `StubHypothesisGenerator`
+backed by `DEFAULT_BANK` (exactly 30 curated deterministic hypotheses)
+so the loop machinery is provable against realistic input before LLM
+cost is added.
+
+astra/sculptor/:
+- hypothesis.py    Hypothesis dataclass + HypothesisGenerator Protocol +
+                   StubHypothesisGenerator (round-robin) + DEFAULT_BANK
+                   (30 entries: 7 sysprompt + 3 STAGE addendum + 3
+                   narrator + 3 adapter + 8 sampling + 2 REEL + 2 leak
+                   patterns + 2 padding). Each entry is (name, relpath,
+                   transform_fn, rationale, lesson_class).
+                   Helpers: select_by_lesson_class, worst_gate,
+                   GATE_TO_LESSON_CLASS, apply_hypothesis (pure no-IO).
+- averaging.py     AveragedIterationResult + evaluate_config_averaged.
+                   Runs N=3 iterations of same ConfigSnapshot, averages
+                   composite_score; aborts on SERVER_UNHEALTHY without
+                   continuing; tracks variance for is_fragile detection
+                   (threshold 0.01).
+- meta_agent.py    Budget (from tuning/budget.json) + IterationDecision +
+                   MetaAgent. Single autonomous loop class.
+                   Decision rule per iteration:
+                     anchor_failed                            -> revert + falsified
+                     anchor_passed AND composite >= baseline+E -> promote
+                     anchor_passed AND composite < baseline   -> revert + falsified
+                   Scope refusal: append scope_refused entry without running.
+                   Pytest cadence (every N iter): failure -> revert +
+                   bench_regression entry.
+                   Honors pause.flag / halt.flag signals.
+                   Three-conjunct convergence: composite-D K-window +
+                   coverage entropy + min absolute threshold 0.80.
+                   seed_day0_baseline() helper writes D0-1/2/3 findings
+                   to research_log.jsonl as iteration-0 operator_signal
+                   entries (idempotent).
+
+Tests (34 new, 424 total):
+- test_sculptor_hypothesis.py (17) bank shape, Day-0 findings present,
+                                   round-robin, empty-bank raises,
+                                   apply_hypothesis on prompt/JSON/
+                                   pattern files, worst_gate logic.
+- test_sculptor_averaging.py   (8) AveragedIterationResult shape,
+                                   is_fragile threshold, N=3 deterministic
+                                   averaging, unhealthy aborts early,
+                                   anchor-all-or-nothing flag.
+- test_sculptor_meta_agent.py  (9) Budget + JSON load, seed_day0
+                                   idempotent, scope-refusal entry,
+                                   promote-on-improve (file edit applied),
+                                   revert-on-anchor-fail (file restored),
+                                   halt-flag honored, iter counter.
+
+Gates:
+- uv run pytest          -> 424 passed (390 prior + 34 Sculptor-C)
+- uv run ruff check      -> clean
+- uv run mypy astra/     -> clean (strict, 59 files)
+
+Design notes:
+- MetaAgent uses `@dataclass` (not `slots=True`) so tests can monkeypatch
+  methods. Data-shape classes (Budget, IterationDecision) keep slots.
+- Decision rule prioritizes anchor scenarios over composite delta —
+  anchor failure always reverts, regardless of composite improvement.
+- Convergence uses coverage entropy as library-diversity proxy (log2 of
+  scenario count). Sculptor-E refines when class-tagging lands.
+
+Next: Sculptor-D (adversarial pro/anti dual-judge with locked rubric;
+swaps real `judge_pro_minus_anti` into the composite formula).
+
+---
+
 ### End-of-session summary — 2026-05-15 (session close)
 
 Single-session arc spanning textverse Days 1-7 (Phase 1 closure) plus
