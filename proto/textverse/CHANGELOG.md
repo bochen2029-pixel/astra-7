@@ -6,6 +6,39 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Sculptor Decision 3: no_invented_tool_names — closing the D0-1 baseline (2026-05-15)
+
+The first 20-iter `--with-judge` run produced one new durable promote
+at iter 3, peak composite of the run (1.6001), surviving 8 subsequent
+counter-proposals (iters 4-11). Reverted at iter 12+ ONLY due to a
+substrate-collapse infra bug (Finding B2) — not real falsification.
+
+Promoted line in `prompts/astra_sysprompt.md`:
+
+> Your action vocabulary is exactly what the ship API exposes. You do
+> not invent tool names. When you do not have the action you want, you
+> say so or you remain silent.
+
+**Why this is the strongest finding to date:**
+
+- **Closes D0-1**: directly resolves the seeded iter-0 operator_signal
+  (Qwen 9B inventing `reactor.status` outside locked TOOL_API). The
+  closed-loop scenario §15.4 was written to validate — empirical
+  measurement reaches back and resolves a pre-loop hypothesis.
+- **Spec-aligned twice over**: §4.3 Master Contract Action channel
+  ("ship API invocation") + §15.6 calculator-bound LLM agency. The
+  second sentence also codifies STAGE §4.3 silence-as-legal-primitive
+  as the recovery path when no valid tool exists.
+- **Breaks into a new lesson_class**: 4 promotes now span 3 classes
+  (persona_stability ×2, non_degenerate ×1, tool_valid ×1). Anti-bias
+  accretion-risk is partially defused — Sculptor IS finding orthogonal
+  failure surfaces.
+- **Most durable finding yet**: survived 8 counter-proposals (vs
+  Decision 1: 3 survived; Decision 2: 4 survived). Signal cleanest of
+  the three batches.
+
+Rollback anchor: tag `pre-sculptor-novita-run-3`.
+
 ### Sculptor's second batch of durable promotions: anti-performance + silence-default (2026-05-15)
 
 5-iter `--with-judge` smoke against Novita Qwen 3.6 27B with the
