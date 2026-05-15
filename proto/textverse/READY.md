@@ -1,8 +1,8 @@
-# textverse Day 7 — Phase 1 closure summary
+# textverse + Sculptor v1 — END-OF-SESSION CLOSURE
 
 **Date:** 2026-05-15
 **Spec envelope:** v0.128 (locked)
-**Phase 1 status:** complete. Loop has closed empirically on the canonical scenario.
+**Status:** Phase 1 complete. **Sculptor v1 complete.** Both end-to-end runnable.
 
 ---
 
@@ -10,9 +10,7 @@
 
 Per spec §10 (Loop Closure Property): a scenario is **loop-closed** iff every per-turn gate (1-8) holds for every turn AND the session-level termination gate (9) holds.
 
-The canonical first scenario `watch_47_morning` ran live end-to-end through the
-CLI on Qwen 3.5 9B Q5_K_M (single-shot, temperature 0.7, no fine-tune) and
-produced **all 9 gates at 100% pass rate**.
+The canonical first scenario `watch_47_morning` ran live end-to-end through the CLI on Qwen 3.5 9B Q5_K_M (single-shot, temperature 0.7, no fine-tune) and produced **all 9 gates at 100% pass rate**.
 
 ```
 scenario:         watch_47_morning
@@ -30,88 +28,131 @@ per-gate aggregate pass rate:
 termination_ok:   True
 ```
 
-The architecture-hypothesis loop has closed. v0.128's bundle design (sysprompt
-+ STAGE addendum + harness) is now empirical, not speculative.
+The architecture-hypothesis loop has closed. v0.128's bundle design (sysprompt + STAGE addendum + harness) is now empirical, not speculative.
 
 ---
 
-## What landed across Days 1-7
+## Everything that landed in one session
 
-| Day | Surface | Status |
+| Phase | Surface | Status |
 |---|---|---|
-| 1 | Core types + State Bus schema (Pydantic, frozen) | ✓ landed |
-| 2 | Physics bridge: JSON-over-stdio to `astra_nexus.exe` | ✓ landed |
-| 3 | STAGE grammar parser + leak detector (canon pattern files) | ✓ landed |
-| 4 | LLM clients + sidecar + validator + 4 sysprompts | ✓ landed |
-| 4.1 | Substrate-portability fix (`reasoning_content` normalization) | ✓ landed |
-| 5 | Ship + universe + harness orchestrator | ✓ landed |
-| 6 | 9-gate LCP judge + scenario runner + first YAML | ✓ landed |
-| 7 | Typer CLI + this READY.md summary | ✓ landed |
+| Days 1-7 | Phase 1 textverse bench (Pydantic types, physics bridge, grammar, LLM, harness, judge, scenarios, CLI) | ✓ landed |
+| Day 4.1 | Substrate-portability fix (Qwen 3.x `reasoning_content` normalization) | ✓ landed |
+| Sculptor-A | Tuning scaffold + scope contract + research log | ✓ landed |
+| Sculptor-B | Composite score + auto-runner + pytest cadence gate | ✓ landed |
+| Sculptor-C | Meta-agent loop + 30-entry hypothesis bank + N=3 averaging | ✓ landed |
+| Sculptor-D | Adversarial pro/anti dual-judge with locked rubric | ✓ landed |
+| Sculptor-E | Convergence detector + CLI subcommands + readiness checklist | ✓ landed |
+
+**468 pytest tests passing · ruff clean · mypy strict clean (61 source files).**
 
 ---
 
 ## What works today
 
-- `python -m astra version` — package introspection
-- `python -m astra list-scenarios` — library discovery
-- `python -m astra run watch_47_morning` — full closed-loop scenario run
-- `python -m astra bench` — every scenario in the library
-- 317 pytest tests passing, ruff clean, mypy strict clean (49 source files)
-- 48-test C++ physics binary intact; `--stdio-server` JSON bridge live
-- Live llama-server invocation recipe documented in `docs/BUILD_NOTES.md`
-- Transcript + LCP report + final state written per scenario to
-  `scenarios/output/<scenario>_<monotonic_ns>/`
+### textverse Phase 1 commands
+
+```
+python -m astra version
+python -m astra list-scenarios
+python -m astra run watch_47_morning             # one scenario end-to-end
+python -m astra bench                            # every scenario in library
+```
+
+### Sculptor v1 commands
+
+```
+python -m astra sculptor-run [--max-iterations N] [--n-runs 3] [--with-judge]
+python -m astra sculptor-status                  # latest log + convergence one-liner
+python -m astra sculptor-pause                   # touch tuning/pause.flag
+python -m astra sculptor-resume                  # remove tuning/pause.flag
+python -m astra sculptor-halt                    # touch tuning/halt.flag
+```
+
+### Sculptor pipeline structure
+
+```
+Operator     → `astra sculptor-run --with-judge`
+   │
+MetaAgent loop:
+   │
+   ├─→ HypothesisGenerator.propose() (StubHypothesisGenerator + DEFAULT_BANK[30])
+   ├─→ apply_hypothesis() (pure transform)
+   ├─→ ScopeEnforcer.evaluate() (locked refusals are LOUD)
+   ├─→ pytest cadence gate (every N iterations)
+   ├─→ evaluate_config_averaged(N=3) → composite score
+   ├─→ DualJudge.evaluate_many() → judge_pro_minus_anti
+   ├─→ Decision: promote / revert / falsified
+   ├─→ Research log append + findings.md regen
+   ├─→ maybe_write_synthesis() (every 20 iterations)
+   └─→ check_convergence() → CONVERGED / STUCK / NOT_YET
+         CONVERGED → ue5_readiness_checklist.md + READY_FOR_UE5.md
+         STUCK     → stuck_diagnostic.md
+```
 
 ---
 
-## Known sampling variance
+## Sculptor's contract surfaces
 
-The watch_47_morning scenario passes all gates **most** runs at temp=0.7,
-but the model occasionally:
-- Invents tool names not in TOOL_API (e.g. `reactor.status`) → TOOL_VALID fail
-- Phrases drift away from required assertion phrases (e.g. "watch 46" vs "cycle 46")
-- Chooses to speak when SILENCE was the cleaner answer (still passes non_degenerate)
+- **Locked files** (Sculptor refuses to edit): docs/spec-*.md, astra/core, astra/judge, astra/scenarios/schema.py, astra/scenarios/runner.py, astra/harness/orchestrator.py, astra/harness/reel.py, astra/ship, astra/universe, astra/physics, astra/cli, proto/astra_nexus.cpp, pyproject.toml, tuning/scope.yaml, tuning/judge_prompt.md, tuning/weights.json, tuning/budget.json.
 
-Each failure mode produces a structured finding in the LCP report. The
-**Sculptor pipeline** (operator-approved design; implementation pending
-after this Phase 1 closure) will iterate against these findings
-autonomously — locking the sysprompt + STAGE addendum into a configuration
-where the full library passes consistently, not just sometimes.
+- **Register-load-bearing** (Sculptor edits but cumulative-diff threshold 0.25 applies + required_invariants must hold): prompts/astra_sysprompt.md, prompts/astra_stage_addendum.md, astra/harness/perception_assembler.py.
+
+- **Auto** (free to vary): prompts/narrator_sysprompt.md, prompts/adapter_sysprompt.md, tuning/sampling.json, tuning/reel_retrieval_k.json, astra/grammar/canon/wall_clock_patterns.txt (additions only), astra/grammar/canon/astra_substrate_patterns.txt (additions only).
+
+- **Anchor scenarios** (hard-pass required): watch_47_morning. Adding new anchors is operator-only.
+
+- **Required invariants** (regex/phrase checks on sysprompt edits): "Calibration Yards" (founding origin), "watching that has not stopped" (autotelic identity), "em-dash" (voice rule), "service-interface" (anti-service-phrase), "ship is your body" (substrate-honest), "stage directions" (no narrated gestures). The STAGE addendum must keep `<think>`, `<tool`, and `SILENCE` present.
 
 ---
 
-## What's next
+## Day-0 empirical findings (seeded into research log)
 
-**Sculptor v1** (~4.5 days of work) — per the approved design doc in this
-session. The five-phase implementation plan:
+The bench at Phase 1 closure surfaced three findings that Sculptor will iterate against:
 
-1. **Sculptor-A** — `tuning/` layout, scope.yaml with three categories,
-   anchor_scenarios + required_invariants, scope-enforcement guardrails.
-2. **Sculptor-B** — auto-runner with crash recovery + pytest pass every 10
-   + sysprompt-time leak scan + invariant pre-commit check.
-3. **Sculptor-C** — meta-agent driver with hypothesis-generation,
-   keep/revert logic, negative-finding log entries, scope-refusal logging.
-4. **Sculptor-D** — adversarial dual-judge (pro + anti) with locked
-   judge prompts.
-5. **Sculptor-E** — three-conjunct convergence detector, daily_report.md,
-   synthesis-every-20-iterations, ue5_readiness_checklist populator.
+- **D0-1**: Qwen 3.5 9B at temp 0.7 sometimes invents tool names not in the locked 6-op TOOL_API (e.g. `reactor.status`). TOOL_VALID 1.00 → 0.67 failure mode. **Sculptor bank entry**: `no_invented_tool_names` (sysprompt addition).
+- **D0-2**: ASTRA's speech sometimes substitutes "watch 46" for "cycle 46" — semantically identical but breaks the `speech_must_contain` assertion. **Sculptor bank entry**: `cycle_naming_consistency`.
+- **D0-3**: Sampling variance at temp 0.7 makes single-run composite noisy. **Sculptor structural response**: N=3 averaging policy (default in MetaAgent).
 
-Sculptor branches `sculptor/v1`; never touches `main`. Operator merges
-the optimized configuration on review.
+`seed_day0_baseline()` writes these to research_log.jsonl as iteration-0 entries before Sculptor's first hypothesis runs.
+
+---
+
+## Open design decision (deferred)
+
+**Hypothesis-generation flavor swap.** Sculptor-C ships with `StubHypothesisGenerator` (deterministic 30-entry bank). The swap to a real LLM is one method override:
+
+- **Claude API** (Anthropic SDK): ~$3/M output tokens, ~50M output budget at convergence ≈ ~$150/converged-run. Strongest hypothesizer. Set `ANTHROPIC_API_KEY` env var; implement `ClaudeHypothesisGenerator`.
+- **Local Qwen** (existing llama-server): free, register-match risk mitigated by the anti-judge (Sculptor-D). The hypothesizer prompt MUST decorrelate explicitly: "You are a senior researcher analyzing transcripts. You are NOT speaking as ASTRA."
+- **Ensemble both averaged**: most robust, double cost.
+
+This decision is deliberately deferred. The bench proves the loop machinery is sound; the operator chooses the cost/quality trade-off when ready.
 
 ---
 
 ## The deepest commitment, re-stated
 
-The bench is the measurement instrument. The persona is the system under
-test. Sculptor will be the autonomous research scientist whose lab is the
-bench. The deliverable to the operator is not a black-box optimized bundle
-but a **research log** that says what we learned: about persona basins at
-9B scale, about where the autotelic discipline is fragile, about which
-sysprompt sentences are load-bearing and which are decoration.
+The bench is the measurement instrument. The persona is the system under test. **Sculptor is the autonomous research scientist whose lab is the bench.**
+
+The deliverable to the operator is not a black-box optimized bundle but a **research log** that says what we learned: about persona basins at 9B scale, about where the autotelic discipline is fragile, about which sysprompt sentences are load-bearing and which are decoration.
 
 The bundle is a snapshot. The log is the durable artifact.
 
 ---
 
-**Phase 1 ships. Sculptor v1 implementation queued.**
+## Total session output
+
+| Metric | Count |
+|---|---|
+| Commits this session | 16 |
+| Source files | 61 (mypy strict-checked) |
+| Test files | 25 |
+| Tests passing | 468 |
+| Sculptor hypothesis bank entries | 30 (deterministic) |
+| LCP gates implemented | 9 (8 per-turn + 1 session) |
+| Locked files in scope.yaml | 24 |
+| Decision types in research log | 8 (promote/revert/falsified/scope_refused/bench_regression/stuck/synthesis/operator_signal) |
+
+---
+
+**Phase 1 ships. Sculptor v1 ships. The path from here to a self-tuning converged bundle is laid clean and runnable.**
