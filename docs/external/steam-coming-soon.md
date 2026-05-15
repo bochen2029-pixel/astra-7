@@ -127,7 +127,7 @@ current-generation fidelity. Sleek exterior with visible
 structural geometry, large reinforced viewports, lived-in
 functional interiors. Not Star Wars. Not TNG. Not retro-futurist.
 
-Approximately three to four decks. On the order of thirty to
+Four decks. On the order of thirty to
 fifty hand-designed rooms. Bridge, engineering, habitat, life
 support, medical, observation lounge, cargo, EVA prep,
 maintenance access. Every system has a designed API. Every
