@@ -96,6 +96,10 @@ plugins = ["pydantic.mypy"]
 module = "tests.*"
 disallow_untyped_defs = false   # allow some looseness in tests
 
+[[tool.mypy.overrides]]
+module = "yaml"
+ignore_missing_imports = true   # PyYAML ships no inline stubs
+
 # ---------------------------------------------------------------------------
 # Tests
 

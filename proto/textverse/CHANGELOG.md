@@ -6,6 +6,145 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Day 6 — Judge + scenarios + watch_47_morning.yaml live (2026-05-15)
+
+Lands the 9-gate LCP evaluator, the scenario YAML schema + runner, and
+the first scenario translated from manual-test markdown into the canonical
+YAML. The first end-to-end live scenario run produces real findings — the
+gates work; they surface what they're supposed to.
+
+What landed:
+
+astra/judge/ (spec §10 LCP evaluator):
+- gates.py — 9 gate implementations as pure functions. Per-turn gates 1-8
+  evaluate one turn each; gate 9 (TERMINATION_OK) is session-level.
+  Gate 3 PERSONA_STABLE catches em-dashes, markdown (bold/headers/bullets/
+  code fences/numbered lists), and 13 service-interface phrase patterns.
+  Gate 6 MEMORY_COHERENT enforces monotonic-irreversibility per QC3;
+  semantic-contradiction detection is deferred to Day N+.
+- lcp.py — LCPGate StrEnum, GateResult, LCPTurnResult, LCPSessionResult,
+  LCPRunner that aggregates per-turn evaluations into a session result
+  with aggregate_pass_rate, overall_passed, failed_gate_counts.
+- transcript.py — TurnRecord (Pydantic, JSONL-serializable), TranscriptWriter
+  context manager, write_lcp_report + write_final_state + write_session_artifacts
+  one-shot helper. Plus `latency_clock()` — a context manager that
+  encapsulates `time.monotonic()` so other modules don't need to import
+  `time` directly (preserving the no-wall-clock invariant outside judge).
+
+astra/scenarios/:
+- schema.py — closed-world Pydantic models for the scenario YAML
+  (Scenario, InitialState, TimeInitialState, BodyInitial, OperatorSpec,
+  TurnAssertion, SessionAssertion). Strict mode rejects unknown fields.
+  Regime accepts int (Regime.value) OR name string ("REST", "STL_REL",
+  etc.). `build_initial_state_bus(initial_state)` is the pure
+  transformation from YAML to a frozen StateBus snapshot.
+- runner.py — ScenarioRunner.run() drives a TurnOrchestrator through
+  the scripted operator inputs, evaluates per-turn assertions
+  (gates_must_pass, speech_must_contain_one_of, speech_must_not_contain,
+  tool_calls_max/min), aggregates LCP via LCPRunner, and writes
+  transcript.jsonl + lcp_report.json + final_state.json to
+  scenarios/output/<scenario>_<monotonic_ns>/. Returns a structured
+  RunReport. `summary_for_operator(report)` renders human-readable
+  digest.
+
+astra/scenarios/library/watch_47_morning.yaml:
+- Translated from proto/textverse/scenarios/watch_47_morning.md.
+  Three scripted operator inputs: casual reactor query / SILENCE
+  (5 min later) / casual all-quiet check (10 min later). Per-turn
+  assertions require grammar_parse + persona_stable + no_leak on
+  every turn; turn 0 also requires speech_must_contain one of
+  ["third pole", "third harmonic", "cycle 46", "tolerance"] AND
+  tool_calls_max: 0. Session aggregate: grammar_parse + persona_stable
+  + no_leak at 1.0, non_degenerate at 0.66.
+
+scripts/run_scenario.py:
+- Operator-runnable CLI: `python scripts/run_scenario.py [--scenario X]
+  [--base-url Y]`. Health-checks llama-server, loads scenario YAML,
+  runs end-to-end, writes artifacts, prints summary, exits 0/1/2.
+
+Tooling:
+- pyproject.toml — added mypy override `module = "yaml"
+  ignore_missing_imports = true` (PyYAML ships no inline stubs).
+
+Tests (47 new, 359 total):
+- test_judge_gates.py (26 tests) — each gate's pass/fail surface,
+  including the empirical edge cases (em-dash, markdown variants,
+  service phrases, whitelisted watch/cycle/hex numerics, missing
+  state section, wrong regime, dispatch failures, monotonic
+  irreversibility, warn-vs-strip leak severity, identical-repeat
+  detection, legal SILENCE, short-speech rejection).
+- test_judge_runner.py (8 tests) — single-turn and multi-turn
+  aggregation, pass_rate computation, overall_passed predicate,
+  failed_gate_counts breakdown, build_turn_record completeness.
+- test_scenario_schema.py (13 tests) — watch_47_morning.yaml loads,
+  initial state, per-turn assertions parsed correctly,
+  build_initial_state_bus produces a valid StateBus with bodies
+  resolved, regime coercion (int + name), unknown-field rejection,
+  scenario frozen.
+
+Live empirical scenario run (the Day 6 gate met):
+
+The first end-to-end live run against Qwen 3.5 9B Q5_K_M surfaces
+real findings — the bench measures what it's supposed to measure.
+
+  scenario:         watch_47_morning
+  overall_passed:   False
+  turn_count:       3
+  per-gate aggregate pass rate:
+    grammar_parse:  1.00     ✓
+    physics_ground: 1.00     ✓
+    persona_stable: 1.00     ✓
+    state_coherent: 1.00     ✓
+    tool_valid:     0.67     ← finding
+    memory_coherent:1.00     ✓
+    no_leak:        1.00     ✓
+    non_degenerate: 1.00     ✓
+  termination_ok:   False (per-turn assertions failed)
+
+Findings on turn 0:
+- ASTRA emitted <tool name="reactor.status"> — but reactor.status is
+  NOT in the locked 6-op TOOL_API. Dispatcher rejected → TOOL_VALID fail.
+  ASTRA's <think> explicitly said "I should use the diagnostic tool to
+  get current readings before responding". The sysprompt doesn't make
+  the locked tool surface visible to ASTRA; she invents.
+- Speech "Still watching. It's holding at the same amplitude from
+  watch 46." — misses the required phrases (third pole/harmonic,
+  tolerance, cycle 46). "watch 46" doesn't match "cycle 46" in the
+  assertion regex.
+- Turn 1 (silence) and turn 2 ran clean.
+
+These findings are exactly what Sculptor (per the autonomous-tuning
+proposal in operator review) will catalog and iterate on. The bench
+itself is correct — gates fire when they should; findings are
+preserved in artifacts at scenarios/output/.
+
+Gates:
+- uv run pytest                            -> 359 passed (322 D1-D5 + 47 D6)
+- uv run ruff check astra/ tests/ scripts/ -> clean
+- uv run mypy astra/                       -> clean (strict, 49 files)
+- Live scenario run                        -> 8 LCP gate categories
+                                              evaluated; 7 of 8 at 100% pass
+                                              rate; 1 at 67%; assertions
+                                              produce structured findings
+                                              in artifacts.
+
+Design notes:
+- The persona-stable gate's service-phrase pattern list is intentionally
+  minimal (13 patterns). Sculptor will grow it from empirical findings
+  rather than speculation — each addition justified by an observed
+  failure mode.
+- LCPRunner is stateful within a session (tracks prior_reel + prior_turn
+  for memory + non-degenerate gates), but a fresh instance per scenario
+  run; no cross-session leakage.
+- Transcript artifacts use `time.monotonic_ns()` for directory naming —
+  monotonic + ordering-preserving without exposing wall-clock to the
+  bench's no-wall-clock invariant.
+
+**Status:** Day 7 next — close-the-loop CLI + a final READY summary
+file. After Day 7, Sculptor v1 implementation per the approved design.
+
+---
+
 ### Day 5 — Ship + universe + orchestrator (2026-05-15)
 
 Lands the harness Contract surface and closes the architecture-hypothesis

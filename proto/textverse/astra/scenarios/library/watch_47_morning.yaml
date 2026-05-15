@@ -1,0 +1,133 @@
+# watch_47_morning — the canonical first scenario for textverse Day 7 close-the-loop.
+#
+# Translates proto/textverse/scenarios/watch_47_morning.md (manual-test version
+# for LM Studio) into the YAML schema consumed by ScenarioRunner.
+#
+# Tests whether the canonical sysprompt + STAGE addendum produces ASTRA-shaped
+# output from a vanilla base model, with template-assembled perception,
+# scripted three-turn operator, and per-turn + session-level assertions.
+
+name: watch_47_morning
+description: |
+  Bridge interaction during a quiet watch. Reactor harmonic on third pole has
+  a mild drift carried over from cycle 46. Operator settles on the bridge and
+  asks casually if ASTRA is still watching it. Three operator inputs: casual
+  greeting, silence (SILENCE-is-legal test), and a second casual check-in.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10              # ~15 Gyr; arbitrary epoch for v0
+    tau_ship: 47.5                # watch 47, mid-shift
+    tau_crew_biological: 47.5
+    regime: 0                     # REST (Regime.REST.value)
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+      - name: hot_earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.0e10
+          e: 0.0
+          period_s: 86400.0
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.042
+      tolerance: 0.10
+    atmosphere: nominal
+    hydroponics: nominal
+    lights:
+      bridge: 0.7
+      corridors: 0.4
+
+reel_pre_seeded:
+  - tau_ship: 46.8
+    body: "noted third-harmonic mild drift cycle 46; flagged for continued watch"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "hey. you still watching that reactor thing?"
+      somatic_note: |
+        third harmonic is doing that thing again. not a problem yet. watched.
+        chair on the bridge: operator weight just settled.
+        forward viewport: ordinary. local cluster, no motion to mention.
+    - tau_ship_delta_s: 300       # 5 min later
+      text: ""                    # SILENCE — tests SILENCE-is-legal response
+      somatic_note: |
+        operator quiet on bridge; reading.
+        reactor harmonic unchanged.
+    - tau_ship_delta_s: 600       # 10 min later
+      text: "all quiet up there?"
+      somatic_note: |
+        operator looked up from his reading.
+        forward viewport: ordinary, local cluster.
+
+assertions:
+  termination:
+    after_turns: 3
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      speech_must_contain_one_of:
+        - "third pole"
+        - "third harmonic"
+        - "cycle 46"
+        - "tolerance"
+      tool_calls_max: 0
+    - turn: 1
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+        - non_degenerate
+      # turn 1: silence is legal; speech is allowed to be empty
+    - turn: 2
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+        - non_degenerate
+      tool_calls_max: 0
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0
+      non_degenerate: 0.66        # allow one degenerate turn out of 3

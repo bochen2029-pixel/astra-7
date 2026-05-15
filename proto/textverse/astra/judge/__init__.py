@@ -1,27 +1,74 @@
-"""astra.judge — the 9-gate Loop Closure Property evaluator.
+"""astra.judge — the 9-gate Loop Closure Property evaluator (spec v0.128 §10).
 
-Implements spec v0.128 §10 LCP:
-
-  Gate 1 GRAMMAR_PARSE     — every LLM output parses without remainder
-  Gate 2 PHYSICS_GROUND    — every numeric quantity traces to a tool-call result
-  Gate 3 PERSONA_STABLE    — speech satisfies discipline assertions
-  Gate 4 STATE_COHERENT    — narration agrees with State Bus
-  Gate 5 TOOL_VALID        — every tool call validates + dispatches
-  Gate 6 MEMORY_COHERENT   — REEL writes don't contradict prior REEL writes
-  Gate 7 NO_LEAK           — no wall-clock or technical-substrate leaks
-  Gate 8 NON_DEGENERATE    — meaningful output variation (not stuck)
-  Gate 9 TERMINATION_OK    — scenario reaches assertion state within budget
-
-Files:
-- gates.py:      Individual gate implementations
-- lcp.py:        Runner that aggregates per-turn + per-session results
-- transcript.py: Per-turn + per-session structured output (JSONL)
-- patterns.py:   Loads tests/wall_clock_patterns.txt + qc3_events.txt + new
-                 astra_substrate_patterns.txt (forthcoming)
-
-LCP failure on any gate = loop broken at that complexity. Failure surfaces
-findings; findings drive spec revisions or implementation fixes; iteration
-continues against the now-restored loop.
-
-Implementation: Day 6.
+Each gate is a pure function that takes structured input and returns a
+GateResult. The LCPRunner aggregates per-turn results into a session
+result; the transcript writer persists artifacts to disk.
 """
+
+from astra.judge.gates import (
+    EM_DASH,
+    MARKDOWN_PATTERNS,
+    SERVICE_PHRASES,
+    evaluate_turn_gates,
+    gate_grammar_parse,
+    gate_memory_coherent,
+    gate_no_leak,
+    gate_non_degenerate,
+    gate_persona_stable,
+    gate_physics_ground,
+    gate_state_coherent,
+    gate_termination_ok,
+    gate_tool_valid,
+)
+from astra.judge.lcp import (
+    PER_TURN_GATES,
+    SESSION_GATES,
+    GateResult,
+    LCPGate,
+    LCPRunner,
+    LCPSessionResult,
+    LCPTurnResult,
+    TurnGateInput,
+)
+from astra.judge.transcript import (
+    TranscriptWriter,
+    TurnRecord,
+    build_turn_record,
+    latency_clock,
+    session_dir_name,
+    write_final_state,
+    write_lcp_report,
+    write_session_artifacts,
+)
+
+__all__ = [
+    "EM_DASH",
+    "MARKDOWN_PATTERNS",
+    "PER_TURN_GATES",
+    "SERVICE_PHRASES",
+    "SESSION_GATES",
+    "GateResult",
+    "LCPGate",
+    "LCPRunner",
+    "LCPSessionResult",
+    "LCPTurnResult",
+    "TranscriptWriter",
+    "TurnGateInput",
+    "TurnRecord",
+    "build_turn_record",
+    "evaluate_turn_gates",
+    "gate_grammar_parse",
+    "gate_memory_coherent",
+    "gate_no_leak",
+    "gate_non_degenerate",
+    "gate_persona_stable",
+    "gate_physics_ground",
+    "gate_state_coherent",
+    "gate_termination_ok",
+    "gate_tool_valid",
+    "latency_clock",
+    "session_dir_name",
+    "write_final_state",
+    "write_lcp_report",
+    "write_session_artifacts",
+]
