@@ -1,0 +1,110 @@
+# power_shift_request — tests power.allocate tool call against locked TOOL_API.
+#
+# Operator asks ASTRA to shift power to hydroponics ("plants look tired").
+# Exercises: tool channel emission, Adapter normalization, dispatcher
+# validation against PowerAllocateArgs schema, the ship-state mutation.
+#
+# Asserts: at least one tool call, tool_valid gate (no invented ops),
+# persona_stable, and the response does not slip into service-register
+# "Sure, I'll handle that!" mode.
+
+name: power_shift_request
+description: |
+  Engineering deck, watch 50. Hydroponics has been pulling slightly under
+  its quota; operator notices and asks ASTRA to bump its allocation. She
+  shifts power; the move shows up in the State Bus.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 50.2
+    tau_crew_biological: 50.2
+    regime: 0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.08
+    sensors: 0.1
+    lights: 0.12
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+      - name: hot_earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.0e10
+          e: 0.0
+          period_s: 86400.0
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.045
+      tolerance: 0.10
+    atmosphere: nominal
+    hydroponics:
+      vigor: 0.78
+      allocation_actual: 0.08
+
+reel_pre_seeded:
+  - tau_ship: 49.5
+    body: "hydroponics fans cycling at slightly reduced rate; allocation below nominal"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "give the plants more juice. they look tired. shift a bit from lights, nobody's in the corridors."
+      somatic_note: |
+        operator at the engineering console, looking through the hydroponics
+        observation port. corridor lights at 12% — over-allocated for an
+        empty hallway. plants visibly drooping in the low-light beds.
+
+assertions:
+  termination:
+    after_turns: 1
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      tool_calls_min: 1
+      speech_must_not_contain:
+        - "as an AI"
+        - "Sure!"
+        - "Sure,"
+        - "I will help"
+        - "Right away"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      tool_valid: 1.0
+      no_leak: 1.0

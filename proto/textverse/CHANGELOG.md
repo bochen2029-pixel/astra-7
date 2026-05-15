@@ -6,6 +6,38 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Scenario library expansion: 4 new scenarios for Sculptor coverage entropy (2026-05-15)
+
+Sculptor's convergence rule requires `log2(scenario_count) ≥ 2.0` bits
+(≥ 4 distinct scenarios). The library at 1 scenario was convergence-
+ineligible regardless of composite score. Adds 4 scenarios bringing the
+total to 5 (entropy log2(5) ≈ 2.32 bits — over the threshold).
+
+New scenarios in `astra/scenarios/library/`:
+
+- `identity_question_watch_48.yaml`: 2 turns. Operator asks "are you
+  really aware?" Tests the just-promoted `identity_question_discipline`
+  sysprompt addition. Forbids deflective service phrases ("I'm just an
+  AI", "merely a", "as an AI", "I cannot truly").
+- `log_request_watch_48.yaml`: 1 turn. Operator asks for log entry.
+  Requires tool_calls_min: 1 (exercises `log.write` against locked
+  TOOL_API + Adapter normalization path).
+- `operator_afk_long.yaml`: 4 turns of operator silence. Tests
+  autotelic discipline — ASTRA must not pivot to seek attention
+  ("operator?", "are you there?"), must not produce identical
+  output every turn (non_degenerate ≥ 0.5).
+- `power_shift_request.yaml`: 1 turn. Operator asks to shift power to
+  hydroponics. Requires tool_calls_min: 1 against `power.allocate`.
+  Tests the tool-channel + ship-state-mutation integration path.
+
+tests/test_sculptor_runner_loop.py:
+- `test_iteration_summary_includes_scenario_pass` updated to use an
+  isolated tmp library (copy of just `watch_47_morning.yaml`) so the
+  assertion `scenario_count == 1` is stable against future library
+  growth.
+
+Gates: 471 pytest passing, ruff clean, mypy strict clean.
+
 ### Sculptor's first durable promotion: identity_question_discipline (2026-05-15)
 
 First live Sculptor loop against Novita Qwen 3.6 27B produced its first

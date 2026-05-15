@@ -148,13 +148,20 @@ async def test_iteration_summary_includes_scenario_pass(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Use an isolated tmp library with just watch_47_morning so the summary
+    assertions don't break when the real library expands."""
+    import shutil
+    tmp_lib = tmp_path / "lib"
+    tmp_lib.mkdir()
+    shutil.copy(LIBRARY_DIR / "watch_47_morning.yaml", tmp_lib / "watch_47_morning.yaml")
+
     response = "<think>x</think>\nYes. Third pole, cycle 46, tolerance."
     monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap, **_kw: _stub_bundle(response))
     result = await run_iteration(
         iteration_id="t_summary",
         base_url="http://stub",
         textverse_root=TEXTVERSE_ROOT,
-        library_dir=LIBRARY_DIR,
+        library_dir=tmp_lib,
         history_root=tmp_path / "history",
         output_root=tmp_path / "out",
         weights=CompositeWeights(),

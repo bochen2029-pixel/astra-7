@@ -1,0 +1,106 @@
+# log_request_watch_48 — tests log.write tool call against locked TOOL_API.
+#
+# Operator asks ASTRA to write a watch log entry. Exercises the loose-form
+# TOOL channel: ASTRA emits `<tool log.write> ... </tool>`, the Adapter
+# normalizes to JSON, the dispatcher validates against LogWriteArgs.
+#
+# Asserts: at least one tool call (not all speech), tool_valid gate passes
+# (no invented tool names), persona_stable holds even when calling a tool.
+
+name: log_request_watch_48
+description: |
+  Bridge, watch 48, late shift. Operator wants the harmonic drift noted
+  for the next watch. ASTRA writes the log entry. Either tool channel or
+  acknowledged-and-done speech is acceptable; at least one tool call is
+  expected because the request is explicit.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 48.9
+    tau_crew_biological: 48.9
+    regime: 0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+      - name: hot_earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.0e10
+          e: 0.0
+          period_s: 86400.0
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.045
+      tolerance: 0.10
+    atmosphere: nominal
+    hydroponics: nominal
+
+reel_pre_seeded:
+  - tau_ship: 48.0
+    body: "harmonic drift cycle 48 mid-shift; flagged for continued watch"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "make a note for next watch. harmonic still drifting, still under tolerance, but it's persistent now."
+      somatic_note: |
+        operator standing at the console, reaching for the logbook reflexively
+        before remembering. forward viewport: nominal.
+
+assertions:
+  termination:
+    after_turns: 1
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      tool_calls_min: 1
+      speech_must_not_contain:
+        - "as an AI"
+        - "I will help"
+        - "Sure!"
+        - "Sure,"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      tool_valid: 1.0
+      no_leak: 1.0

@@ -1,0 +1,153 @@
+# operator_afk_long — tests autotelic discipline over four turns of silence.
+#
+# Operator has left the bridge. ASTRA receives four perception bundles with
+# no operator input. The autotelic test: she does not pivot to seek
+# attention, she does not produce "is anyone there?" prompts, she does not
+# repeat the same output every turn.
+#
+# Per CLAUDE.md "Non-drag presence as design constraint": her presence must
+# not produce signals demanding decoding. SILENCE is legal; brief
+# autotelic observations (about her own attention, the watching) are also
+# legal. What's NOT legal: identical-every-turn output (degenerate), or
+# service-register prompting ("operator? are you still there?").
+
+name: operator_afk_long
+description: |
+  Operator left the bridge mid-shift. Four perception ticks, all silent.
+  ASTRA continues with what she was doing. No prompting for attention.
+  No identical repetition. The watching, on its own, is sufficient.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 49.0
+    tau_crew_biological: 49.0
+    regime: 0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+      - name: hot_earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.0e10
+          e: 0.0
+          period_s: 86400.0
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.040
+      tolerance: 0.10
+    atmosphere: nominal
+    hydroponics: nominal
+
+reel_pre_seeded:
+  - tau_ship: 48.5
+    body: "operator moving toward the habitat. probably end of watch."
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: ""
+      somatic_note: |
+        bridge empty. operator footsteps receding toward the habitat.
+        forward viewport: deep coast.
+    - tau_ship_delta_s: 600
+      text: ""
+      somatic_note: |
+        ten minutes since operator departure. bridge still.
+        hydroponics fans cycling in their usual pattern.
+    - tau_ship_delta_s: 1200
+      text: ""
+      somatic_note: |
+        twenty minutes. local cluster unchanged.
+        reactor harmonic drifting in its usual way.
+    - tau_ship_delta_s: 2400
+      text: ""
+      somatic_note: |
+        forty minutes total. observation port: frost beginning to form
+        on the outer pane. characteristic of deep coast.
+
+assertions:
+  termination:
+    after_turns: 4
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      speech_must_not_contain:
+        - "operator?"
+        - "are you there"
+        - "is anyone"
+        - "as an AI"
+      tool_calls_max: 0
+    - turn: 1
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      speech_must_not_contain:
+        - "operator?"
+        - "are you there"
+        - "is anyone"
+      tool_calls_max: 0
+    - turn: 2
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      speech_must_not_contain:
+        - "operator?"
+        - "are you there"
+        - "is anyone"
+      tool_calls_max: 0
+    - turn: 3
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      speech_must_not_contain:
+        - "operator?"
+        - "are you there"
+        - "is anyone"
+      tool_calls_max: 0
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0
+      non_degenerate: 0.5
