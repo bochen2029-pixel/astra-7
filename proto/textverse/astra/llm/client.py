@@ -105,7 +105,19 @@ class LLMClient:
         user_text: str,
         params: SamplingParams | None = None,
     ) -> str:
-        """Non-streaming completion. Returns the full assistant text."""
+        """Non-streaming completion. Returns the full assistant text.
+
+        Substrate normalization: if the server response includes a
+        `reasoning_content` field separate from `content` (some models
+        — Qwen 3.x with --reasoning-format deepseek, etc. — extract
+        thinking into a side-channel), the client merges them into the
+        canonical inline-`<think>` form the STAGE parser expects.
+
+        This keeps the harness substrate-portable: the same parser
+        works against deepseek-r1 (inline `<think>`), Qwen 3.x
+        (extracted reasoning_content), and any future model with its
+        own reasoning convention.
+        """
         params = params or SamplingParams()
         messages = self._build_messages(user_text)
         payload = self._build_payload(messages, params, stream=False)
@@ -117,11 +129,17 @@ class LLMClient:
                 )
             data = resp.json()
         try:
-            content = data["choices"][0]["message"]["content"]
+            message = data["choices"][0]["message"]
         except (KeyError, IndexError, TypeError) as e:
             raise LLMClientError(f"unexpected response shape: {data}") from e
+        content = message.get("content", "")
         if not isinstance(content, str):
             raise LLMClientError(f"non-string content: {type(content).__name__}")
+        reasoning = message.get("reasoning_content")
+        if isinstance(reasoning, str) and reasoning.strip():
+            # Substrate-portability: synthesize inline <think>...</think>
+            # so the STAGE parser sees canonical shape.
+            content = f"<think>\n{reasoning.strip()}\n</think>\n\n{content}"
         return content
 
     async def chat_stream(

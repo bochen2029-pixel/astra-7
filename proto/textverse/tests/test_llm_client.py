@@ -99,6 +99,130 @@ async def test_chat_complete_http_error_raises(monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.asyncio
+async def test_chat_complete_normalizes_reasoning_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Day 4 empirical finding: Qwen 3.x emits reasoning_content as a SEPARATE
+    field (not inline `<think>`). The client must normalize by injecting
+    `<think>{reasoning}</think>` before content so the STAGE parser sees the
+    canonical shape regardless of substrate.
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "Yes. Third pole, 4.2% above baseline.",
+                            "reasoning_content": (
+                                "Operator is casual; brief is right. "
+                                "Reference cycle 46 and the tolerance bound."
+                            ),
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_init = httpx.AsyncClient.__init__
+
+    def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
+        kwargs["transport"] = transport
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
+
+    client = LLMClient(base_url="http://test.invalid", sysprompt="sys")
+    out = await client.chat_complete("perception")
+    # Canonical shape: <think>...</think> precedes speech
+    assert out.startswith("<think>")
+    assert "Operator is casual" in out
+    assert "</think>" in out
+    speech_start = out.index("</think>") + len("</think>")
+    speech = out[speech_start:].strip()
+    assert speech == "Yes. Third pole, 4.2% above baseline."
+
+
+@pytest.mark.asyncio
+async def test_chat_complete_no_reasoning_field_passes_content_through(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the model emits inline `<think>` (deepseek-r1 style), the response
+    has no separate `reasoning_content` field — content is passed through
+    untouched.
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "<think>inline</think>\n\nspeech body",
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_init = httpx.AsyncClient.__init__
+
+    def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
+        kwargs["transport"] = transport
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
+
+    client = LLMClient(base_url="http://test.invalid", sysprompt="sys")
+    out = await client.chat_complete("perception")
+    assert out == "<think>inline</think>\n\nspeech body"
+
+
+@pytest.mark.asyncio
+async def test_chat_complete_empty_reasoning_field_ignored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Empty / whitespace-only reasoning_content is NOT injected as a think block."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "just speech",
+                            "reasoning_content": "   \n  \t  ",
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_init = httpx.AsyncClient.__init__
+
+    def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
+        kwargs["transport"] = transport
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
+
+    client = LLMClient(base_url="http://test.invalid", sysprompt="sys")
+    out = await client.chat_complete("perception")
+    assert out == "just speech"
+    assert "<think>" not in out
+
+
+@pytest.mark.asyncio
 async def test_chat_complete_malformed_response_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     transport = httpx.MockTransport(lambda req: httpx.Response(200, json={"choices": []}))
     original_init = httpx.AsyncClient.__init__

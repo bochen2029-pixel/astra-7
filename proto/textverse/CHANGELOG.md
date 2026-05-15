@@ -6,6 +6,65 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Day 4.1 — Substrate-portability fix from live smoke test (2026-05-15)
+
+First live smoke test surfaced a real finding. Per §15.4 ("revise only
+on adversarial-finding-justified loop measurement"), this is exactly
+the kind of measurement that justifies a contained change.
+
+The finding:
+- Vanilla Qwen 3.5 9B Q5_K_M + canonical sysprompt + STAGE addendum
+  produced excellent speech-channel output on the first attempt:
+  brief, no em-dashes, no service phrases, referenced specific sensor
+  detail (4.2%, cycle 46, third harmonic, tolerance). All 8 hard-pass
+  criteria from watch_47_morning.md met.
+- BUT no `<think>` block appeared in the output. Surface 4 register
+  check (smoke test) initially failed.
+- Root cause: llama-server's `--reasoning-format` defaults to
+  extracting reasoning into a separate `reasoning_content` response
+  field; `message.content` contained only the speech. The STAGE parser
+  saw no `<think>` because there was no `<think>` inline to find.
+
+The fix (substrate-portability normalizer in client.py):
+- `LLMClient.chat_complete` now reads BOTH `content` and
+  `reasoning_content`. If `reasoning_content` is non-empty, the client
+  synthesizes canonical inline `<think>{reasoning}</think>` and
+  prepends it to content before returning.
+- This keeps the harness substrate-portable: deepseek-r1 (inline
+  `<think>` native), Qwen 3.x (extracted reasoning_content), and any
+  future model with its own convention all produce the same shape for
+  the STAGE parser. The parser doesn't change; the boundary absorbs
+  the variance.
+- 3 new tests in test_llm_client.py: normalize-reasoning-into-inline,
+  pass-content-through-when-no-reasoning, ignore-empty-reasoning.
+
+Deployment recipe (documented in docs/BUILD_NOTES.md):
+- Required flags for Qwen 3.x:
+    --jinja
+    --reasoning on
+    --reasoning-format deepseek-legacy
+    --chat-template-kwargs "{\"enable_thinking\":true}"
+- With this invocation, vanilla 9B produces watch_47_morning-conformant
+  output single-shot at temperature 0.7.
+
+Files touched:
+- astra/llm/client.py            — normalizer in chat_complete
+- tests/test_llm_client.py       — 3 new tests (now 14 total)
+- docs/BUILD_NOTES.md            — NEW: empirical deployment recipe
+
+Gates:
+- uv run pytest                  → 184 passed (was 181)
+- uv run ruff check              → clean
+- uv run mypy astra/             → clean (36 files)
+- Live smoke test PASS: <think> + speech + no leaks at temp=0.7
+
+This is the empirical loop closing the architecture-hypothesis gap for
+Surface 4 (STAGE protocol) at the LLM I/O boundary. The next contact
+points are Day 5 (orchestrator + ship + universe) → Day 6 (judge + LCP)
+→ Day 7 (first scenario closing all 9 gates).
+
+---
+
 ### Day 4 — LLM clients + sidecar + validator + prompts (2026-05-15)
 
 Lands Surface 1 (substrate-portable LLM client) and the three bundle
