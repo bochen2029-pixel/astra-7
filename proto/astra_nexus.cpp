@@ -38,6 +38,10 @@
 #include <cstdlib>
 #include <vector>
 #include <string>
+#include <cctype>
+#include <iostream>
+#include <map>
+#include <stdexcept>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -758,13 +762,239 @@ void demo_voyage() {
     std::printf("regime-dispatched apparent-rate to render this correctly.\n");
 }
 
+// =============================================================================
+// stdio_server — JSON-over-stdio bridge for proto/textverse (Day 2 v0.128)
+//
+// Purely additive: existing test suite + demo_voyage unaffected. Activated by
+// passing "--stdio-server" as argv[1]. Reads one JSON request per line from
+// stdin, writes one JSON response line to stdout, until EOF.
+//
+// Wire format:
+//   request:  {"op":"<name>","args":{<json-object-of-string-or-number>}}
+//   response: {"ok":true,"result":<number|string>}
+//             {"ok":false,"error":"<message>"}
+//
+// Hand-rolled minimal JSON parser; no external dependencies. The parser
+// accepts: object (key:value pairs), quoted string, number (incl. scientific
+// notation), and nested object for "args". No arrays, no null, no booleans
+// — Day 2 doesn't need them. Day N+ can extend.
+// =============================================================================
+namespace stdio_server {
+
+struct JValue {
+    enum Type { NUMBER, STRING, OBJECT } type = OBJECT;
+    double n = 0.0;
+    std::string s;
+    std::map<std::string, JValue> obj;
+};
+
+static void skip_ws(const std::string& src, size_t& i) {
+    while (i < src.size() && std::isspace(static_cast<unsigned char>(src[i]))) i++;
+}
+
+static std::string parse_string(const std::string& src, size_t& i) {
+    if (i >= src.size() || src[i] != '"') throw std::runtime_error("expected string");
+    i++;
+    std::string out;
+    while (i < src.size() && src[i] != '"') {
+        if (src[i] == '\\') {
+            i++;
+            if (i >= src.size()) throw std::runtime_error("unterminated escape");
+            char c = src[i++];
+            switch (c) {
+                case 'n':  out += '\n'; break;
+                case 't':  out += '\t'; break;
+                case 'r':  out += '\r'; break;
+                case '\\': out += '\\'; break;
+                case '"':  out += '"';  break;
+                case '/':  out += '/';  break;
+                default:   out += c;    break;
+            }
+        } else {
+            out += src[i++];
+        }
+    }
+    if (i >= src.size()) throw std::runtime_error("unterminated string");
+    i++; // skip closing "
+    return out;
+}
+
+static double parse_number(const std::string& src, size_t& i) {
+    size_t start = i;
+    if (i < src.size() && (src[i] == '-' || src[i] == '+')) i++;
+    while (i < src.size()) {
+        char c = src[i];
+        bool ok = std::isdigit(static_cast<unsigned char>(c)) || c == '.'
+                  || c == 'e' || c == 'E' || c == '+' || c == '-';
+        if (!ok) break;
+        i++;
+    }
+    if (i == start) throw std::runtime_error("expected number");
+    return std::stod(src.substr(start, i - start));
+}
+
+static JValue parse_value(const std::string& src, size_t& i);
+
+static JValue parse_object(const std::string& src, size_t& i) {
+    if (i >= src.size() || src[i] != '{') throw std::runtime_error("expected object");
+    i++;
+    skip_ws(src, i);
+    JValue out;
+    out.type = JValue::OBJECT;
+    if (i < src.size() && src[i] == '}') { i++; return out; }
+    while (true) {
+        skip_ws(src, i);
+        std::string key = parse_string(src, i);
+        skip_ws(src, i);
+        if (i >= src.size() || src[i] != ':') throw std::runtime_error("expected ':'");
+        i++;
+        skip_ws(src, i);
+        out.obj[key] = parse_value(src, i);
+        skip_ws(src, i);
+        if (i < src.size() && src[i] == ',') { i++; continue; }
+        if (i < src.size() && src[i] == '}') { i++; break; }
+        throw std::runtime_error("expected ',' or '}'");
+    }
+    return out;
+}
+
+static JValue parse_value(const std::string& src, size_t& i) {
+    skip_ws(src, i);
+    if (i >= src.size()) throw std::runtime_error("unexpected EOF");
+    if (src[i] == '"') {
+        JValue v;
+        v.type = JValue::STRING;
+        v.s = parse_string(src, i);
+        return v;
+    }
+    if (src[i] == '{') return parse_object(src, i);
+    JValue v;
+    v.type = JValue::NUMBER;
+    v.n = parse_number(src, i);
+    return v;
+}
+
+static std::string escape_json_string(const std::string& s) {
+    std::string out;
+    out += '"';
+    for (char c : s) {
+        if (c == '"') out += "\\\"";
+        else if (c == '\\') out += "\\\\";
+        else if (c == '\n') out += "\\n";
+        else if (c == '\r') out += "\\r";
+        else if (c == '\t') out += "\\t";
+        else out += c;
+    }
+    out += '"';
+    return out;
+}
+
+static std::string make_ok_number(double n) {
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "{\"ok\":true,\"result\":%.17g}", n);
+    return buf;
+}
+
+static std::string make_ok_string(const std::string& s) {
+    return "{\"ok\":true,\"result\":" + escape_json_string(s) + "}";
+}
+
+static std::string make_error(const std::string& msg) {
+    return "{\"ok\":false,\"error\":" + escape_json_string(msg) + "}";
+}
+
+static uint32_t parse_regime_string(const std::string& s) {
+    if (s == "REST")          return R_REST;
+    if (s == "STL_NONREL")    return R_STL_NONREL;
+    if (s == "STL_REL")       return R_STL_REL;
+    if (s == "WARP_CHARGE")   return R_WARP_CHARGE;
+    if (s == "WARP_CRUISE")   return R_WARP_CRUISE;
+    if (s == "WARP_SHUTDOWN") return R_WARP_SHUTDOWN;
+    if (s == "GRAVITY_WELL")  return R_GRAVITY_WELL;
+    if (s == "CRYOSLEEP")     return R_CRYOSLEEP;
+    throw std::runtime_error("unknown regime: " + s);
+}
+
+static std::string dispatch(const JValue& req) {
+    if (req.type != JValue::OBJECT) {
+        return make_error("request must be a JSON object");
+    }
+    auto it_op = req.obj.find("op");
+    if (it_op == req.obj.end()) return make_error("missing 'op' field");
+    if (it_op->second.type != JValue::STRING) return make_error("'op' must be a string");
+    const std::string& op = it_op->second.s;
+
+    JValue args;
+    auto it_args = req.obj.find("args");
+    if (it_args != req.obj.end()) args = it_args->second;
+
+    if (op == "health") {
+        return make_ok_string("alive");
+    }
+
+    if (op == "version") {
+        return make_ok_string("astra_nexus v0.128.day2");
+    }
+
+    if (op == "compute_apparent_rate") {
+        if (args.type != JValue::OBJECT) return make_error("'args' must be an object");
+        auto it_v = args.obj.find("v_radial");
+        auto it_r = args.obj.find("regime");
+        if (it_v == args.obj.end() || it_v->second.type != JValue::NUMBER) {
+            return make_error("missing or non-numeric 'v_radial'");
+        }
+        if (it_r == args.obj.end() || it_r->second.type != JValue::STRING) {
+            return make_error("missing or non-string 'regime'");
+        }
+        try {
+            uint32_t regime = parse_regime_string(it_r->second.s);
+            double rate = compute_apparent_rate(it_v->second.n, regime);
+            return make_ok_number(rate);
+        } catch (const std::exception& e) {
+            return make_error(e.what());
+        }
+    }
+
+    return make_error("unknown op: " + op);
+}
+
+int run() {
+    std::ios_base::sync_with_stdio(false);
+    std::string line;
+    while (std::getline(std::cin, line)) {
+        // Strip trailing CR from Windows line endings if Python wrote text-mode
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty()) continue;
+        std::string response;
+        try {
+            size_t i = 0;
+            JValue req = parse_value(line, i);
+            response = dispatch(req);
+        } catch (const std::exception& e) {
+            response = make_error(std::string("parse error: ") + e.what());
+        }
+        std::cout << response << "\n";
+        std::cout.flush();
+    }
+    return 0;
+}
+
+} // namespace stdio_server
+
 } // namespace astra
 
 // =============================================================================
 // main
 // =============================================================================
-int main() {
+int main(int argc, char** argv) {
     using namespace astra;
+
+    // Day 2 v0.128: JSON-over-stdio bridge mode. Activates ONLY on flag;
+    // existing test+demo behavior is unchanged when invoked without args.
+    if (argc >= 2 && std::string(argv[1]) == "--stdio-server") {
+        return stdio_server::run();
+    }
+
     std::printf("====================================================================\n");
     std::printf(" ASTRA-7 Unified Physics Nexus — Compileable Demonstration\n");
     std::printf(" Proving 14-equation framework composes (SR + GR + Warp + Cosmology)\n");

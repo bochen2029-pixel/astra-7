@@ -6,6 +6,58 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Day 2 — Physics bridge: JSON-over-stdio to astra_nexus (2026-05-15)
+
+- `proto/astra_nexus.cpp` — purely additive `--stdio-server` mode (~210 lines):
+  hand-rolled JSON parser (object/string/number, scientific notation, no
+  external deps), regime-string dispatcher, response emitter. Activates
+  ONLY on `--stdio-server` argv[1]; default invocation runs the existing
+  test+demo unchanged. Existing 48 assertions still pass post-rebuild.
+- Three ops in the v0 server: `health`, `version`, `compute_apparent_rate`.
+- `astra/physics/nexus_bridge.py` — Python `NexusBridge` class with start/
+  call/close lifecycle, `NexusResponse` Pydantic model, context-manager
+  protocol, and a top-level `compute_apparent_rate(v_radial_m_s, regime)`
+  convenience that auto-manages the bridge for one-shot use.
+- `astra/physics/observation_calc.py` — §6.3 Observation Calculator entry
+  point (Day 2 surface: re-exports `compute_apparent_rate`; Day 3+ adds
+  body_state_at_t_emit, multi-body observe).
+- `astra/physics/__init__.py` — wire public exports.
+- `tests/test_nexus_bridge.py` — 19 tests under `requires_nexus` marker,
+  auto-skipped when binary missing. Covers: health, version, the spec
+  gate (β=0.5/STL_REL → √(1/3) ≈ 0.5774), blueshift, monotonicity of
+  STL_REL (rate always > 0), WARP at 2c/c/10c/-2c (reverse playback,
+  warp horizon, rewind), STL_REL vs WARP contrast, error paths (unknown
+  op, unknown regime, missing required arg), lifecycle (must-start,
+  missing-binary, double-start, close-idempotent, persistent across
+  20 calls).
+
+**Tests passing:** 56 total = 37 Day 1 + 19 Day 2. `uv run pytest`,
+`uv run ruff check astra/ tests/`, `uv run mypy astra/` all clean.
+`./astra_nexus.exe` (no args) still reports `SUMMARY: 48 passed, 0 failed`.
+
+**Day 2 gate:** ✓ `compute_apparent_rate(v_radial=0.5c, regime="STL_REL")`
+returns 0.5773502691896258 via JSON roundtrip — matches √(1/3) to float64
+precision (1e-9 absolute tolerance).
+
+**Design notes:**
+- Wire format is line-delimited JSON, one request → one response. Single-
+  threaded by design; the orchestrator (Day 5) manages bridge lifecycle
+  per scenario. Tests open/close per-test for isolation.
+- The JSON parser handles only what Day 2 needs: object, quoted string,
+  number (incl. scientific notation), nested objects. No arrays, null,
+  or booleans yet — Day N+ extends as ops require.
+- `compute_apparent_rate` accepts a regime *string* at this entry, not the
+  bitmask integer. Composition (e.g. STL_REL | GRAVITY_WELL) is not yet
+  exposed; the spec's apparent-rate formula in §3.11 only depends on the
+  propulsion regime, so v0 dispatches on propulsion alone.
+
+**Status:** ready for Day 3 — Grammar parser + leak detector
+(`astra/grammar/parser.py` with the v0.128 corrected strip rule:
+SPEECH is text after the *last* `</think>` close; outer raw deliberation
+goes to `pre_think_raw` and never emits).
+
+---
+
 ### Day 1 — Foundation: core types + State Bus schema (2026-05-15)
 
 - `astra/core/regime.py` — `Regime` IntFlag with locked hex values per spec §3.3
