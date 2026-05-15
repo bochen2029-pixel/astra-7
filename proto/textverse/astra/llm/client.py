@@ -68,12 +68,16 @@ class LLMClient:
         chat_path: str = DEFAULT_CHAT_PATH,
         timeout_s: float = 600.0,
         model_name: str = "default",
+        api_key: str | None = None,
+        extra_payload: dict[str, Any] | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.sysprompt = sysprompt
         self.chat_path = chat_path
         self.timeout_s = timeout_s
         self.model_name = model_name
+        self.api_key = api_key
+        self.extra_payload = dict(extra_payload) if extra_payload else {}
 
     def _build_messages(self, user_text: str) -> list[ChatMessage]:
         return [
@@ -98,7 +102,19 @@ class LLMClient:
         }
         if params.seed is not None:
             payload["seed"] = params.seed
+        # Merge extra_payload at top level. Used for Novita's
+        # `chat_template_kwargs: {"enable_thinking": false}` and similar
+        # OpenAI-compat extensions. Caller-provided keys override defaults.
+        if self.extra_payload:
+            payload.update(self.extra_payload)
         return payload
+
+    def _build_headers(self) -> dict[str, str]:
+        """Build request headers. Includes Authorization when api_key is set."""
+        headers: dict[str, str] = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
 
     async def chat_complete(
         self,
@@ -121,8 +137,11 @@ class LLMClient:
         params = params or SamplingParams()
         messages = self._build_messages(user_text)
         payload = self._build_payload(messages, params, stream=False)
+        headers = self._build_headers()
         async with httpx.AsyncClient(timeout=self.timeout_s) as client:
-            resp = await client.post(self.base_url + self.chat_path, json=payload)
+            resp = await client.post(
+                self.base_url + self.chat_path, json=payload, headers=headers,
+            )
             if resp.status_code != 200:
                 raise LLMClientError(
                     f"chat_complete HTTP {resp.status_code}: {resp.text[:200]}"
@@ -155,8 +174,9 @@ class LLMClient:
         params = params or SamplingParams()
         messages = self._build_messages(user_text)
         payload = self._build_payload(messages, params, stream=True)
+        headers = self._build_headers()
         async with httpx.AsyncClient(timeout=self.timeout_s) as client, aconnect_sse(
-            client, "POST", self.base_url + self.chat_path, json=payload
+            client, "POST", self.base_url + self.chat_path, json=payload, headers=headers,
         ) as event_source:
             async for sse in event_source.aiter_sse():
                 if sse.data == "[DONE]":
@@ -174,10 +194,29 @@ class LLMClient:
                     yield content
 
     async def health(self) -> bool:
-        """Probe `/health`. Returns True iff the server reports OK."""
+        """Probe `/health`. Returns True iff the server reports OK.
+
+        Some endpoints (llama-server) expose `/health`; others (Novita,
+        Anthropic, OpenAI) don't. When `/health` returns non-200, fall
+        back to a minimal chat completion (max_tokens=1) as the liveness
+        probe. The fallback also validates auth.
+        """
+        headers = self._build_headers()
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(self.base_url + "/health")
-                return resp.status_code == 200
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(self.base_url + "/health", headers=headers)
+                if resp.status_code == 200:
+                    return True
+                # Fallback: tiny chat completion to confirm endpoint + auth.
+                probe = {
+                    "model": self.model_name,
+                    "messages": [{"role": "user", "content": "."}],
+                    "max_tokens": 1,
+                    "temperature": 0.0,
+                }
+                resp2 = await client.post(
+                    self.base_url + self.chat_path, json=probe, headers=headers,
+                )
+                return resp2.status_code == 200
         except httpx.HTTPError:
             return False

@@ -142,6 +142,9 @@ class MetaAgent:
 
     textverse_root: Path
     base_url: str = "http://127.0.0.1:8080"
+    model_name: str = "astra"
+    api_key: str | None = None
+    extra_payload: dict[str, object] | None = None
     scope_contract: ScopeContract = field(init=False)
     enforcer: ScopeEnforcer = field(init=False)
     weights: CompositeWeights = field(init=False)
@@ -245,6 +248,9 @@ class MetaAgent:
             output_root=self.textverse_root / "scenarios" / "output",
             weights=self.weights,
             anchor_scenarios=list(self.scope_contract.anchor_scenarios),
+            model_name=self.model_name,
+            api_key=self.api_key,
+            extra_payload=self.extra_payload,
         )
 
         # 6.5 If a dual-judge is wired, score the produced transcripts and

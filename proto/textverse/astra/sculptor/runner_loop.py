@@ -66,7 +66,14 @@ class IterationResult:
     anchor_scenarios_passed: bool = True
 
 
-def _build_bundle(base_url: str, snapshot: ConfigSnapshot) -> AstraBundle:
+def _build_bundle(
+    base_url: str,
+    snapshot: ConfigSnapshot,
+    *,
+    model_name: str = "astra",
+    api_key: str | None = None,
+    extra_payload: dict[str, object] | None = None,
+) -> AstraBundle:
     """Build an AstraBundle whose sampling reflects the snapshot."""
     sampling_kwargs = {
         k: v
@@ -74,7 +81,13 @@ def _build_bundle(base_url: str, snapshot: ConfigSnapshot) -> AstraBundle:
         if k in {"temperature", "top_p", "top_k", "max_tokens", "seed"}
     }
     sampling = SamplingParams(**sampling_kwargs) if sampling_kwargs else SamplingParams()
-    return AstraBundle(base_url=base_url, sampling=sampling)
+    return AstraBundle(
+        base_url=base_url,
+        sampling=sampling,
+        model_name=model_name,
+        api_key=api_key,
+        extra_payload=extra_payload,
+    )
 
 
 async def _run_one_scenario_with_retry(
@@ -117,16 +130,28 @@ async def run_iteration(
     anchor_scenarios: list[str],
     judge_pro_minus_anti: float = 0.0,
     drift_score: float = 0.0,
+    model_name: str = "astra",
+    api_key: str | None = None,
+    extra_payload: dict[str, object] | None = None,
 ) -> IterationResult:
     """Run one Sculptor iteration end-to-end.
 
     Caller must have llama-server running with the current bundle config
     on `base_url`. Sculptor never spawns/restarts the server here — that's
     the meta-agent's lifecycle concern.
+
+    `model_name` / `api_key` / `extra_payload` enable cloud-hosted
+    inference (Novita Qwen 3.6 27B, etc.) — passed through to AstraBundle.
     """
     snapshot = snapshot_from_disk(iteration_id=iteration_id, root=textverse_root)
 
-    bundle = _build_bundle(base_url, snapshot)
+    bundle = _build_bundle(
+        base_url,
+        snapshot,
+        model_name=model_name,
+        api_key=api_key,
+        extra_payload=extra_payload,
+    )
 
     if not await bundle.client.health():
         return IterationResult(

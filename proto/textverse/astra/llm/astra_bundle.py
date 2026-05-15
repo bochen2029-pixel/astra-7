@@ -53,6 +53,8 @@ class AstraBundle:
         sampling: SamplingParams | None = None,
         validator: CalculatorBoundValidator | None = None,
         model_name: str = "astra",
+        api_key: str | None = None,
+        extra_payload: dict[str, object] | None = None,
     ) -> None:
         if sysprompt is None:
             sysprompt = load_astra_sysprompt(prompts_dir or default_prompts_dir())
@@ -60,6 +62,8 @@ class AstraBundle:
             base_url=base_url,
             sysprompt=sysprompt,
             model_name=model_name,
+            api_key=api_key,
+            extra_payload=extra_payload,
         )
         self.sampling = sampling or SamplingParams()
         self.validator = validator or CalculatorBoundValidator(severity="soft")

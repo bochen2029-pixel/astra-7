@@ -40,6 +40,8 @@ class NarratorBundle:
         sampling: SamplingParams | None = None,
         validator: CalculatorBoundValidator | None = None,
         model_name: str = "narrator",
+        api_key: str | None = None,
+        extra_payload: dict[str, object] | None = None,
     ) -> None:
         if sysprompt is None:
             sysprompt = load_narrator_sysprompt(prompts_dir or _default_prompts_dir())
@@ -47,6 +49,8 @@ class NarratorBundle:
             base_url=base_url,
             sysprompt=sysprompt,
             model_name=model_name,
+            api_key=api_key,
+            extra_payload=extra_payload,
         )
         # Lower temperature: Narrator renders facts, not character.
         self.sampling = sampling or SamplingParams(temperature=0.4, top_p=0.85)

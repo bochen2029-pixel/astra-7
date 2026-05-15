@@ -94,6 +94,9 @@ async def evaluate_config_averaged(
     anchor_scenarios: list[str],
     judge_pro_minus_anti: float = 0.0,
     drift_score: float = 0.0,
+    model_name: str = "astra",
+    api_key: str | None = None,
+    extra_payload: dict[str, object] | None = None,
 ) -> AveragedIterationResult:
     """Run `n_runs` iterations of the same config; return averaged composite.
 
@@ -123,6 +126,9 @@ async def evaluate_config_averaged(
             anchor_scenarios=anchor_scenarios,
             judge_pro_minus_anti=judge_pro_minus_anti,
             drift_score=drift_score,
+            model_name=model_name,
+            api_key=api_key,
+            extra_payload=extra_payload,
         )
         runs.append(result)
         if result.status == IterationStatus.SERVER_UNHEALTHY:

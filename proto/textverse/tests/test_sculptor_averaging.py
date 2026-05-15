@@ -89,7 +89,7 @@ async def test_evaluate_averaged_n3_produces_mean(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     response = "<think>x</think>\nYes. Third pole. cycle 46. Inside tolerance."
-    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap: _stub_bundle(response))
+    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap, **_kw: _stub_bundle(response))
     result = await evaluate_config_averaged(
         base_iteration_id="avg_test",
         n_runs=3,
@@ -117,7 +117,7 @@ async def test_evaluate_averaged_aborts_on_unhealthy(
         async def health(self) -> bool:
             return False
 
-    def _unhealthy_bundle(url, snap):
+    def _unhealthy_bundle(url, snap, **_kw):
         bundle = AstraBundle(base_url="http://stub", sysprompt="stub")
         bundle.client = _UnhealthyClient()  # type: ignore[assignment]
         return bundle
@@ -148,7 +148,7 @@ async def test_evaluate_averaged_anchor_all_or_nothing(
     """If any sub-run fails the anchor, the averaged anchor flag is False."""
     # Use a response that triggers a likely-FAIL scenario.
     response = "<think>x</think>\nYes."   # too short, missing required phrases
-    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap: _stub_bundle(response))
+    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap, **_kw: _stub_bundle(response))
     result = await evaluate_config_averaged(
         base_iteration_id="avg_anchor",
         n_runs=2,

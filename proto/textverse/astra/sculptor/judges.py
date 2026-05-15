@@ -151,12 +151,16 @@ class LlamaJudgeClient:
         base_url: str,
         sampling: SamplingParams | None = None,
         model_name: str = "judge",
+        api_key: str | None = None,
+        extra_payload: dict[str, object] | None = None,
     ) -> LlamaJudgeClient:
         """Build a LlamaJudgeClient over a fresh LLMClient pointed at base_url."""
         client = LLMClient(
             base_url=base_url,
             sysprompt=rubric_text,
             model_name=model_name,
+            api_key=api_key,
+            extra_payload=extra_payload,
         )
         return cls(
             rubric_name=rubric_name,
@@ -262,6 +266,9 @@ def build_default_dual_judge(
     judge_prompt_path: Path,
     base_url: str,
     sampling: SamplingParams | None = None,
+    model_name: str = "judge",
+    api_key: str | None = None,
+    extra_payload: dict[str, object] | None = None,
 ) -> DualJudge:
     """Construct the default DualJudge using LlamaJudgeClient for both.
 
@@ -269,6 +276,9 @@ def build_default_dual_judge(
     chat completions are independent). To use a separate Qwen 27B
     judge instance, build LlamaJudgeClient instances manually pointed
     at different ports and construct DualJudge directly.
+
+    `api_key` + `extra_payload` enable Novita-hosted inference; both
+    judges share the same key + thinking-toggle.
     """
     rubrics = load_rubrics(judge_prompt_path)
     pro = LlamaJudgeClient.from_rubric(
@@ -276,12 +286,18 @@ def build_default_dual_judge(
         rubrics["pro_judge"],
         base_url=base_url,
         sampling=sampling,
+        model_name=model_name,
+        api_key=api_key,
+        extra_payload=extra_payload,
     )
     anti = LlamaJudgeClient.from_rubric(
         "anti_judge",
         rubrics["anti_judge"],
         base_url=base_url,
         sampling=sampling,
+        model_name=model_name,
+        api_key=api_key,
+        extra_payload=extra_payload,
     )
     return DualJudge(pro_judge=pro, anti_judge=anti)
 

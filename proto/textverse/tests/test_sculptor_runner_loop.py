@@ -73,7 +73,7 @@ async def test_iteration_aborts_when_server_unhealthy(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap: _unhealthy_bundle())
+    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap, **_kw: _unhealthy_bundle())
     result = await run_iteration(
         iteration_id="t0_health",
         base_url="http://stub",
@@ -93,7 +93,7 @@ async def test_iteration_aborts_when_library_empty(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap: _stub_bundle())
+    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap, **_kw: _stub_bundle())
     empty_lib = tmp_path / "empty_lib"
     empty_lib.mkdir()
     result = await run_iteration(
@@ -122,7 +122,7 @@ async def test_iteration_runs_watch_47_and_archives(
         "<think>x</think>\n"
         "Yes. Third pole, mild drift. Same as cycle 46. Inside tolerance."
     )
-    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap: _stub_bundle(response))
+    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap, **_kw: _stub_bundle(response))
     result = await run_iteration(
         iteration_id="t_happy_0001",
         base_url="http://stub",
@@ -149,7 +149,7 @@ async def test_iteration_summary_includes_scenario_pass(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     response = "<think>x</think>\nYes. Third pole, cycle 46, tolerance."
-    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap: _stub_bundle(response))
+    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap, **_kw: _stub_bundle(response))
     result = await run_iteration(
         iteration_id="t_summary",
         base_url="http://stub",
@@ -177,7 +177,7 @@ async def test_iteration_composite_score_present(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     response = "<think>x</think>\nYes. Third pole, cycle 46, tolerance."
-    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap: _stub_bundle(response))
+    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap, **_kw: _stub_bundle(response))
     result = await run_iteration(
         iteration_id="t_composite",
         base_url="http://stub",
@@ -201,7 +201,7 @@ async def test_iteration_config_hash_stable_across_runs(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap: _stub_bundle())
+    monkeypatch.setattr(runner_loop_mod, "_build_bundle", lambda url, snap, **_kw: _stub_bundle())
     result_a = await run_iteration(
         iteration_id="t_hash_a",
         base_url="http://stub",

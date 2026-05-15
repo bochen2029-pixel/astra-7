@@ -223,6 +223,107 @@ async def test_chat_complete_empty_reasoning_field_ignored(
 
 
 @pytest.mark.asyncio
+async def test_chat_complete_sends_authorization_header_when_api_key_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When `api_key` is provided, the request must include
+    `Authorization: Bearer <key>` (Novita / OpenAI-compat cloud endpoints).
+    """
+    captured_headers: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_headers.update(dict(request.headers))
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"role": "assistant", "content": "ok"}}]},
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_init = httpx.AsyncClient.__init__
+
+    def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
+        kwargs["transport"] = transport
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
+
+    client = LLMClient(
+        base_url="http://test.invalid",
+        sysprompt="sys",
+        api_key="sk_test_dummy",
+    )
+    await client.chat_complete("ping")
+    assert captured_headers.get("authorization") == "Bearer sk_test_dummy"
+
+
+@pytest.mark.asyncio
+async def test_chat_complete_no_auth_header_when_api_key_absent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Backwards compat: local llama-server has no auth — no Authorization
+    header should be sent when api_key is absent.
+    """
+    captured_headers: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_headers.update(dict(request.headers))
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"role": "assistant", "content": "ok"}}]},
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_init = httpx.AsyncClient.__init__
+
+    def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
+        kwargs["transport"] = transport
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
+
+    client = LLMClient(base_url="http://test.invalid", sysprompt="sys")
+    await client.chat_complete("ping")
+    assert "authorization" not in captured_headers
+
+
+@pytest.mark.asyncio
+async def test_chat_complete_merges_extra_payload_into_request_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`extra_payload` keys must appear at the JSON top level (Novita's
+    `chat_template_kwargs: {"enable_thinking": false}` thinking toggle).
+    """
+    captured_payload: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_payload.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"role": "assistant", "content": "ok"}}]},
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_init = httpx.AsyncClient.__init__
+
+    def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
+        kwargs["transport"] = transport
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
+
+    client = LLMClient(
+        base_url="http://test.invalid",
+        sysprompt="sys",
+        extra_payload={"chat_template_kwargs": {"enable_thinking": False}},
+    )
+    await client.chat_complete("ping")
+    assert captured_payload.get("chat_template_kwargs") == {"enable_thinking": False}
+    # Standard payload keys are still present.
+    assert "messages" in captured_payload
+    assert "temperature" in captured_payload
+
+
+@pytest.mark.asyncio
 async def test_chat_complete_malformed_response_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     transport = httpx.MockTransport(lambda req: httpx.Response(200, json={"choices": []}))
     original_init = httpx.AsyncClient.__init__

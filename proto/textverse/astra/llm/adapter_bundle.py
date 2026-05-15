@@ -121,6 +121,8 @@ class AdapterBundle:
         prompts_dir: Path | None = None,
         sampling: SamplingParams | None = None,
         model_name: str = "adapter",
+        api_key: str | None = None,
+        extra_payload: dict[str, object] | None = None,
     ) -> None:
         if sysprompt is None:
             sysprompt = load_adapter_sysprompt(prompts_dir or _default_prompts_dir())
@@ -128,6 +130,8 @@ class AdapterBundle:
             base_url=base_url,
             sysprompt=sysprompt,
             model_name=model_name,
+            api_key=api_key,
+            extra_payload=extra_payload,
         )
         # Very low temperature: Adapter is deterministic-ish JSON emission.
         self.sampling = sampling or SamplingParams(temperature=0.1, top_p=0.5)

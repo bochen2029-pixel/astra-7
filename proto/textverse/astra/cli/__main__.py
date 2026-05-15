@@ -63,15 +63,42 @@ def _resolve_scenario_path(name: str) -> Path:
     raise FileNotFoundError(f"scenario not found: {name} (looked in {library})")
 
 
+def _build_extra_payload(thinking: str) -> dict[str, object] | None:
+    """Translate --thinking flag to chat_template_kwargs payload.
+
+    - "auto": do not send chat_template_kwargs (let the server decide).
+    - "on" / "off": send {"chat_template_kwargs": {"enable_thinking": bool}}
+      at the JSON top level (Novita + llama-server both accept this shape).
+    """
+    if thinking == "auto":
+        return None
+    if thinking == "on":
+        return {"chat_template_kwargs": {"enable_thinking": True}}
+    if thinking == "off":
+        return {"chat_template_kwargs": {"enable_thinking": False}}
+    raise typer.BadParameter(
+        f"--thinking must be one of: auto / on / off (got: {thinking!r})",
+    )
+
+
 async def _run_single(
     scenario_path: Path,
     base_url: str,
     output_root: Path,
+    *,
+    model_name: str = "astra",
+    api_key: str | None = None,
+    extra_payload: dict[str, object] | None = None,
 ) -> int:
     typer.echo(f"loading scenario: {scenario_path}")
     scenario = load_scenario_file(str(scenario_path))
 
-    bundle = AstraBundle(base_url=base_url)
+    bundle = AstraBundle(
+        base_url=base_url,
+        model_name=model_name,
+        api_key=api_key,
+        extra_payload=extra_payload,
+    )
     if not await bundle.client.health():
         typer.echo(f"FAIL: /health did not return 200 at {base_url}", err=True)
         return 2
@@ -103,7 +130,23 @@ def run(
     base_url: str = typer.Option(
         "http://127.0.0.1:8080",
         "--base-url", "-u",
-        help="llama-server base URL.",
+        help="OpenAI-compat endpoint base URL (llama-server local or cloud).",
+    ),
+    model_name: str = typer.Option(
+        "astra",
+        "--model-name", "-m",
+        help="Model name in the chat completions payload (e.g. qwen/qwen3.6-27b for Novita).",
+    ),
+    api_key: str | None = typer.Option(
+        None,
+        "--api-key",
+        envvar="NOVITA_API_KEY",
+        help="API key for cloud endpoints. Default reads env NOVITA_API_KEY; absent = no auth header.",
+    ),
+    thinking: str = typer.Option(
+        "auto",
+        "--thinking",
+        help="enable_thinking chat-template flag: 'auto' (don't send) / 'on' / 'off'.",
     ),
     output_root: Path = typer.Option(
         None,
@@ -118,8 +161,18 @@ def run(
         typer.echo(str(e), err=True)
         raise typer.Exit(2) from e
 
+    extra_payload = _build_extra_payload(thinking)
     root = output_root if output_root else _default_output_root()
-    code = asyncio.run(_run_single(scenario_path, base_url, root))
+    code = asyncio.run(
+        _run_single(
+            scenario_path,
+            base_url,
+            root,
+            model_name=model_name,
+            api_key=api_key,
+            extra_payload=extra_payload,
+        ),
+    )
     raise typer.Exit(code)
 
 
@@ -128,6 +181,20 @@ def bench(
     base_url: str = typer.Option(
         "http://127.0.0.1:8080",
         "--base-url", "-u",
+    ),
+    model_name: str = typer.Option(
+        "astra",
+        "--model-name", "-m",
+    ),
+    api_key: str | None = typer.Option(
+        None,
+        "--api-key",
+        envvar="NOVITA_API_KEY",
+    ),
+    thinking: str = typer.Option(
+        "auto",
+        "--thinking",
+        help="enable_thinking chat-template flag: 'auto' (don't send) / 'on' / 'off'.",
     ),
     output_root: Path = typer.Option(
         None,
@@ -146,13 +213,23 @@ def bench(
         typer.echo(f"no scenarios found in {library}", err=True)
         raise typer.Exit(2)
 
+    extra_payload = _build_extra_payload(thinking)
     typer.echo(f"running {len(yaml_paths)} scenario(s) from {library}")
     pass_count = 0
     fail_count = 0
     for path in yaml_paths:
         typer.echo("")
         typer.echo("=" * 70)
-        code = asyncio.run(_run_single(path, base_url, root))
+        code = asyncio.run(
+            _run_single(
+                path,
+                base_url,
+                root,
+                model_name=model_name,
+                api_key=api_key,
+                extra_payload=extra_payload,
+            ),
+        )
         if code == 0:
             pass_count += 1
         else:
@@ -194,6 +271,20 @@ def sculptor_run(
         "http://127.0.0.1:8080",
         "--base-url", "-u",
     ),
+    model_name: str = typer.Option(
+        "astra",
+        "--model-name", "-m",
+    ),
+    api_key: str | None = typer.Option(
+        None,
+        "--api-key",
+        envvar="NOVITA_API_KEY",
+    ),
+    thinking: str = typer.Option(
+        "auto",
+        "--thinking",
+        help="enable_thinking chat-template flag: 'auto' (don't send) / 'on' / 'off'.",
+    ),
     max_iterations: int = typer.Option(
         200,
         "--max-iterations", "-N",
@@ -217,6 +308,7 @@ def sculptor_run(
 ) -> None:
     """Run the Sculptor meta-agent loop until convergence / halt / budget."""
     textverse_root = Path(__file__).resolve().parent.parent.parent
+    extra_payload = _build_extra_payload(thinking)
 
     if seed_day0:
         wrote = seed_day0_baseline(textverse_root)
@@ -228,12 +320,18 @@ def sculptor_run(
         dual_judge = build_default_dual_judge(
             judge_prompt_path=textverse_root / "tuning" / "judge_prompt.md",
             base_url=base_url,
+            model_name=model_name,
+            api_key=api_key,
+            extra_payload=extra_payload,
         )
-        typer.echo("dual-judge wired (pro + anti, both on same llama-server)")
+        typer.echo("dual-judge wired (pro + anti, both on same endpoint)")
 
     agent = MetaAgent(
         textverse_root=textverse_root,
         base_url=base_url,
+        model_name=model_name,
+        api_key=api_key,
+        extra_payload=extra_payload,
         n_runs_per_iteration=n_runs,
         dual_judge=dual_judge,
     )

@@ -1,6 +1,17 @@
 # BUILD_NOTES — operator-side setup for the textverse bench
 
-## llama-server deployment recipe (empirical, Day 4)
+The textverse bench targets two substrate modes:
+
+1. **Local llama-server** (development default) — RTX 5090 / 4090, GGUF
+   weights, 9B–27B class. Recipe in §1.
+2. **Novita cloud endpoint** (production target, Qwen 3.6 27B) —
+   OpenAI-compat HTTP/SSE. Recipe in §2.
+
+The same harness drives both — Day 4.1's `reasoning_content` normalizer
+ensures the STAGE parser sees canonical inline `<think>` regardless of
+which substrate produced the response.
+
+## 1. llama-server deployment recipe (empirical, Day 4)
 
 The Day 4 smoke test (`scripts/smoke_astra_bundle.py`) requires
 llama-server to surface ASTRA's reasoning into the response. Vanilla
@@ -62,6 +73,108 @@ C:\llama.cpp\llama-server.exe ^
   log redirection: `llama-server.exe ... > /tmp/llama.log 2>&1`.
 - The Day 4 smoke script writes its analysis to stdout (UTF-8 required;
   set `PYTHONUTF8=1` on Windows cmd).
+
+## 2. Novita cloud inference recipe (production target Qwen 3.6 27B)
+
+OpenAI-compat endpoint hosted by Novita.ai. The textverse client speaks
+the same protocol — only difference vs llama-server is an
+`Authorization` header and (optionally) a `chat_template_kwargs` payload
+key to toggle Qwen's thinking mode.
+
+### Endpoint + auth
+
+```
+Endpoint base URL:  https://api.novita.ai/openai
+Model name:         qwen/qwen3.6-27b
+Auth:               Authorization: Bearer $NOVITA_API_KEY
+Context:            262K input / 65K output
+Pricing (May 2026): $0.6/M input, $3.6/M output
+```
+
+Set `NOVITA_API_KEY` in your env before invoking; the CLI's `--api-key`
+flag defaults to reading that variable. Never commit the key.
+
+### Thinking toggle
+
+Qwen 3.6 27B supports a "thinking mode" controlled by the chat
+template's `enable_thinking` parameter. Novita exposes it via the
+`chat_template_kwargs` top-level JSON field on the chat completions
+request:
+
+```json
+{
+  "model": "qwen/qwen3.6-27b",
+  "messages": [...],
+  "chat_template_kwargs": {"enable_thinking": false}
+}
+```
+
+| `--thinking` | Effect | When to use |
+|---|---|---|
+| `auto` (default) | don't send `chat_template_kwargs` | local llama-server (server-side config) |
+| `off` | `enable_thinking: false` | Novita R&D — cheaper, faster |
+| `on` | `enable_thinking: true` | Novita robustness check; emits `reasoning_content` side-channel |
+
+With thinking ON, Novita returns the reasoning trace in a separate
+`reasoning_content` field on `message`. The Day 4.1 normalizer in
+[client.py](../astra/llm/client.py) injects it as inline
+`<think>...</think>` for the STAGE parser — no caller-side change needed.
+
+### Example invocations
+
+```
+# Sanity check — one scenario, thinking OFF (cheap)
+export NOVITA_API_KEY=sk_...
+python -m astra run watch_47_morning \
+  --base-url https://api.novita.ai/openai \
+  --model-name qwen/qwen3.6-27b \
+  --thinking off
+
+# Robustness check with thinking ON
+python -m astra run watch_47_morning \
+  --base-url https://api.novita.ai/openai \
+  --model-name qwen/qwen3.6-27b \
+  --thinking on
+
+# Sculptor autonomous loop against Novita
+python -m astra sculptor-run \
+  --base-url https://api.novita.ai/openai \
+  --model-name qwen/qwen3.6-27b \
+  --thinking off \
+  --max-iterations 20 --with-judge
+```
+
+### Cost discipline
+
+- Empirical (curl-tested 2026-05-15): ~30 in + 6 out tokens per turn
+  thinking-OFF; ~$0.00004/turn. A 20-iter Sculptor run with N=3 averaging
+  + dual-judge ≈ $0.20 worst case.
+- Thinking-ON adds ~200 reasoning tokens per turn (~$0.00083/turn);
+  same 20-iter run ≈ $4.
+- For a converged Sculptor production run (~200 iter), thinking-OFF
+  ≈ $2; thinking-ON ≈ $40-80.
+
+### Smoke-test commands (use these before a long run)
+
+```
+# 1. Verify auth + thinking-OFF response shape
+curl https://api.novita.ai/openai/chat/completions \
+  -H "Authorization: Bearer $NOVITA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen/qwen3.6-27b",
+    "messages": [{"role": "user", "content": "say ok"}],
+    "chat_template_kwargs": {"enable_thinking": false},
+    "max_tokens": 8
+  }'
+
+# 2. One scenario via CLI
+python -m astra run watch_47_morning \
+  --base-url https://api.novita.ai/openai \
+  --model-name qwen/qwen3.6-27b --thinking off
+```
+
+If both pass, the substrate is verified and Sculptor can be started.
 
 ## Python environment
 

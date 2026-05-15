@@ -6,6 +6,66 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Novita substrate wire-up: LLMClient gains api_key + extra_payload + thinking toggle (2026-05-15)
+
+textverse + Sculptor now run against Novita-hosted OpenAI-compat
+endpoints (production target: `qwen/qwen3.6-27b`) in addition to local
+llama-server. Same harness, two substrates — the Day 4.1
+`reasoning_content` normalizer was prescient (Novita uses the same
+side-channel shape as llama-server with `--reasoning-format deepseek`).
+
+astra/llm/client.py:
+- LLMClient gains `api_key` (Bearer header) and `extra_payload` (merged
+  into request JSON at top level — for Novita's `chat_template_kwargs:
+  {"enable_thinking": ...}` thinking toggle).
+- `health()` falls back to a tiny chat probe when `/health` returns
+  non-200, so cloud endpoints without a health endpoint still validate.
+
+astra/llm/{astra_bundle,narrator_bundle,adapter_bundle}.py +
+astra/sculptor/judges.py (LlamaJudgeClient + build_default_dual_judge):
+- All bundles pass api_key + extra_payload through to LLMClient.
+- model_name is now configurable per-bundle (was hardcoded).
+
+astra/sculptor/{runner_loop,averaging,meta_agent}.py:
+- `_build_bundle` / `run_iteration` / `evaluate_config_averaged` /
+  `MetaAgent` all accept and thread model_name + api_key + extra_payload
+  to the AstraBundle they construct.
+
+astra/cli/__main__.py:
+- New flags on `run`, `bench`, `sculptor-run`:
+    --model-name / -m   (default "astra")
+    --api-key           (default reads env NOVITA_API_KEY)
+    --thinking          (auto / on / off; default "auto" = don't send
+                        chat_template_kwargs, preserving local default)
+
+tests/test_llm_client.py — 3 new tests:
+- test_chat_complete_sends_authorization_header_when_api_key_set
+- test_chat_complete_no_auth_header_when_api_key_absent
+- test_chat_complete_merges_extra_payload_into_request_json
+
+Existing _build_bundle monkeypatches updated to accept **_kw for the
+new pass-through kwargs.
+
+docs/BUILD_NOTES.md — added §2 Novita recipe: endpoint, auth, thinking
+toggle docs, cost discipline, smoke-test commands.
+
+Empirical live smoke (`astra run watch_47_morning` against Novita):
+- 8 of 9 LCP gates at 100% across 3 turns (vs Qwen 3.5 9B which
+  sometimes drops TOOL_VALID to 0.67 by inventing tool names not in
+  the locked surface — 27B does NOT do this).
+- termination_ok failed: scenario assertions are calibrated to 9B
+  lexical vocabulary. 27B says "Mild drift persists. Within safe
+  margins" instead of the literal phrase set ['third pole',
+  'third harmonic', 'cycle 46', 'tolerance']. Semantically equivalent
+  but lexically different — a scenario-assertion calibration concern,
+  not a wire-up defect. Captured as a Sculptor hypothesis class:
+  scenario assertions should be made more model-agnostic.
+
+Gates: 471 pytest passing (468 prior + 3 new), ruff clean, mypy strict
+clean (61 source files).
+
+---
+
 ### Sculptor v1 COMPLETE — Sculptor-E (convergence + CLI + readiness) (2026-05-15)
 
 The final Sculptor v1 slice. Three-conjunct convergence detector,
