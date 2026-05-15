@@ -165,3 +165,14 @@ data-*-batch-*/
 # Stray AI-generated images at project root (move to assets/ to commit)
 /Gemini_Generated_Image_*.jpg
 /Gemini_Generated_Image_*.png
+
+# Book production — Node deps (regenerable via npm install)
+book/production/node_modules/
+
+# Book production — Inside_The_Region reference toolchain (preserved
+# locally for reference; not for public republication in this repo)
+book/production/_reference_inside_the_region/
+
+# Book production — preview/scratch images
+book/production/outputs/_*
+book/production/outputs/**/_preview*

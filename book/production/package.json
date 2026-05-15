@@ -1,0 +1,15 @@
+{
+  "name": "inside-the-region-production",
+  "version": "1.0.0",
+  "description": "Production scripts for Inside the Region — Kindle DOCX, KDP paperback, KDP hardcover, Mixam casebound",
+  "main": "generate_kindle.js",
+  "scripts": {
+    "kindle": "node generate_kindle.js"
+  },
+  "author": "Bo Chen",
+  "license": "MIT",
+  "dependencies": {
+    "docx": "^9.6.1",
+    "jszip": "^3.10.1"
+  }
+}
