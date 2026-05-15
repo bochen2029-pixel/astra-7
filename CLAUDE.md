@@ -6,6 +6,23 @@ This CLAUDE.md is the canonical design document. Read it first. Update it as dec
 
 ---
 
+## Track-specific orientation (fresh sessions — read this before any work)
+
+ASTRA-7 has multiple parallel tracks, each with its own implementation surface. Pick your track, then read its track-specific orientation directive **before** writing any code or prose. The spec envelope is `docs/spec-v0.128.md` (binding on all tracks).
+
+- **Track A — textverse (LLM bundle bench, current build focus):** `proto/textverse/STARTUP.md`
+- **Track B — UE5 plugin (visual / engine):** `proto/ue5plugin/STARTUP.md` *(forthcoming)*
+- **Track C — physics binary (`proto/astra_nexus`):** locked; only additive changes (e.g., Day 2's `--stdio-server` mode); existing 48 assertions must keep passing
+- **Book drafting (parallel session lineage):** see the latest book session dump in `memory/`; manuscript at `book/manuscript/`; canon at `book/CANON.md` + `book/negative_space.md`
+
+For project-state at-a-glance: `memory/MEMORY.md` is auto-loaded at session start; `memory/project_status.md` is the current snapshot.
+
+For fresh-session bootstrap procedure (cwd choice, reading order, what to do first): `BOOTSTRAP.md` at the project root.
+
+**Spec revisions (any track) require empirical findings from a closed loop, not speculative improvements.** See `docs/spec-v0.128.md` §15.4 before proposing changes. Mode 6 (spec drift without empirical justification) is the named failure mode.
+
+---
+
 ## Project Identity
 
 - **Name:** ASTRA-7
