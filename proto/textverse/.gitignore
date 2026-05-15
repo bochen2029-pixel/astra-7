@@ -1,0 +1,56 @@
+# Python build / venv
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+
+# uv venv
+.venv/
+venv/
+env/
+
+# Test + lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Type checker
+.dmypy.json
+dmypy.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (token storage)
+.env
+.env.local
+*.env.local
+secrets/
+
+# Scenario output artifacts — per ARCHITECTURE.md §5
+scenarios/*/transcript.jsonl
+scenarios/*/lcp_report.json
+scenarios/*/final_state.json
+scenarios/output/
+
+# Local log files
+logs/
+*.log

@@ -1,0 +1,8 @@
+# This directory holds Surface 5 (Persona envelope) sysprompts.
+# Day 4 work copies:
+#   docs/astra-sysprompt.md              → prompts/astra_sysprompt.md
+#   docs/astra-sysprompt-addendum-stage.md → prompts/astra_stage_addendum.md
+# Day 4 work also writes:
+#   prompts/narrator_sysprompt.md  (new — Narrator-LLM canonical text)
+#   prompts/adapter_sysprompt.md   (new — Adapter-LLM canonical text)
+# Until Day 4, this .gitkeep file ensures the directory exists in the repo.
