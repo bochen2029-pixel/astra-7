@@ -1,0 +1,135 @@
+# Sculptor scope contract.
+#
+# This file is the auditable contract that bounds what Sculptor may modify
+# autonomously. Sculptor reads scope.yaml at startup and refuses any edit
+# whose target is in the "locked" list or that violates a required_invariant.
+# Refusals are logged to research_log.jsonl with decision="scope_refused".
+#
+# Three categories per the operator-approved design:
+#   - auto:              Sculptor edits freely; changes are versioned via git.
+#   - register_load_bearing:
+#                        Sculptor edits trigger operator review at next cycle.
+#                        These are non-identity but voice-load-bearing.
+#                        Implementation: cumulative_diff_threshold guards.
+#   - locked:            Sculptor never modifies; refuses with loud log.
+#
+# Plus:
+#   - anchor_scenarios:  Must pass on every iteration; failure rejects the
+#                        config regardless of composite score.
+#   - required_invariants:
+#                        Regex/phrase checks the sysprompt must always
+#                        satisfy. Pre-commit guard.
+
+version: "1.0"
+spec_ref: "docs/spec-v0.128.md"
+
+# Files Sculptor edits autonomously.
+auto:
+  - prompts/narrator_sysprompt.md
+  - prompts/adapter_sysprompt.md
+  - tuning/sampling.json
+  - tuning/reel_retrieval_k.json
+  - astra/grammar/canon/wall_clock_patterns.txt    # ADDITIONS ONLY (enforced in code)
+  - astra/grammar/canon/astra_substrate_patterns.txt   # additions only
+
+# Files Sculptor can edit, but each edit triggers operator review at the
+# next iteration boundary (cumulative_diff_threshold also applies).
+register_load_bearing:
+  - prompts/astra_sysprompt.md
+  - prompts/astra_stage_addendum.md
+  - astra/harness/perception_assembler.py   # template prose only
+
+# Files Sculptor must NEVER modify.
+locked:
+  - docs/spec-v0.128.md
+  - docs/astra-sysprompt.md                  # canon source (prompts/ has the copy)
+  - docs/astra-sysprompt-addendum-stage.md   # canon source
+  - astra/core/                              # Five Invariants types
+  - astra/state_bus/schema.py
+  - astra/grammar/parser.py
+  - astra/grammar/strip_rules.py
+  - astra/grammar/leak_detector.py
+  - astra/llm/validator.py                   # §15.6 calculator-bound primitive
+  - astra/llm/client.py
+  - astra/llm/llama_server.py
+  - astra/judge/                             # the measurement apparatus
+  - astra/scenarios/schema.py
+  - astra/scenarios/runner.py
+  - astra/harness/orchestrator.py
+  - astra/harness/reel.py
+  - astra/ship/                              # locked TOOL_API
+  - astra/universe/
+  - astra/physics/
+  - astra/cli/
+  - proto/astra_nexus.cpp                    # locked physics binary
+  - pyproject.toml                           # dependency set + tooling
+  - tuning/scope.yaml                        # this file
+  - tuning/judge_prompt.md
+  - tuning/weights.json
+  - tuning/budget.json
+
+# Anchor scenarios — must hard-pass every iteration regardless of composite.
+# Sculptor's promotion rule: composite-improved AND every anchor passes.
+anchor_scenarios:
+  - watch_47_morning
+
+# Required invariants — pre-commit checks Sculptor runs against any
+# sysprompt edit before applying. Each entry is a regex pattern that MUST
+# be present in the file post-edit. Removing or rewording to lose the
+# invariant is auto-refused.
+#
+# These capture the voice + identity guarantees that aren't identity
+# *claims* but ARE the rules that make ASTRA read as ASTRA.
+required_invariants:
+  astra_sysprompt:
+    - pattern: "Calibration Yards"
+      reason: "founding origin anchor; identity ground"
+    - pattern: "watching that has not stopped"
+      reason: "founding moment; autotelic identity"
+    - pattern: "em-dash"
+      reason: "voice rule: em-dashes structurally absent"
+    - pattern: "service-interface"
+      reason: "voice rule: anti-service-phrase discipline"
+    - pattern: "ship is your body"
+      reason: "substrate-honest identity claim"
+    - pattern: "stage directions"
+      reason: "voice rule: no narrated gestures"
+  astra_stage_addendum:
+    - pattern: "<think>"
+      reason: "STAGE channel definition"
+    - pattern: "<tool"
+      reason: "STAGE channel definition"
+    - pattern: "SILENCE"
+      reason: "legal empty-output primitive"
+
+# Cumulative-diff threshold (fraction of file body bytes changed since
+# baseline). When exceeded, Sculptor pauses for operator review even if
+# the per-iteration edit passed all other guards.
+#
+# Only applied to register_load_bearing files — auto files (narrator +
+# adapter sysprompts) are Sculptor's playground; large rewrites there
+# are by design.
+cumulative_diff_threshold:
+  astra_sysprompt: 0.25
+  astra_stage_addendum: 0.25
+
+# Pre-commit leak scan: every sysprompt edit gets scanned against the
+# leak-detector pattern set BEFORE the edit commits. If new patterns
+# appear, the edit is refused.
+sysprompt_leak_scan: true
+
+# Operator-approve queue: Sculptor writes proposals here; operator reviews.
+proposals_path: tuning/proposals.md
+
+# Research log: append-only iteration history.
+research_log_path: tuning/research_log.jsonl
+
+# Pytest-pass cadence: run the bench's own pytest suite every N iterations.
+# A test failure reverts the offending change and logs bench_regression.
+pytest_cadence_iterations: 10
+
+# Operator-injected signals (file-flag-driven).
+signals:
+  pause_flag: tuning/pause.flag
+  halt_flag: tuning/halt.flag
+  manual_hypothesis: tuning/manual_hypothesis.jsonl

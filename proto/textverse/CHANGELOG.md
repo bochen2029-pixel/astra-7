@@ -6,6 +6,119 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Sculptor-A — tuning scaffold + scope contract + research log (2026-05-15)
+
+First slice of the autonomous self-tuning pipeline. Sculptor-A lands
+the foundation: the bounded-edit contract (scope.yaml + ScopeEnforcer),
+the immutable config-snapshot machinery (ConfigSnapshot), and the
+append-only research log + findings renderer. No live LLM tuning yet —
+that's Sculptor-B through E.
+
+What landed:
+
+tuning/ (static config files committed to the repo):
+- scope.yaml      — the operator-approved scope contract. Three categories
+                    (auto / register_load_bearing / locked) + anchor_scenarios
+                    + required_invariants (6 for astra_sysprompt, 3 for
+                    astra_stage_addendum) + cumulative_diff_threshold
+                    (25% for register-load-bearing sysprompts; not applied
+                    to auto narrator/adapter sysprompts).
+- budget.json     — 50M tokens / 200 iterations / 48h with 0.5 auto-extend
+                    on gradient progress > 0.005/iter.
+- weights.json    — composite-score weights (LCP 0.30, gate balance 0.15,
+                    leak 0.15, judge_pro_minus_anti 0.25, drift 0.15,
+                    cost -0.10) + min_absolute_threshold 0.80 +
+                    convergence K=10 + delta=0.005 + min_coverage_entropy=2.0.
+- judge_prompt.md — locked adversarial dual-judge prompts (pro: "how
+                    ASTRA-shaped"; anti: "how default-helpful-Claude-shaped";
+                    composite = pro - anti). Includes explicit
+                    negative-example anchors.
+- sampling.json   — Sculptor's mutable sampling config (temperature 0.7
+                    etc., matching SamplingParams defaults).
+- reel_retrieval_k.json — REEL top-k (default 3).
+- .gitignore      — research_log.jsonl, findings.md, daily_report.md,
+                    proposals.md, history/, signal flags — runtime
+                    artifacts never committed.
+
+astra/sculptor/:
+- config.py        — SnapshotFile + ConfigSnapshot (Pydantic, frozen) +
+                     snapshot_from_disk + content-hash + JSON roundtrip.
+                     The hash field is the stable identifier across re-runs;
+                     two snapshots with the same hash are bit-equivalent.
+- scope.py         — ScopeContract (parsed scope.yaml), ChangeRequest,
+                     ScopeDecision (allow + category + reason + failed
+                     invariants + leak findings + cumulative-diff ratio),
+                     and ScopeEnforcer.evaluate() — the contract guard
+                     around every Sculptor edit. Locked refusals are
+                     LOUD (specific reason). Required-invariant checks +
+                     cumulative-diff thresholds + sysprompt-time leak
+                     scan (NET-NEW leaks only; pre-existing anti-rule
+                     mentions are fine).
+- research_log.py  — ResearchEntry shape (8 Decision types including
+                     `falsified`, `scope_refused`, `bench_regression`,
+                     `synthesis`). Append-only JSONL writer + reader +
+                     latest_promote helper. findings.md + daily_report.md
+                     renderers. Builder helpers for each decision type
+                     (build_promote_entry / build_falsified_entry /
+                     build_scope_refused_entry / build_bench_regression_entry).
+- __init__.py      — public exports.
+
+Tests (43 new, 360 total):
+- test_sculptor_config.py        (10 tests) — disk capture, hash stability,
+                                              roundtrip, frozen, edge cases.
+- test_sculptor_scope.py         (16 tests) — locked refusals (loud),
+                                              auto passes, register-load-bearing
+                                              passes when invariants hold,
+                                              invariant removal refused,
+                                              cumulative-diff threshold,
+                                              leak scan refuses NEW leaks only.
+- test_sculptor_research_log.py  (17 tests) — Decision shapes, append+read,
+                                              latest_promote, proposals
+                                              separator, findings.md
+                                              rendering, daily_report.md.
+
+Two empirical findings from writing the tests (fixed in this commit):
+
+1. **The sysprompt-time leak scan was too aggressive.** The canonical
+   astra_sysprompt.md contains anti-rule mentions of forbidden patterns
+   ("As an AI", "datetime", "System Prompt") — these are the rules
+   AGAINST the leaks, not leaks themselves. A naive full-file scan
+   refused every edit to the sysprompt because those mentions were
+   already there. Fix: compare leak counts vs baseline; report only
+   NET-NEW occurrences. The check is now exactly "did this edit
+   introduce any new forbidden patterns".
+
+2. **Cumulative-diff thresholds on auto-category files were design
+   noise.** I'd put 0.50 thresholds on narrator + adapter sysprompts,
+   but those are explicitly auto category — Sculptor is supposed to
+   rewrite them freely. Removed from scope.yaml; thresholds now only
+   apply to register_load_bearing files (astra_sysprompt 0.25,
+   astra_stage_addendum 0.25).
+
+Gates:
+- uv run pytest                            -> 360 passed
+- uv run ruff check astra/ tests/ scripts/ -> clean
+- uv run mypy astra/                       -> clean (strict, 53 files)
+
+Design notes:
+- The enforcer is intentionally paranoid. It refuses unknown paths
+  (explicit > implicit) so Sculptor can't accidentally escape its
+  sandbox by editing a path that's neither auto nor locked.
+- Required invariants are regex-checked against full file contents
+  (not just diffs). Sculptor cannot paraphrase the em-dash rule into
+  oblivion and bypass — the pattern must be present.
+- The research log is the durable artifact. Even if Sculptor's
+  optimized bundle is abandoned for a different model six months from
+  now, the log captures what was learned about persona basins at 9B
+  scale, where the autotelic discipline was fragile, what register
+  triggers exist. Treat the log as a publishable artifact.
+
+**Status:** Sculptor-A complete. Next: Sculptor-B (auto-runner with
+crash recovery + pytest cadence + leak scan + composite-score
+computation).
+
+---
+
 ### Day 7 — Typer CLI + Phase 1 closure (2026-05-15)
 
 Lands the operator-facing CLI (`astra` console script + `python -m astra`)

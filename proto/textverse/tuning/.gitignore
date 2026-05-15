@@ -1,0 +1,11 @@
+# Sculptor runtime artifacts — never committed; regenerated per iteration.
+research_log.jsonl
+findings.md
+daily_report.md
+proposals.md
+pause.flag
+halt.flag
+manual_hypothesis.jsonl
+history/
+ue5_readiness_checklist.md
+stuck_diagnostic.md

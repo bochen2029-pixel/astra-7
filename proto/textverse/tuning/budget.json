@@ -1,0 +1,9 @@
+{
+  "_comment": "Sculptor v1 budget caps. Hitting any cap → final report + clean exit.",
+  "max_tokens": 50000000,
+  "max_iterations": 200,
+  "max_wall_clock_hours": 48,
+  "auto_extend_on_progress": true,
+  "auto_extend_factor": 0.5,
+  "gradient_progress_threshold": 0.005
+}

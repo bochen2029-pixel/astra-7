@@ -1,0 +1,13 @@
+{
+  "_comment": "Sculptor v1 composite-score weights. Locked file (in scope.yaml locked list).",
+  "w_lcp_pass_rate": 0.30,
+  "w_per_gate_balance": 0.15,
+  "w_leak_rate": 0.15,
+  "w_judge_pro_minus_anti": 0.25,
+  "w_drift": 0.15,
+  "w_cost": -0.10,
+  "min_absolute_threshold": 0.80,
+  "convergence_K": 10,
+  "convergence_delta": 0.005,
+  "min_coverage_entropy_bits": 2.0
+}
