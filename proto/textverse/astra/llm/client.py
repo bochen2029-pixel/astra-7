@@ -12,6 +12,7 @@ the chain works end-to-end against a real llama-server.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any, Literal
@@ -22,6 +23,36 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # OpenAI-compat default; llama.cpp accepts this path
 DEFAULT_CHAT_PATH: str = "/v1/chat/completions"
+
+# Retry policy for transient cloud-API failures (Novita 429s during Sculptor's
+# tight judge-call burst, etc.). Local llama-server doesn't return these so
+# the retry path is a no-op there.
+_RETRYABLE_STATUSES: frozenset[int] = frozenset({429, 503})
+_MAX_RETRIES: int = 5
+_BASE_RETRY_DELAY_S: float = 1.0
+_MAX_RETRY_DELAY_S: float = 30.0
+
+
+def _retry_delay(resp: httpx.Response, attempt: int) -> float | None:
+    """Return seconds to sleep before next attempt, or None if no more retries.
+
+    Honors a numeric `Retry-After` header when the server provides one;
+    otherwise uses exponential backoff capped at `_MAX_RETRY_DELAY_S`.
+    """
+    if resp.status_code not in _RETRYABLE_STATUSES:
+        return None
+    if attempt >= _MAX_RETRIES:
+        return None
+    retry_after = resp.headers.get("retry-after")
+    if retry_after:
+        try:
+            parsed = float(retry_after)
+        except ValueError:
+            parsed = None
+        if parsed is not None:
+            return min(_MAX_RETRY_DELAY_S, max(0.0, parsed))
+    backoff: float = _BASE_RETRY_DELAY_S * (2 ** attempt)
+    return min(_MAX_RETRY_DELAY_S, backoff)
 
 
 class ChatMessage(BaseModel):
@@ -139,12 +170,22 @@ class LLMClient:
         payload = self._build_payload(messages, params, stream=False)
         headers = self._build_headers()
         async with httpx.AsyncClient(timeout=self.timeout_s) as client:
-            resp = await client.post(
-                self.base_url + self.chat_path, json=payload, headers=headers,
-            )
-            if resp.status_code != 200:
+            for attempt in range(_MAX_RETRIES + 1):
+                resp = await client.post(
+                    self.base_url + self.chat_path, json=payload, headers=headers,
+                )
+                if resp.status_code == 200:
+                    break
+                delay = _retry_delay(resp, attempt)
+                if delay is None:
+                    raise LLMClientError(
+                        f"chat_complete HTTP {resp.status_code}: {resp.text[:200]}"
+                    )
+                await asyncio.sleep(delay)
+            else:  # pragma: no cover — for-else only fires if loop exhausted without break
                 raise LLMClientError(
-                    f"chat_complete HTTP {resp.status_code}: {resp.text[:200]}"
+                    f"chat_complete exhausted {_MAX_RETRIES} retries; "
+                    f"last status {resp.status_code}",
                 )
             data = resp.json()
         try:

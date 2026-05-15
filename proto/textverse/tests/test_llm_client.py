@@ -84,7 +84,12 @@ async def test_chat_complete_returns_message_content(monkeypatch: pytest.MonkeyP
 
 @pytest.mark.asyncio
 async def test_chat_complete_http_error_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    transport = httpx.MockTransport(lambda req: httpx.Response(503, text="overloaded"))
+    """Non-retryable HTTP error → raises immediately, no retries.
+
+    Uses 500 (not 429/503) so the retry path doesn't fire; the test
+    verifies the failure-path message format.
+    """
+    transport = httpx.MockTransport(lambda req: httpx.Response(500, text="broken"))
     original_init = httpx.AsyncClient.__init__
 
     def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
@@ -94,7 +99,7 @@ async def test_chat_complete_http_error_raises(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
 
     client = LLMClient(base_url="http://test.invalid", sysprompt="sys")
-    with pytest.raises(LLMClientError, match="HTTP 503"):
+    with pytest.raises(LLMClientError, match="HTTP 500"):
         await client.chat_complete("ping")
 
 
@@ -321,6 +326,63 @@ async def test_chat_complete_merges_extra_payload_into_request_json(
     # Standard payload keys are still present.
     assert "messages" in captured_payload
     assert "temperature" in captured_payload
+
+
+@pytest.mark.asyncio
+async def test_chat_complete_retries_on_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Novita rate-limits Sculptor's tight judge-call burst with HTTP 429.
+    The client must retry with backoff; the test mocks two 429s followed
+    by a 200 and verifies the final response is returned.
+    """
+    call_count = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        call_count["n"] += 1
+        if call_count["n"] < 3:
+            return httpx.Response(429, headers={"retry-after": "0"}, text="slow down")
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"role": "assistant", "content": "ok"}}]},
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_init = httpx.AsyncClient.__init__
+
+    def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
+        kwargs["transport"] = transport
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
+
+    client = LLMClient(base_url="http://test.invalid", sysprompt="sys")
+    out = await client.chat_complete("ping")
+    assert out == "ok"
+    assert call_count["n"] == 3   # 2 retries + 1 success
+
+
+@pytest.mark.asyncio
+async def test_chat_complete_raises_after_max_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If the server keeps returning 429 past the retry budget, raise."""
+    call_count = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        call_count["n"] += 1
+        return httpx.Response(429, headers={"retry-after": "0"}, text="still slow")
+
+    transport = httpx.MockTransport(handler)
+    original_init = httpx.AsyncClient.__init__
+
+    def patched_init(self: httpx.AsyncClient, *args: object, **kwargs: object) -> None:
+        kwargs["transport"] = transport
+        original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", patched_init)
+
+    client = LLMClient(base_url="http://test.invalid", sysprompt="sys")
+    with pytest.raises(LLMClientError, match="HTTP 429"):
+        await client.chat_complete("ping")
+    # MAX_RETRIES=5 means: 1 initial attempt + 5 retries = 6 calls
+    assert call_count["n"] == 6
 
 
 @pytest.mark.asyncio

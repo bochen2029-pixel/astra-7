@@ -6,6 +6,34 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### LLMClient: HTTP 429/503 retry-with-backoff (2026-05-15)
+
+Discovered live during the 5-iter `--with-judge` smoke against Novita:
+Sculptor's tight judge-call burst (~30 judge calls back-to-back per
+iteration) exceeds Novita's request rate limit, returning HTTP 429.
+The previous client raised on first 429 → crashed Sculptor mid-loop.
+
+Adds a defensive retry policy in [client.py](astra/llm/client.py):
+
+- Retryable statuses: {429, 503}.
+- Max 5 retries (6 attempts total).
+- Honors `Retry-After` header when server provides numeric seconds.
+- Falls back to exponential backoff: `min(30s, 1s * 2^attempt)`.
+- Non-retryable statuses (e.g., 4xx other than 429, 5xx other than 503)
+  raise `LLMClientError` immediately — no behavior change there.
+
+tests/test_llm_client.py:
+- `test_chat_complete_retries_on_429`: 2× 429 → 200 succeeds.
+- `test_chat_complete_raises_after_max_retries`: 6 consecutive 429s
+  exhausts retry budget and raises.
+- `test_chat_complete_http_error_raises` updated to use HTTP 500
+  (non-retryable) so it remains a fast unit test.
+
+Empirical recovery: this commit restored Sculptor's ability to run
+multi-iter judged loops against Novita without the rate-limit crash.
+
+Gates: 473 pytest passing, ruff clean, mypy strict clean.
+
 ### Scenario library expansion: 4 new scenarios for Sculptor coverage entropy (2026-05-15)
 
 Sculptor's convergence rule requires `log2(scenario_count) ≥ 2.0` bits
