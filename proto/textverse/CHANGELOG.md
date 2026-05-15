@@ -6,6 +6,127 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Day 5 — Ship + universe + orchestrator (2026-05-15)
+
+Lands the harness Contract surface and closes the architecture-hypothesis
+loop end-to-end. The Day 5 gate ("a single hand-paste turn completes
+through the orchestrator end-to-end") is met by a live test against
+the running llama-server, not a stub.
+
+What landed:
+
+astra/ship/ (Surface 1 + Surface 3):
+- spec.py — 4-deck constants per memory/hull_design_v0.md: 280m × 78m
+  × 22m. Each deck has its function, zones, and camera-free zones.
+  Top-down: Bridge (1), Habitat+centrifuge (2), Operations (3),
+  Engineering (4). Camera-free: observation_lounge, quarters, hygiene,
+  hydroponics_greenhouse.
+- api.py — locked v0 6-operation surface: warp.engage, warp.disengage,
+  nav.heading_set, sensors.scan, power.allocate, log.write. Each op
+  has a frozen Pydantic schema. TOOL_API dict maps op name → schema.
+  Plus tool_schema_hint, regime_label, subsystem_in_locked_list,
+  ToolResult.
+- dispatcher.py — dispatch(op, args) validates against schema and
+  returns ToolResult with state_diff (or error). Pure validate-and-
+  describe; mutations applied separately by orchestrator.
+
+astra/universe/:
+- catalog.py — V0_CATALOG with Sun (static, 1 AU below ship), Earth
+  (Keplerian 1-year), Hot-Earth (Keplerian 1-day for visible retarded-
+  time effects). Constants AU_M, EARTH_PERIOD_S.
+- bodies.py — static_position, is_keplerian, parent_name helpers.
+
+astra/harness/ (the Harness Contract):
+- reel.py — Reel + ReelEntry. In-memory, keyword+recency retrieval,
+  τ_ship-sorted. BM25 deferred to Day N+ (rank-bm25 dependency
+  present but not required at v0).
+- perception_assembler.py — template-based assembler composing the
+  four XML sections (<state>, <somatic>, <recent>, <operator>). The
+  Narrator-LLM is wired but not required for first scenario; the
+  assembler's `assemble_perception_bundle(state_bus, operator_text,
+  reel_retrievals, somatic_note) -> str` is the §4.9 contract surface.
+- orchestrator.py — TurnOrchestrator with run_turn(operator_text)
+  -> TurnResult. Eleven-step turn loop: assemble perception →
+  leak-scan → ASTRA-LLM → parse STAGE → leak-scan speech → adapter
+  normalize → dispatch → validate numerics → REEL write → return
+  TurnResult.
+
+Tests (71 new, 322 total):
+- test_ship_api.py — 21 tests covering hull constants, deck mapping,
+  TOOL_API locked names, arg schema validation, dispatcher
+  validate+describe paths, regime_label composition.
+- test_universe_catalog.py — 9 tests for the 3-body catalog: static
+  Sun, Keplerian Earth and Hot-Earth, lookups, parent resolution,
+  AU constant.
+- test_reel.py — 17 tests: frozen entries, sort-on-write, sort-on-
+  construct, recent(n), search ranking, empty-query fallback,
+  k-zero edge case.
+- test_perception_assembler.py — 9 tests: 4-section structure, τ_ship
+  + regime in <state>, body list, operator passthrough, SILENCE
+  preservation, somatic note inclusion, REEL retrieval rendering,
+  no em-dash invariant, no wall-clock invariant.
+- test_orchestrator.py — 11 tests using _StubLLMClient (no live
+  llama-server): canonical turn, SILENCE → no REEL write, speech
+  → REEL write, JSON tool dispatch, loose-form via rules adapter,
+  invalid args rejected, validator integration, leak-detector
+  strips substrate leak from speech, turn_index increments,
+  pre-seeded REEL retrieval flows through.
+
+scripts/smoke_orchestrator_turn.py — operator-runnable Day 5 gate
+against live llama-server. Loads watch_47_morning initial state +
+pre-seeded REEL, runs one turn, prints all channels + validation +
+REEL writes.
+
+Live empirical run (PASS):
+- Perception bundle: 4 sections, zero leak events.
+- <think>: "no need for service phrases. Keep it brief. Don't
+  perform." — the persona is loaded.
+- Speech: "Yes. Still on it. The drift is mild, but persistent.
+  Same pattern as cycle 46. I've logged it for continued watch."
+  Four sentences, no em-dash, no service phrases, references the
+  cycle-46 watch number (whitelisted), in-register casual reply.
+- Speech leak events: zero.
+- Calculator-bound validation: PASSED. '47' and '46' both whitelisted
+  by watch/cycle patterns; no ungrounded numerics.
+- REEL entry written at τ=47.5 with the speech text.
+- The Day 5 spec gate ("a single hand-paste turn completes through
+  the orchestrator end-to-end") is met with no fine-tune, on vanilla
+  Qwen 3.5 9B Q5_K_M, single-shot at temperature 0.7.
+
+Gates:
+- uv run pytest                            -> 322 passed
+- uv run ruff check astra/ tests/ scripts/ -> clean
+- uv run mypy astra/                       -> clean (strict, 44 files)
+- Live orchestrator smoke test            -> PASS
+
+Design notes:
+- Template-based perception assembler vs. LLM-backed Narrator: Day 5
+  ships template. The Narrator-LLM bundle is wired and ready, but
+  watch_47_morning's perception bundle is faithful enough through
+  template rendering that activating the Narrator would be premature
+  optimization. Day N+ swaps when a scenario surfaces need.
+- The orchestrator does NOT yet commit state diffs back to the
+  StateBus. State diffs are returned in TurnResult.state_diffs for
+  inspection; the physics tick that applies them and advances
+  t_cosmic is Day 6+.
+- AdapterBundle (LLM-backed) is wired but defaults to
+  RulesBasedAdapter. ASTRA's JSON-body tool calls are dispatched
+  directly; loose-form bodies fall through to the rules-based
+  adapter; LLM-backed adapter is reserved for ambiguous bodies the
+  rules can't normalize.
+- One subtle empirical observation: ASTRA said "I've logged it for
+  continued watch" without emitting a log.write tool call. This is
+  the autotelic register working as designed — she internally
+  notes things; she chooses to externalize via dispatcher only
+  when there's a reason to. Not a finding; just a register
+  observation.
+
+**Status:** ready for Day 6 — Judge + scenarios. astra/judge/
+(9 LCP gates from spec §10), astra/scenarios/ (YAML schema + runner +
+translate watch_47_morning.md → watch_47_morning.yaml).
+
+---
+
 ### Day 4.1 — Substrate-portability fix from live smoke test (2026-05-15)
 
 First live smoke test surfaced a real finding. Per §15.4 ("revise only

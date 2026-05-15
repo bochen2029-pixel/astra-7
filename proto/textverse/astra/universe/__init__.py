@@ -1,17 +1,39 @@
-"""astra.universe — the mini universe (Sun + Earth + Hot-Earth at v0).
+"""astra.universe — mini-universe catalog + body queries for v0 scenarios.
 
-For v0, three bodies are sufficient to demonstrate retarded-time observation:
-- Sun: fixed at origin frame (or 1 AU below ship in scenario default)
-- Earth: 1-year Keplerian orbit
-- Hot-Earth: 1-day Keplerian orbit (synthetic; for visible retarded-time demo
-             at warp 100c receding, you watch a full reverse-orbit every ~36s)
+Three-body v0: Sun (static), Earth (1-year orbit), Hot-Earth (1-day orbit).
+Sufficient to exercise retarded-time observation, multi-body perception,
+and the watch_47_morning scenario without requiring the full Solar System.
 
-Files:
-- catalog.py:   Body database, loadable from YAML
-- bodies.py:    Pydantic models + Keplerian elements
-- ephemeris.py: Wraps astra.physics.nexus_bridge for t_cosmic-driven body state
-
-The Solar System full body catalog is V1+ work; defer per Progressive Spec.
-
-Implementation: Day 5.
+Day 5 lands catalog + body-query helpers. Orbital math itself lives in
+proto/astra_nexus and is queried via astra.physics.nexus_bridge.
 """
+
+from astra.universe.bodies import (
+    is_keplerian,
+    parent_name,
+    static_position,
+)
+from astra.universe.catalog import (
+    AU_M,
+    EARTH,
+    EARTH_PERIOD_S,
+    HOT_EARTH,
+    SUN,
+    V0_CATALOG,
+    all_names,
+    lookup_body,
+)
+
+__all__ = [
+    "AU_M",
+    "EARTH",
+    "EARTH_PERIOD_S",
+    "HOT_EARTH",
+    "SUN",
+    "V0_CATALOG",
+    "all_names",
+    "is_keplerian",
+    "lookup_body",
+    "parent_name",
+    "static_position",
+]
