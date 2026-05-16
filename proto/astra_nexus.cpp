@@ -697,6 +697,97 @@ void run_all() {
               "AstraCoord reaches > 900M ly with sub-mm precision");
     }
 
+    section("§6.4 Narrator-LLM tool surface — kepler_at primitive");
+    {
+        // kepler_at backs `orbit_phase` for the Narrator's astrometric_query.
+        // Verify the canonical periodicity invariant: phase(t0+P) ≡ phase(t0).
+        Orbit orb{1.5e11, 0.0167, 3.156e7, 0.0};   // earth-like
+        double phase_t0   = orbit_phase(orb, 0.0);
+        double phase_full = orbit_phase(orb, orb.period);
+        // 2π wrap; both should map to the same anomaly (modulo 2π).
+        double diff = std::fmod(phase_full - phase_t0 + 4.0 * M_PI, 2.0 * M_PI);
+        if (diff > M_PI) diff -= 2.0 * M_PI;
+        check_close(diff, 0.0, 1e-6,
+                    "kepler_at(t0+P) == kepler_at(t0) within 2π");
+
+        // Eccentric orbit: phase advances monotonically over one period.
+        Orbit ecc{1.0e11, 0.5, 1.0e7, 0.0};
+        double last = orbit_phase(ecc, 0.0);
+        bool monotonic_or_unwrap = true;
+        for (int i = 1; i <= 50; i++) {
+            double t = (double)i * (ecc.period / 50.0);
+            double cur = orbit_phase(ecc, t);
+            // Allow one 2π unwrap.
+            if (cur < last && (last - cur) < M_PI) {
+                monotonic_or_unwrap = false;
+                break;
+            }
+            last = cur;
+        }
+        check(monotonic_or_unwrap,
+              "kepler_at advances monotonically (mod 2π) across one period");
+    }
+
+    section("§6.4 Narrator-LLM tool surface — composition_rule_evaluate primitive");
+    {
+        // composition_rule = f_warp · grav · 1/γ_kin
+        // Identity case: warp inactive, no gravity, γ=1 → 1.0
+        double r1 = dtau_dt_cosmic(0.0, 1.0, 1.0, /*warp_active=*/false);
+        check_close(r1, 1.0, 1e-12,
+                    "composition_rule_evaluate(rest, no-grav, γ=1) == 1.0");
+
+        // STL γ=2: 1/γ = 0.5
+        double r2 = dtau_dt_cosmic(0.0, 1.0, 2.0, false);
+        check_close(r2, 0.5, 1e-12,
+                    "composition_rule_evaluate(STL γ=2) == 0.5");
+
+        // WARP_CRUISE W=1.0: f_warp = max(0.5, 1 − 0.5·1²) = 0.5
+        double r3 = dtau_dt_cosmic(1.0, 1.0, 1.0, /*warp_active=*/true);
+        check_close(r3, 0.5, 1e-12,
+                    "composition_rule_evaluate(W=1.0 cruise) == 0.5");
+
+        // Strong gravity factor 0.7 + STL γ=1.5: 1.0 · 0.7 / 1.5
+        double r4 = dtau_dt_cosmic(0.0, 0.7, 1.5, false);
+        check_close(r4, 0.7 / 1.5, 1e-12,
+                    "composition_rule_evaluate(STL+grav) composes multiplicatively");
+    }
+
+    section("§6.4 Narrator-LLM tool surface — retarded_time_solve primitive");
+    {
+        // retarded-time = t_cosmic − lookback(d, z_cosmo)
+        // For d=1ly, z_cosmo ≈ 0 (linear-z weak-field); lookback ≈ 1 yr in seconds.
+        double d_proper = 1.0 * LIGHT_YEAR;
+        double z = compute_z_cosmo(d_proper);     // weak-field, near 0
+        double lookback = compute_lookback(d_proper, z);
+        // 1 ly / c = 1 yr (definition); ΛCDM correction ~ (1 − 3z/4) ≈ 1.
+        double one_year_s = LIGHT_YEAR / C_LIGHT;
+        check_close(lookback, one_year_s, one_year_s * 0.01,
+                    "retarded_time lookback @ 1ly ≈ 1 year (within 1%)");
+
+        // t_emit = t_cosmic − lookback. Far past observation: t_cosmic=0 → t_emit < 0.
+        double t_cosmic = 0.0;
+        double t_emit = t_cosmic - lookback;
+        check(t_emit < 0.0,
+              "retarded_time t_emit < 0 when observing 1ly source from cosmic-zero");
+    }
+
+    section("§6.4 Narrator-LLM tool surface — observe primitive end-to-end");
+    {
+        // Ship at rest near origin; planet 1 ly behind (-z).
+        Vec3 ship_pos{0, 0, 0};
+        Vec3 ship_vel{0, 0, 0};
+        Vec3 body{0, 0, -1.0 * LIGHT_YEAR};
+        Observable obs = observe(ship_pos, ship_vel, 1.0e10, body, 0.0, R_REST);
+        check_close(obs.d, 1.0 * LIGHT_YEAR, 1.0,
+                    "observe: REST 1ly returns d ≈ 1 ly");
+        check_close(obs.v_radial, 0.0, 1e-6,
+                    "observe: REST returns v_radial == 0");
+        check_close(obs.apparent_rate, 1.0, 0.02,
+                    "observe: REST returns apparent_rate ≈ 1.0 (real-time)");
+        check(!obs.time_reversed,
+              "observe: REST does not flag time_reversed");
+    }
+
     std::printf("\n============== SUMMARY: %d passed, %d failed ==============\n",
                 passed, failed);
 }
@@ -899,8 +990,62 @@ static std::string make_ok_string(const std::string& s) {
     return "{\"ok\":true,\"result\":" + escape_json_string(s) + "}";
 }
 
+// Object result for ops that return a struct (e.g. observe → ObservableState).
+// All values encoded as numeric (bools encoded as 0/1) to keep the wire
+// format stable and the Python NexusResponse parser simple.
+static std::string make_ok_object(const std::map<std::string, double>& kv) {
+    std::string out = "{\"ok\":true,\"result\":{";
+    bool first = true;
+    for (const auto& [k, v] : kv) {
+        if (!first) out += ",";
+        first = false;
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "%.17g", v);
+        out += escape_json_string(k) + ":" + buf;
+    }
+    out += "}}";
+    return out;
+}
+
 static std::string make_error(const std::string& msg) {
     return "{\"ok\":false,\"error\":" + escape_json_string(msg) + "}";
+}
+
+// Parse a Vec3 from a JValue object {"x":..,"y":..,"z":..}.
+// Throws if shape is wrong (caller catches and translates to make_error).
+static Vec3 parse_vec3(const JValue& v) {
+    if (v.type != JValue::OBJECT) throw std::runtime_error("expected vec3 object");
+    auto get_num = [&](const char* k) -> double {
+        auto it = v.obj.find(k);
+        if (it == v.obj.end() || it->second.type != JValue::NUMBER)
+            throw std::runtime_error(std::string("vec3 missing/non-numeric '") + k + "'");
+        return it->second.n;
+    };
+    return Vec3{get_num("x"), get_num("y"), get_num("z")};
+}
+
+// Lookup helper for required numeric arg.
+static double require_number(const JValue& args, const char* key) {
+    auto it = args.obj.find(key);
+    if (it == args.obj.end() || it->second.type != JValue::NUMBER)
+        throw std::runtime_error(std::string("missing or non-numeric '") + key + "'");
+    return it->second.n;
+}
+
+// Lookup helper for required string arg.
+static const std::string& require_string(const JValue& args, const char* key) {
+    auto it = args.obj.find(key);
+    if (it == args.obj.end() || it->second.type != JValue::STRING)
+        throw std::runtime_error(std::string("missing or non-string '") + key + "'");
+    return it->second.s;
+}
+
+// Lookup helper for required Vec3 arg.
+static Vec3 require_vec3(const JValue& args, const char* key) {
+    auto it = args.obj.find(key);
+    if (it == args.obj.end())
+        throw std::runtime_error(std::string("missing vec3 '") + key + "'");
+    return parse_vec3(it->second);
 }
 
 static uint32_t parse_regime_string(const std::string& s) {
@@ -953,6 +1098,113 @@ static std::string dispatch(const JValue& req) {
         } catch (const std::exception& e) {
             return make_error(e.what());
         }
+    }
+
+    // §6.4 Narrator-LLM tool surface: kepler_at, composition_rule_evaluate,
+    // retarded_time_solve, observe, physics_query (generic dispatch wrapper).
+    // ship_state_query is intentionally NOT here per audit Q1: ship-sim state
+    // lives in textverse Python, not in astra_nexus C++. (D2 of audit.)
+
+    if (op == "kepler_at") {
+        if (args.type != JValue::OBJECT) return make_error("'args' must be an object");
+        try {
+            Orbit orb;
+            orb.a      = require_number(args, "a");
+            orb.e      = require_number(args, "e");
+            orb.period = require_number(args, "period");
+            orb.t0     = require_number(args, "t0");
+            double t   = require_number(args, "t");
+            return make_ok_number(orbit_phase(orb, t));
+        } catch (const std::exception& e) {
+            return make_error(e.what());
+        }
+    }
+
+    if (op == "composition_rule_evaluate") {
+        // §3.2 dτ/dt_cosmic = f_warp · √(1−rs/r) · √(1+2Φ/c²) / γ_kin
+        // Inputs: W_warp (warp coil fraction), grav_factor (Schwarzschild
+        // composition already computed), gamma_kin (rapidity-derived γ),
+        // warp_active (0 or 1).
+        if (args.type != JValue::OBJECT) return make_error("'args' must be an object");
+        try {
+            double W_warp     = require_number(args, "W_warp");
+            double grav       = require_number(args, "grav_factor");
+            double gamma_kin  = require_number(args, "gamma_kin");
+            double warp_flag  = require_number(args, "warp_active");
+            bool warp_active  = warp_flag != 0.0;
+            return make_ok_number(dtau_dt_cosmic(W_warp, grav, gamma_kin, warp_active));
+        } catch (const std::exception& e) {
+            return make_error(e.what());
+        }
+    }
+
+    if (op == "retarded_time_solve") {
+        // §3.11 retarded-time = t_cosmic − lookback(d, z_cosmo).
+        // Returns t_emit (cosmic time at which observed photons left source).
+        if (args.type != JValue::OBJECT) return make_error("'args' must be an object");
+        try {
+            double d_proper = require_number(args, "d_proper");
+            double z_cosmo  = require_number(args, "z_cosmo");
+            double t_cosmic = require_number(args, "t_cosmic");
+            double lookback = compute_lookback(d_proper, z_cosmo);
+            return make_ok_number(t_cosmic - lookback);
+        } catch (const std::exception& e) {
+            return make_error(e.what());
+        }
+    }
+
+    if (op == "observe") {
+        // §6.3 12-step observation workflow. Returns the full Observable
+        // struct as a JSON object. Wire format extension: object result.
+        if (args.type != JValue::OBJECT) return make_error("'args' must be an object");
+        try {
+            Vec3 ship_pos       = require_vec3(args, "ship_pos");
+            Vec3 ship_velocity  = require_vec3(args, "ship_velocity");
+            double t_cosmic     = require_number(args, "t_cosmic");
+            Vec3 body_pos       = require_vec3(args, "body_pos");
+            double body_metric  = require_number(args, "body_metric_shift");
+            uint32_t regime     = parse_regime_string(require_string(args, "regime"));
+            Observable obs = observe(ship_pos, ship_velocity, t_cosmic,
+                                     body_pos, body_metric, regime);
+            std::map<std::string, double> result;
+            result["d"]              = obs.d;
+            result["v_radial"]       = obs.v_radial;
+            result["z_cosmo"]        = obs.z_cosmo;
+            result["z_kin"]          = obs.z_kin;
+            result["z_metric"]       = obs.z_metric;
+            result["z_total"]        = obs.z_total;
+            result["t_emit"]         = obs.t_emit;
+            result["apparent_rate"]  = obs.apparent_rate;
+            result["time_reversed"]  = obs.time_reversed ? 1.0 : 0.0;
+            return make_ok_object(result);
+        } catch (const std::exception& e) {
+            return make_error(e.what());
+        }
+    }
+
+    if (op == "physics_query") {
+        // Generic dispatch wrapper per §6.4 — args carry an inner `query`
+        // string and `params` object. Routes by re-invoking dispatch with a
+        // synthesized inner request. Lets the Narrator-LLM submit a single
+        // "physics_query" tool form rather than learning the full op table.
+        if (args.type != JValue::OBJECT) return make_error("'args' must be an object");
+        auto it_q = args.obj.find("query");
+        auto it_p = args.obj.find("params");
+        if (it_q == args.obj.end() || it_q->second.type != JValue::STRING)
+            return make_error("physics_query missing or non-string 'query'");
+        if (it_p == args.obj.end() || it_p->second.type != JValue::OBJECT)
+            return make_error("physics_query missing or non-object 'params'");
+        const std::string& inner_op = it_q->second.s;
+        if (inner_op == "physics_query")
+            return make_error("physics_query cannot recurse into itself");
+        JValue inner_req;
+        inner_req.type = JValue::OBJECT;
+        JValue inner_op_v;
+        inner_op_v.type = JValue::STRING;
+        inner_op_v.s = inner_op;
+        inner_req.obj["op"] = inner_op_v;
+        inner_req.obj["args"] = it_p->second;
+        return dispatch(inner_req);
     }
 
     return make_error("unknown op: " + op);

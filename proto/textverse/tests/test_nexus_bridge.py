@@ -122,6 +122,134 @@ def test_stl_rel_vs_warp_different_at_same_v() -> None:
     assert abs(stl - warp) > 0.05, f"STL={stl}, WARP={warp} too close"
 
 
+# --- §6.4 Narrator-LLM tool surface (D2 of audit) ------------------------
+
+@pytest.mark.requires_nexus
+def test_kepler_at_periodicity() -> None:
+    """kepler_at(t0+P) == kepler_at(t0) modulo 2π."""
+    args = {"a": 1.5e11, "e": 0.0167, "period": 3.156e7, "t0": 0.0}
+    with NexusBridge() as bridge:
+        r0 = bridge.call("kepler_at", t=0.0, **args)
+        rp = bridge.call("kepler_at", t=3.156e7, **args)
+        assert r0.ok and rp.ok
+        import math
+        diff = math.fmod(float(rp.result) - float(r0.result) + 4.0 * math.pi, 2.0 * math.pi)
+        if diff > math.pi:
+            diff -= 2.0 * math.pi
+        assert abs(diff) < 1e-6
+
+
+@pytest.mark.requires_nexus
+def test_composition_rule_evaluate_rest_identity() -> None:
+    """Rest, no gravity, γ=1 → composition rule = 1.0."""
+    with NexusBridge() as bridge:
+        r = bridge.call(
+            "composition_rule_evaluate",
+            W_warp=0.0, grav_factor=1.0, gamma_kin=1.0, warp_active=0,
+        )
+        assert r.ok and abs(float(r.result) - 1.0) < 1e-12
+
+
+@pytest.mark.requires_nexus
+def test_composition_rule_evaluate_warp_cruise() -> None:
+    """W=1.0 with warp_active → f_warp = 0.5; rest of composition = 1.0."""
+    with NexusBridge() as bridge:
+        r = bridge.call(
+            "composition_rule_evaluate",
+            W_warp=1.0, grav_factor=1.0, gamma_kin=1.0, warp_active=1,
+        )
+        assert r.ok and abs(float(r.result) - 0.5) < 1e-12
+
+
+@pytest.mark.requires_nexus
+def test_retarded_time_solve_one_lightyear() -> None:
+    """At d=1 ly with z≈0, lookback ≈ 1 year; t_emit = 0 - 1yr."""
+    light_year = 9.4607e15  # ~ ly in metres (matches astra_nexus.cpp)
+    with NexusBridge() as bridge:
+        r = bridge.call(
+            "retarded_time_solve",
+            d_proper=light_year, z_cosmo=0.0, t_cosmic=0.0,
+        )
+        assert r.ok
+        one_year_s = light_year / C_LIGHT
+        assert abs(float(r.result) + one_year_s) < one_year_s * 0.01
+
+
+@pytest.mark.requires_nexus
+def test_observe_returns_object_result() -> None:
+    """observe() returns the full ObservableState as a JSON object.
+
+    Verifies the wire-format extension (object result) and the §6.3
+    field set is present.
+    """
+    light_year = 9.4607e15
+    with NexusBridge() as bridge:
+        r = bridge.call(
+            "observe",
+            ship_pos={"x": 0.0, "y": 0.0, "z": 0.0},
+            ship_velocity={"x": 0.0, "y": 0.0, "z": 0.0},
+            t_cosmic=1.0e10,
+            body_pos={"x": 0.0, "y": 0.0, "z": -1.0 * light_year},
+            body_metric_shift=0.0,
+            regime="REST",
+        )
+        assert r.ok
+        assert isinstance(r.result, dict)
+        for k in (
+            "d", "v_radial", "z_cosmo", "z_kin", "z_metric", "z_total",
+            "t_emit", "apparent_rate", "time_reversed",
+        ):
+            assert k in r.result, f"observe result missing {k}: {r.result}"
+        assert abs(r.result["d"] - light_year) < 1.0
+        assert abs(r.result["v_radial"]) < 1e-6
+        assert abs(r.result["apparent_rate"] - 1.0) < 0.02
+        assert r.result["time_reversed"] == 0.0
+
+
+@pytest.mark.requires_nexus
+def test_physics_query_dispatches_to_inner_op() -> None:
+    """physics_query routes by `query` field; inner result returned verbatim."""
+    with NexusBridge() as bridge:
+        r = bridge.call(
+            "physics_query",
+            query="composition_rule_evaluate",
+            params={"W_warp": 0.0, "grav_factor": 1.0, "gamma_kin": 1.0, "warp_active": 0},
+        )
+        assert r.ok and abs(float(r.result) - 1.0) < 1e-12
+
+
+@pytest.mark.requires_nexus
+def test_physics_query_rejects_self_recursion() -> None:
+    """physics_query inside physics_query → error (no infinite loop)."""
+    with NexusBridge() as bridge:
+        r = bridge.call("physics_query", query="physics_query", params={})
+        assert r.ok is False
+        assert r.error is not None
+        assert "recurse" in r.error.lower()
+
+
+@pytest.mark.requires_nexus
+def test_observe_warp_recede_reverses_time() -> None:
+    """WARP at v_apparent > c receding flips time direction."""
+    light_year = 9.4607e15
+    with NexusBridge() as bridge:
+        r = bridge.call(
+            "observe",
+            ship_pos={"x": 0.0, "y": 0.0, "z": 0.0},
+            ship_velocity={"x": 0.0, "y": 0.0, "z": 2.0 * C_LIGHT},
+            t_cosmic=1.0e10,
+            body_pos={"x": 0.0, "y": 0.0, "z": -1.0 * light_year},
+            body_metric_shift=0.0,
+            regime="WARP_CRUISE",
+        )
+        assert r.ok and isinstance(r.result, dict)
+        # ship moves +z away from body at -z; v_radial > 0 (receding)
+        assert r.result["v_radial"] > 0
+        # WARP at v_app > c reverses → apparent_rate < 0
+        assert r.result["apparent_rate"] < 0
+        assert r.result["time_reversed"] == 1.0
+
+
 # --- Error path coverage ------------------------------------------------------
 
 @pytest.mark.requires_nexus

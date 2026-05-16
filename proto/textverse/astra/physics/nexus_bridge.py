@@ -39,12 +39,17 @@ class NexusResponse(BaseModel):
 
     Wire format: one JSON object per line. `ok=true` with `result`, or
     `ok=false` with `error`. No interleaved noise.
+
+    `result` may be a number, string, OR object — the object form is
+    used by §6.4 ops that return a struct (e.g. `observe` returns the
+    full Observable as a JSON object). Booleans inside object results
+    are encoded by C++ as 0/1 numerics for wire-format simplicity.
     """
 
     model_config = ConfigDict(frozen=True)
 
     ok: bool
-    result: float | str | None = None
+    result: float | str | dict[str, Any] | None = None
     error: str | None = None
 
 

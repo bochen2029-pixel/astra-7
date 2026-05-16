@@ -6,6 +6,70 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### D2: stdio_server expansion to §6.4 Narrator-LLM tool surface (2026-05-15)
+
+Closes audit D2 (BLOCKER). The C++ stdio_server exposed only 3 ops
+(`health`, `version`, `compute_apparent_rate`); spec §6.4 Narrator-LLM
+tools called for 6. Adds 5 ops via additive case-statements in
+`astra_nexus::stdio_server::dispatch()` — pure additive C++, no
+behavioral change to existing 48 assertions. ship_state_query (audit
+Q1) intentionally NOT added in C++ — ship-sim state lives in textverse
+Python, not in astra_nexus. Surfaced as separate operator decision.
+
+**5 new ops in [proto/astra_nexus.cpp](proto/astra_nexus.cpp):**
+
+- `kepler_at` — wraps `orbit_phase(Orbit, t)`. Returns true anomaly.
+- `composition_rule_evaluate` — wraps `dtau_dt_cosmic(W, grav, γ, warp_active)`.
+  Returns dτ/dt_cosmic per §3.2.
+- `retarded_time_solve` — returns `t_cosmic − compute_lookback(d, z_cosmo)`.
+  Solves §3.11 retarded-time emit.
+- `observe` — wraps `observe(ship_pos, ship_velocity, t_cosmic, body_pos,
+  body_metric_shift, regime)`. Returns the full Observable struct as a
+  JSON object (wire-format extension; see below).
+- `physics_query` — generic dispatch wrapper. Takes `args.query` (op
+  name) + `args.params` (inner op's args). Routes via recursive
+  dispatch. Self-recursion explicitly rejected.
+
+**Wire-format extension** (additive):
+
+The stdio response wire format previously supported `result: <number | string>`.
+`observe` returns a JSON object, so a third variant is added:
+`{"ok":true,"result":{"d":...,"v_radial":...,...}}`. Implemented via a
+new `make_ok_object(const std::map<string, double>&)` helper. Booleans
+(e.g. `time_reversed`) encoded as 0/1 numerics for wire-format
+simplicity. Python `NexusResponse.result` widened from `float | str |
+None` to `float | str | dict[str, Any] | None`.
+
+**4 new C++ helpers** (`parse_vec3`, `require_number`, `require_string`,
+`require_vec3`) extract the structured args from the parsed JValue tree.
+Vec3 args are passed as `{"x": ..., "y": ..., "z": ...}` (the JSON parser
+doesn't support arrays, by design).
+
+**12 new C++ property tests** (48 → 60 assertions):
+- §6.4 kepler_at: periodicity (phase(t0+P) ≡ phase(t0) mod 2π);
+  monotonicity over one period for eccentric orbit.
+- §6.4 composition_rule_evaluate: rest-identity (γ=1, no grav, rest →
+  1.0); STL γ=2 → 0.5; WARP_CRUISE W=1.0 → 0.5; multiplicative composition.
+- §6.4 retarded_time_solve: lookback @ 1ly ≈ 1 year (within 1%);
+  t_emit < 0 when observing 1ly source from cosmic-zero.
+- §6.4 observe: REST 1ly returns d ≈ 1ly, v_radial=0, apparent_rate≈1,
+  no time-reversal flag.
+
+**8 new Python bridge tests** in `tests/test_nexus_bridge.py` covering
+each new op end-to-end through the JSON wire format:
+- kepler_at periodicity, composition_rule_evaluate identity + WARP cruise,
+  retarded_time_solve at 1 ly, observe full-object return + WARP-recede
+  time-reversal, physics_query inner-op dispatch + self-recursion
+  rejection.
+
+Gates: C++ 60 passed / 0 failed (was 48); Python 499 pytest passing
+(was 491; +8 bridge tests); ruff clean; mypy strict clean (62 source
+files; +0 new). Existing 48 assertions intact (purely additive).
+
+This unblocks Narrator-LLM calculator-bound enforcement (audit
+G1+G2+G13 path), which is the bottleneck for §15.6 universality
+(both LLMs calculator-bound, not just ASTRA).
+
 ### LLMHypothesisGenerator (Stage A) + raw_output forensics (post run-5) (2026-05-15)
 
 Run-5 confirmed bank-exhaustion (outcome ii per operator framing): 0
