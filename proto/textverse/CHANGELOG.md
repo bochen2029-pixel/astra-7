@@ -6,6 +6,66 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### D1: Observable→ObservableState rename + §3.11/§3.12 edge-case flags + v0.128 bump (2026-05-15)
+
+Closes audit D1 (MAJOR) + D6 (COSMETIC) in a single commit per audit
+Pass 5 Tier 1. Code conforms to spec.
+
+**Renames** in [proto/astra_nexus.cpp](proto/astra_nexus.cpp):
+- struct `Observable` → `ObservableState` (matches spec §6.3 v0.127+).
+- field `Observable::d` → `ObservableState::d_proper` (GR-terminology
+  hygiene per spec §6.3).
+- All 60 prior tests + 8 prior Python bridge tests + the new D2 ops
+  updated to track. Backward-incompatible at the wire level —
+  callers must update `result["d"]` → `result["d_proper"]`.
+
+**2 new bool fields** on `ObservableState`:
+- `beyond_photon_history` (§3.11): true when `t_emit < body_t_source_start`.
+  The body hadn't started emitting yet at the retarded time → observation
+  is physically meaningless. `observe()` gains an optional
+  `body_t_source_start` parameter (default `-INFINITY` = "no anchor;
+  never beyond"). The stdio `observe` op accepts an optional
+  `body_t_source_start` in args.
+- `beyond_hubble_horizon` (§3.12): true when `d_proper > c/H_0`. The
+  body is causally disconnected; the linear-z weak-field formula's
+  domain is exceeded. New `constexpr double D_HUBBLE_SI = C_LIGHT / H0_SI`
+  (~13.7 Gly @ H0=70 km/s/Mpc).
+
+**Header bump**: file-header spec ref at line 32 + demo banner at
+line 1001 both bumped from `v0.126`/`v0.127` to `v0.128`. `version`
+op string changed from `astra_nexus v0.128.day2` to `astra_nexus v0.128`.
+
+**6 new C++ property tests** (60 → 66 assertions):
+- §3.11 photon-source-history bound: `observe(t=0, body_t_source_start=+1yr)
+  → beyond_photon_history=true`; `observe(t=+100yr, same source) → false`.
+- §3.12 Hubble-horizon: `observe(body @ 100 Gly) → beyond_hubble_horizon=true`;
+  `observe(body @ 1 Gly) → false`.
+- observe REST: confirms both flags default to false for canonical case.
+
+**3 new Python bridge tests** in `tests/test_nexus_bridge.py`:
+- `test_observe_returns_object_result` updated to use `d_proper` +
+  assert both new flags present and 0 for canonical case.
+- `test_observe_flags_beyond_photon_history` exercises the
+  `body_t_source_start` arg path through JSON.
+- `test_observe_flags_beyond_hubble_horizon` exercises the 100-Gly
+  case.
+- `test_version_op_returns_v0_128` pins the header-bump.
+
+**3 operator_signal entries** appended to `tuning/research_log.jsonl`:
+- D1 closure (`lesson_class: spec_conformance`).
+- D2 closure (`lesson_class: narrator_track_blocker`).
+- Q1 deferred decision on `ship_state_query` (`lesson_class:
+  spec_revision_candidate`).
+
+Gates: C++ 66 passed / 0 failed (was 60); Python 502 pytest (was 499);
+ruff clean; mypy strict clean (62 source files).
+
+Together with D2 (commit fe91036), the §6.4 Narrator-LLM
+calculator-bound surface is now fully implementable in textverse:
+G1 (observe via stdio) + G2 (5 tools landed; ship_state_query Q1)
++ D5 (observation_calc.py shim now has a real backend to wrap) all
+unblocked.
+
 ### D2: stdio_server expansion to §6.4 Narrator-LLM tool surface (2026-05-15)
 
 Closes audit D2 (BLOCKER). The C++ stdio_server exposed only 3 ops

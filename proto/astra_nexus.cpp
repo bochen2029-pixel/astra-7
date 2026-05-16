@@ -29,7 +29,7 @@
 //   5. AstraCoord renormalization round-trip test.
 //   6. Full ordered test suite with PASS/FAIL counters and exit code.
 //
-// Spec references throughout: docs/spec-v0.126.md sections §1.x, §3.x, §4.x.
+// Spec references throughout: docs/spec-v0.128.md sections §1.x, §3.x, §4.x, §6.x.
 // =============================================================================
 
 #include <cstdio>
@@ -40,6 +40,7 @@
 #include <string>
 #include <cctype>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <stdexcept>
 
@@ -62,6 +63,7 @@ constexpr double H0_KMS_MPC  = 70.0;                         // km/s/Mpc (provis
 constexpr double H0_SI       = H0_KMS_MPC * 1000.0 / MPC;    // s⁻¹
 constexpr double OMEGA_M     = 0.3;                          // matter density (provisional)
 constexpr double OMEGA_LAM   = 0.7;                          // dark energy density (provisional)
+constexpr double D_HUBBLE_SI = C_LIGHT / H0_SI;              // m, Hubble horizon (~13.7 Gly @ H0=70)
 
 // v0.126 N1 lock: clamp for 3-vector rapidity magnitude
 constexpr double OMEGA_MAX = 16.811;  // gives γ_max = cosh(16.811) ≈ 1e7
@@ -242,16 +244,21 @@ double dtau_dt_cosmic(double W_warp, double grav_factor, double gamma_kin,
 // This is the regime distinction the v0.127 spec must lock. Conflating the
 // two formulas (as GLM's truth table did) is a physics error.
 // =============================================================================
-struct Observable {
-    double d;              // proper distance (m)
-    double v_radial;       // positive = receding
+// §6.3 v0.128: ObservableState — per-body retarded-time + redshift composition.
+// Renamed from ObservableState (v0.127); added beyond_photon_history + beyond_hubble_horizon
+// flags per spec §3.11, §3.12 (audit D1).
+struct ObservableState {
+    double d_proper;             // proper distance (m). Renamed from `d` for GR-terminology hygiene.
+    double v_radial;             // positive = receding
     double z_cosmo;
     double z_kin;
     double z_metric;
     double z_total;
-    double t_emit;         // retarded time (cosmic seconds)
-    double apparent_rate;  // dt_emit/dt_cosmic — can be < 0 in WARP
+    double t_emit;               // retarded time (cosmic seconds)
+    double apparent_rate;        // dt_emit/dt_cosmic — can be < 0 in WARP
     bool   time_reversed;
+    bool   beyond_photon_history;  // §3.11: true when t_emit < t_source_start (source not yet emitting)
+    bool   beyond_hubble_horizon;  // §3.12: true when d_proper > c/H_0 (causally disconnected)
 };
 
 // Regime-dispatched apparent rate (§3.11 v0.127, §10 validation row)
@@ -306,24 +313,33 @@ double compute_lookback(double d_proper, double z_cosmo) {
     return lb;
 }
 
-Observable observe(Vec3   ship_pos,
-                   Vec3   ship_velocity,
-                   double t_cosmic,
-                   Vec3   body_pos,
-                   double body_metric_shift,
-                   uint32_t regime)
+// §6.3 observe() — full 12-step retarded-time + redshift workflow.
+//
+// `body_t_source_start` is the cosmic-time epoch at which the body began
+// emitting photons (e.g. star-formation onset). When t_emit < t_source_start,
+// `beyond_photon_history` flips true: we'd be observing photons the source
+// hasn't emitted yet, which is physically meaningless. Per spec §13 the
+// per-body t_source_start is provisional; default `-INFINITY` means
+// "always available" for bodies whose history isn't anchored yet.
+ObservableState observe(Vec3   ship_pos,
+                        Vec3   ship_velocity,
+                        double t_cosmic,
+                        Vec3   body_pos,
+                        double body_metric_shift,
+                        uint32_t regime,
+                        double body_t_source_start = -std::numeric_limits<double>::infinity())
 {
-    Observable obs = {};
+    ObservableState obs = {};
     Vec3 to_body = body_pos - ship_pos;
-    obs.d = std::max(to_body.mag(), 1.0);
-    Vec3 r_hat = to_body / obs.d;
+    obs.d_proper = std::max(to_body.mag(), 1.0);
+    Vec3 r_hat = to_body / obs.d_proper;
 
     // v_radial positive when ship moves AWAY from body.
     // ship_velocity points in ship motion direction; r_hat points from ship to body.
     // If ship_velocity is antiparallel to r_hat, ship recedes from body.
     obs.v_radial = -ship_velocity.dot(r_hat);
 
-    obs.z_cosmo  = compute_z_cosmo(obs.d);
+    obs.z_cosmo  = compute_z_cosmo(obs.d_proper);
     obs.z_kin    = compute_z_kin(obs.v_radial);
     obs.z_metric = body_metric_shift;
 
@@ -331,12 +347,20 @@ Observable observe(Vec3   ship_pos,
     obs.z_total = (1.0 + obs.z_cosmo) * (1.0 + obs.z_kin)
                 * (1.0 + obs.z_metric) - 1.0;
 
-    double lookback = compute_lookback(obs.d, obs.z_cosmo);
+    double lookback = compute_lookback(obs.d_proper, obs.z_cosmo);
     obs.t_emit = t_cosmic - lookback;
 
     obs.apparent_rate = compute_apparent_rate(obs.v_radial, regime)
                       / (1.0 + obs.z_cosmo);
     obs.time_reversed = obs.apparent_rate < 0.0;
+
+    // §3.11: source-history bound. True when retarded time precedes the
+    // body's first emission (body wasn't emitting yet at t_emit).
+    obs.beyond_photon_history = obs.t_emit < body_t_source_start;
+
+    // §3.12: Hubble horizon. True when proper distance exceeds c/H_0
+    // (causally disconnected; the linear-z weak-field formula's domain).
+    obs.beyond_hubble_horizon = obs.d_proper > D_HUBBLE_SI;
 
     return obs;
 }
@@ -615,15 +639,15 @@ void run_all() {
     }
 
     // -------- End-to-end observation --------
-    section("Observation end-to-end (Observable struct)");
+    section("Observation end-to-end (ObservableState struct)");
     {
         Vec3 ship{0, 0, 0};
         Vec3 body{0, 0, -10.0 * LIGHT_YEAR};
         Vec3 vwarp{0, 0, 100.0 * C_LIGHT};  // warp 100c in +z direction
         double t_cosmic = 1.0e10;
 
-        Observable obs = observe(ship, vwarp, t_cosmic, body, 0.0, R_WARP_CRUISE);
-        check_close(obs.d, 10.0 * LIGHT_YEAR, 1.0,
+        ObservableState obs = observe(ship, vwarp, t_cosmic, body, 0.0, R_WARP_CRUISE);
+        check_close(obs.d_proper, 10.0 * LIGHT_YEAR, 1.0,
                     "Distance to body = 10 ly");
         check_close(obs.v_radial / C_LIGHT, 100.0, 1e-6,
                     "v_radial = 100c (receding at warp)");
@@ -644,13 +668,13 @@ void run_all() {
         Vec3 vwarp{0, 0, 2.0 * C_LIGHT};  // warp away at 2c
 
         double t0 = 1.0e10;
-        Observable o0 = observe({0,0,0}, vwarp, t0, body_pos, 0.0, R_WARP_CRUISE);
+        ObservableState o0 = observe({0,0,0}, vwarp, t0, body_pos, 0.0, R_WARP_CRUISE);
 
         // 30 cosmic days later, ship has moved 30 light-days further away
         double dt = 30.0 * 86400.0;
         Vec3 ship_t1{0, 0, vwarp.z * dt};
         double t1 = t0 + dt;
-        Observable o1 = observe(ship_t1, vwarp, t1, body_pos, 0.0, R_WARP_CRUISE);
+        ObservableState o1 = observe(ship_t1, vwarp, t1, body_pos, 0.0, R_WARP_CRUISE);
 
         std::printf("         t0: ship at z=0,  t_emit=%.6e s\n", o0.t_emit);
         std::printf("         t1: ship at z=%.3g ly, t_emit=%.6e s\n",
@@ -777,15 +801,56 @@ void run_all() {
         Vec3 ship_pos{0, 0, 0};
         Vec3 ship_vel{0, 0, 0};
         Vec3 body{0, 0, -1.0 * LIGHT_YEAR};
-        Observable obs = observe(ship_pos, ship_vel, 1.0e10, body, 0.0, R_REST);
-        check_close(obs.d, 1.0 * LIGHT_YEAR, 1.0,
-                    "observe: REST 1ly returns d ≈ 1 ly");
+        ObservableState obs = observe(ship_pos, ship_vel, 1.0e10, body, 0.0, R_REST);
+        check_close(obs.d_proper, 1.0 * LIGHT_YEAR, 1.0,
+                    "observe: REST 1ly returns d_proper ≈ 1 ly");
         check_close(obs.v_radial, 0.0, 1e-6,
                     "observe: REST returns v_radial == 0");
         check_close(obs.apparent_rate, 1.0, 0.02,
                     "observe: REST returns apparent_rate ≈ 1.0 (real-time)");
         check(!obs.time_reversed,
               "observe: REST does not flag time_reversed");
+        check(!obs.beyond_photon_history,
+              "observe: 1ly source with no t_source_start anchor → beyond_photon_history=false");
+        check(!obs.beyond_hubble_horizon,
+              "observe: 1ly source within Hubble horizon → beyond_hubble_horizon=false");
+    }
+
+    section("§3.11 photon-source-history bound flag (D1 of audit)");
+    {
+        // Source started emitting at t_cosmic = 1e10 + 1 yr.
+        // Observe from cosmic-zero with 1ly lookback → t_emit ≈ -1yr.
+        // Source's first emission at +1 yr is AFTER our observed photon's
+        // emission time → beyond_photon_history=true.
+        Vec3 ship{0, 0, 0};
+        Vec3 vel{0, 0, 0};
+        Vec3 body{0, 0, -1.0 * LIGHT_YEAR};
+        double one_year = LIGHT_YEAR / C_LIGHT;
+        // body_t_source_start = +1 year (in cosmic time). Observing from t=0:
+        // t_emit = 0 - lookback ≈ -1 year, which is < +1 year → beyond.
+        ObservableState early = observe(ship, vel, 0.0, body, 0.0, R_REST, one_year);
+        check(early.beyond_photon_history,
+              "observe: t_emit < body_t_source_start → beyond_photon_history=true");
+        // Same body, observing 100 years later — t_emit ≈ +99yr, > +1yr → NOT beyond.
+        ObservableState late = observe(ship, vel, 100.0 * one_year, body, 0.0, R_REST, one_year);
+        check(!late.beyond_photon_history,
+              "observe: t_emit > body_t_source_start → beyond_photon_history=false");
+    }
+
+    section("§3.12 Hubble-horizon flag (D1 of audit)");
+    {
+        // Body 100 Gly away >> Hubble horizon (~13.7 Gly @ H0=70).
+        Vec3 ship{0, 0, 0};
+        Vec3 vel{0, 0, 0};
+        Vec3 far_body{0, 0, -100.0e9 * LIGHT_YEAR};
+        ObservableState beyond = observe(ship, vel, 1.0e10, far_body, 0.0, R_REST);
+        check(beyond.beyond_hubble_horizon,
+              "observe: 100 Gly > c/H0 → beyond_hubble_horizon=true");
+        // 1 Gly is well inside the horizon.
+        Vec3 inside_body{0, 0, -1.0e9 * LIGHT_YEAR};
+        ObservableState inside = observe(ship, vel, 1.0e10, inside_body, 0.0, R_REST);
+        check(!inside.beyond_hubble_horizon,
+              "observe: 1 Gly < c/H0 → beyond_hubble_horizon=false");
     }
 
     std::printf("\n============== SUMMARY: %d passed, %d failed ==============\n",
@@ -797,10 +862,10 @@ void run_all() {
 // =============================================================================
 // Demo: ship traversing regimes, observing a system left behind
 // =============================================================================
-void print_obs_row(const char* label, const Observable& o) {
+void print_obs_row(const char* label, const ObservableState& o) {
     std::printf("  %-32s d=%6.2f ly | v_rad=%+8.2fc | rate=%+10.4f",
                 label,
-                o.d / LIGHT_YEAR,
+                o.d_proper / LIGHT_YEAR,
                 o.v_radial / C_LIGHT,
                 o.apparent_rate);
     if (o.time_reversed) {
@@ -845,7 +910,7 @@ void demo_voyage() {
     };
 
     for (const auto& p : phases) {
-        Observable o = observe(p.ship_pos, p.ship_vel, t, planet, 0.0, p.regime);
+        ObservableState o = observe(p.ship_pos, p.ship_vel, t, planet, 0.0, p.regime);
         print_obs_row(p.label, o);
     }
     std::printf("\nNote: STL_REL formulas (SR longitudinal Doppler) and WARP formulas\n");
@@ -1078,7 +1143,7 @@ static std::string dispatch(const JValue& req) {
     }
 
     if (op == "version") {
-        return make_ok_string("astra_nexus v0.128.day2");
+        return make_ok_string("astra_nexus v0.128");
     }
 
     if (op == "compute_apparent_rate") {
@@ -1154,7 +1219,7 @@ static std::string dispatch(const JValue& req) {
     }
 
     if (op == "observe") {
-        // §6.3 12-step observation workflow. Returns the full Observable
+        // §6.3 12-step observation workflow. Returns the full ObservableState
         // struct as a JSON object. Wire format extension: object result.
         if (args.type != JValue::OBJECT) return make_error("'args' must be an object");
         try {
@@ -1164,18 +1229,28 @@ static std::string dispatch(const JValue& req) {
             Vec3 body_pos       = require_vec3(args, "body_pos");
             double body_metric  = require_number(args, "body_metric_shift");
             uint32_t regime     = parse_regime_string(require_string(args, "regime"));
-            Observable obs = observe(ship_pos, ship_velocity, t_cosmic,
-                                     body_pos, body_metric, regime);
+            // Optional body_t_source_start (§3.11 photon-history bound).
+            // Default: -infinity → never beyond_photon_history.
+            double body_t_source_start = -std::numeric_limits<double>::infinity();
+            auto it_tss = args.obj.find("body_t_source_start");
+            if (it_tss != args.obj.end() && it_tss->second.type == JValue::NUMBER) {
+                body_t_source_start = it_tss->second.n;
+            }
+            ObservableState obs = observe(ship_pos, ship_velocity, t_cosmic,
+                                     body_pos, body_metric, regime,
+                                     body_t_source_start);
             std::map<std::string, double> result;
-            result["d"]              = obs.d;
-            result["v_radial"]       = obs.v_radial;
-            result["z_cosmo"]        = obs.z_cosmo;
-            result["z_kin"]          = obs.z_kin;
-            result["z_metric"]       = obs.z_metric;
-            result["z_total"]        = obs.z_total;
-            result["t_emit"]         = obs.t_emit;
-            result["apparent_rate"]  = obs.apparent_rate;
-            result["time_reversed"]  = obs.time_reversed ? 1.0 : 0.0;
+            result["d_proper"]              = obs.d_proper;
+            result["v_radial"]              = obs.v_radial;
+            result["z_cosmo"]               = obs.z_cosmo;
+            result["z_kin"]                 = obs.z_kin;
+            result["z_metric"]              = obs.z_metric;
+            result["z_total"]               = obs.z_total;
+            result["t_emit"]                = obs.t_emit;
+            result["apparent_rate"]         = obs.apparent_rate;
+            result["time_reversed"]         = obs.time_reversed ? 1.0 : 0.0;
+            result["beyond_photon_history"] = obs.beyond_photon_history ? 1.0 : 0.0;
+            result["beyond_hubble_horizon"] = obs.beyond_hubble_horizon ? 1.0 : 0.0;
             return make_ok_object(result);
         } catch (const std::exception& e) {
             return make_error(e.what());
@@ -1250,7 +1325,7 @@ int main(int argc, char** argv) {
     std::printf("====================================================================\n");
     std::printf(" ASTRA-7 Unified Physics Nexus — Compileable Demonstration\n");
     std::printf(" Proving 14-equation framework composes (SR + GR + Warp + Cosmology)\n");
-    std::printf(" Spec ref: docs/spec-v0.126.md + §3.11/§4.2 v0.127 (Observation)\n");
+    std::printf(" Spec ref: docs/spec-v0.128.md (full envelope)\n");
     std::printf("====================================================================\n");
 
     test::run_all();

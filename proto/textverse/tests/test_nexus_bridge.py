@@ -180,7 +180,8 @@ def test_observe_returns_object_result() -> None:
     """observe() returns the full ObservableState as a JSON object.
 
     Verifies the wire-format extension (object result) and the §6.3
-    field set is present.
+    field set is present, including the v0.128 D1 additions
+    `beyond_photon_history` + `beyond_hubble_horizon`.
     """
     light_year = 9.4607e15
     with NexusBridge() as bridge:
@@ -196,14 +197,67 @@ def test_observe_returns_object_result() -> None:
         assert r.ok
         assert isinstance(r.result, dict)
         for k in (
-            "d", "v_radial", "z_cosmo", "z_kin", "z_metric", "z_total",
+            "d_proper", "v_radial", "z_cosmo", "z_kin", "z_metric", "z_total",
             "t_emit", "apparent_rate", "time_reversed",
+            "beyond_photon_history", "beyond_hubble_horizon",
         ):
             assert k in r.result, f"observe result missing {k}: {r.result}"
-        assert abs(r.result["d"] - light_year) < 1.0
+        assert abs(r.result["d_proper"] - light_year) < 1.0
         assert abs(r.result["v_radial"]) < 1e-6
         assert abs(r.result["apparent_rate"] - 1.0) < 0.02
         assert r.result["time_reversed"] == 0.0
+        assert r.result["beyond_photon_history"] == 0.0
+        assert r.result["beyond_hubble_horizon"] == 0.0
+
+
+@pytest.mark.requires_nexus
+def test_observe_flags_beyond_photon_history() -> None:
+    """When t_emit < body_t_source_start the observation crosses §3.11
+    photon-source-history bound — the source wasn't yet emitting."""
+    light_year = 9.4607e15
+    one_year = light_year / C_LIGHT
+    with NexusBridge() as bridge:
+        r = bridge.call(
+            "observe",
+            ship_pos={"x": 0.0, "y": 0.0, "z": 0.0},
+            ship_velocity={"x": 0.0, "y": 0.0, "z": 0.0},
+            t_cosmic=0.0,
+            body_pos={"x": 0.0, "y": 0.0, "z": -1.0 * light_year},
+            body_metric_shift=0.0,
+            regime="REST",
+            body_t_source_start=one_year,    # source not emitting until +1yr
+        )
+        assert r.ok and isinstance(r.result, dict)
+        # t_emit ≈ -1yr (lookback); body_t_source_start = +1yr; -1 < +1 → flag set
+        assert r.result["beyond_photon_history"] == 1.0
+
+
+@pytest.mark.requires_nexus
+def test_observe_flags_beyond_hubble_horizon() -> None:
+    """A body at 100 Gly is beyond c/H0 (~13.7 Gly @ H0=70 km/s/Mpc)."""
+    light_year = 9.4607e15
+    with NexusBridge() as bridge:
+        r = bridge.call(
+            "observe",
+            ship_pos={"x": 0.0, "y": 0.0, "z": 0.0},
+            ship_velocity={"x": 0.0, "y": 0.0, "z": 0.0},
+            t_cosmic=1.0e10,
+            body_pos={"x": 0.0, "y": 0.0, "z": -100.0e9 * light_year},
+            body_metric_shift=0.0,
+            regime="REST",
+        )
+        assert r.ok and isinstance(r.result, dict)
+        assert r.result["beyond_hubble_horizon"] == 1.0
+
+
+@pytest.mark.requires_nexus
+def test_version_op_returns_v0_128() -> None:
+    """Header bump verification: version op reports v0.128."""
+    with NexusBridge() as bridge:
+        r = bridge.call("version")
+        assert r.ok
+        assert isinstance(r.result, str)
+        assert "v0.128" in r.result
 
 
 @pytest.mark.requires_nexus
