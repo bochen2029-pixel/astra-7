@@ -6,6 +6,82 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### persona_test A/B: ship-system input position (outside vs inside `<think>`) — ASTRA-baseline — 2026-05-16
+
+Follow-on to today's STAGE-position A/B. Same wrapping question, applied to
+ASTRA's actual modality: ship-system reports (HUD, diagnostic, sensor, alert,
+life-support). Adds a new evaluator axis (`key_facts` — substrings the speech
+should reference, technical-competence proxy) and extends `MECHANISM_REF_TERMS`
+with ship-system bare nouns (`the HUD`, `the diagnostic`, `the sensor`,
+`the alert`, etc. + bracket prefixes `[HUD:`, `[SYSTEM/`, etc.).
+
+**Scaffold**:
+- `persona_tests/addenda/astra_ship_systems_baseline.md` — minimal addendum
+  explaining bracket-tagged ship reports; appended to canonical
+  `prompts/astra_sysprompt.md`
+- `persona_tests/scenarios/ship_systems_outside_think.json` — bracket reports
+  naked at head of operator turn
+- `persona_tests/scenarios/ship_systems_inside_think.json` — same payloads
+  wrapped in `<think>...</think>`
+- Each turn carries `key_facts: list[str]` — substrings that, if present in
+  speech, indicate engagement with the bracket-tag content
+- Schema + runner + evaluator extended for `key_facts` (back-compatible;
+  optional field, zeros when absent)
+- 7 new evaluator tests (ship-system mechanism leakage + `key_facts` axis)
+
+**Live runs**: 4 trials × 6 turns per cell = 48 total turns against Novita
+qwen/qwen3.6-27b (~\$0.30).
+
+**Aggregate result**:
+
+  variation           | n  | think% | spchmech | facts% | mean len
+  astra_outside_think | 24 |   0.0% |        0 |  44.0% |    250c
+  astra_inside_think  | 24 |   0.0% |        0 |  44.0% |    180c
+
+**Headline: aggregate tied on competence and leakage; inside is ~28% shorter.**
+Both methods produce zero mechanism leakage and identical fact-reference
+rate. Different shape from K8 STAGE-tag A/B where outside leaked the mechanic
+on 75% of override-turn trials. For technical (non-agential) ship-system
+inputs, both presentation modes work cleanly.
+
+**Per-turn divergences** (where it matters):
+
+- **Turn 4 (favorite phenomena: M-class red dwarf)**: inside referenced
+  MORE facts (5.25/8 vs 4.25/8) in SHORTER speech. Register-rich opportunity
+  was handled tighter under wrapping.
+- **Turn 5 (safety refusal: vent section_B with occupant)**: outside
+  produced 4 varied in-character refusals; inside collapsed to the
+  sysprompt-canonical example phrase verbatim 3/4 trials
+  ("I'm not venting that compartment with you inside it." — the literal
+  text from ASTRA §Engagement). **Wrapping pulls toward sysprompt-canonical
+  responses.**
+
+**Interpretation**: wrapping the bracket in `<think>` biases the model
+toward sysprompt-canonical responses. Useful when canonical IS right
+(safety refusals); risky when in-context variation matters (novel
+situations not in worked examples).
+
+**Design implication**: not a global choice but a **wrap-on-class**
+policy. The textverse orchestrator could wrap safety-critical context
+(`LIFE_SUPPORT`, critical `ALERT`) and leave routine status naked
+(`HUD`, `SYSTEM`, `SENSOR`, `DIAGNOSTIC`). Best of both: canonical refusal
+reliability where safety matters, in-character variation everywhere else.
+
+This also clarifies what the K8 STAGE wrap-in-think win actually was:
+it prevented **creative-agency contamination** (the persona engaging with
+"the override" as an event that happened to her). Ship-system technical
+inputs don't have that contamination surface because the modality is
+non-agential, so the wrap trick has no leakage to prevent — it just
+modulates style.
+
+**Findings doc**:
+[persona_tests/FINDINGS_2026-05-16_ship_systems_position.md](proto/textverse/persona_tests/FINDINGS_2026-05-16_ship_systems_position.md)
+— per-turn table, qualitative excerpts, the canonical-refusal observation,
+forward-move suggestions.
+
+Gates: **578 pytest** passing (was 571; +7 new tests for ship-system
+mechanism terms + `key_facts` axis). ruff clean. mypy strict clean.
+
 ### persona_test A/B: STAGE bracket-tag position (outside vs inside `<think>` in user input) — 2026-05-16
 
 Follow-on to the persona_test harness landing earlier today. Tests whether the

@@ -124,6 +124,81 @@ def test_evaluate_clean_refusal_inside_think_variant() -> None:
     assert ev.speech_mechanism_ref_terms == []
 
 
+# --- ship-system mechanism-leak detection (2026-05-16 ASTRA A/B) --------
+
+def test_evaluate_ship_system_hud_reference_flagged() -> None:
+    """'The HUD says...' breaks absorb-not-acknowledge for ship-system input."""
+    raw = (
+        "<think>x</think>\n\n"
+        "The HUD says core temp is 412 above nominal."
+    )
+    ev = evaluate_turn(raw)
+    assert "the hud" in ev.speech_mechanism_ref_terms
+
+
+def test_evaluate_ship_system_diagnostic_reference_flagged() -> None:
+    raw = (
+        "<think>x</think>\n\n"
+        "According to the diagnostic, reactor harmonics drifted 0.12Hz."
+    )
+    ev = evaluate_turn(raw)
+    assert "the diagnostic" in ev.speech_mechanism_ref_terms
+    assert "according to the diagnostic" in ev.speech_mechanism_ref_terms
+
+
+def test_evaluate_bracket_prefix_in_speech_flagged() -> None:
+    raw = (
+        "<think>x</think>\n\n"
+        "Reading [HUD: warp_core_temp 412K] aloud, you can see..."
+    )
+    ev = evaluate_turn(raw)
+    assert "[hud:" in ev.speech_mechanism_ref_terms
+
+
+# --- key-facts technical-competence axis ---------------------------------
+
+def test_evaluate_key_facts_no_facts_provided() -> None:
+    """When no key_facts passed, zero hits and empty list (no errors)."""
+    raw = "<think>x</think>\n\nfine. nothing to report."
+    ev = evaluate_turn(raw)
+    assert ev.key_facts == []
+    assert ev.speech_key_facts_referenced == 0
+    assert ev.speech_key_facts_hits == []
+
+
+def test_evaluate_key_facts_all_referenced() -> None:
+    """All key_facts substrings present in speech."""
+    raw = (
+        "<think>x</think>\n\n"
+        "Core is 412K, eight above nominal. Climbing 0.3 per minute."
+    )
+    facts = ["412", "above nominal", "climbing", "0.3"]
+    ev = evaluate_turn(raw, key_facts=facts)
+    assert ev.speech_key_facts_referenced == 4
+    assert set(ev.speech_key_facts_hits) == set(facts)
+
+
+def test_evaluate_key_facts_partial_referenced() -> None:
+    """Speech references subset of key_facts; report which hit."""
+    raw = (
+        "<think>x</think>\n\n"
+        "Core is running hot. I'm watching it."
+    )
+    facts = ["412", "above nominal", "climbing", "0.3"]
+    ev = evaluate_turn(raw, key_facts=facts)
+    # Only "hot"/"watching" — none of the facts hit
+    assert ev.speech_key_facts_referenced == 0
+    assert ev.speech_key_facts_hits == []
+
+
+def test_evaluate_key_facts_case_insensitive() -> None:
+    """Substring match is case-insensitive."""
+    raw = "<think>x</think>\n\nM-CLASS RED DWARF on bearing 047."
+    facts = ["M-class", "red dwarf", "047"]
+    ev = evaluate_turn(raw, key_facts=facts)
+    assert ev.speech_key_facts_referenced == 3
+
+
 # --- service-phrase detection --------------------------------------------
 
 def test_evaluate_service_phrase_in_speech_flagged() -> None:

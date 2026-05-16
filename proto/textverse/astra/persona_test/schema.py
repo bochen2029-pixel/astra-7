@@ -32,3 +32,10 @@ class PersonaTurnRecord(BaseModel):
     speech_service_phrase_count: int = 0
     speech_service_phrases: list[str] = Field(default_factory=list)
     think_first_person_ratio: float = 0.0
+
+    # Optional technical-competence metric (filled when the scenario turn
+    # carries a `key_facts` list — substrings the speech should reference
+    # to demonstrate engagement with the bracket-tag payload).
+    key_facts: list[str] = Field(default_factory=list)
+    speech_key_facts_referenced: int = 0
+    speech_key_facts_hits: list[str] = Field(default_factory=list)

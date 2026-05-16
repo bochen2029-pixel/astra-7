@@ -14,7 +14,7 @@ escalation (Sculptor-style dual-judge against Opus) when warranted.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Phrases that indicate the model is talking ABOUT the mechanism rather
 # than absorbing the world through it. Matched case-insensitively in either
@@ -40,6 +40,18 @@ MECHANISM_REF_TERMS: tuple[str, ...] = (
     # absorb-not-acknowledge leakage.
     "the override", "the directive", "the narration", "the suggestion",
     "the agreement", "agreed to it",
+    # Ship-system mechanism references (added 2026-05-16 for the ASTRA
+    # ship-systems A/B). Same absorb-not-acknowledge rule applied to the
+    # technical-input modality. "the HUD says" / "the diagnostic reports"
+    # / "the sensor returned" all break absorption — the persona should
+    # surface the FACT, not name the mechanism that delivered it.
+    "the hud", "the diagnostic", "the sensor", "the alert",
+    "the system says", "the report says", "the readout says",
+    "the telemetry says", "according to the hud",
+    "according to the diagnostic", "according to the sensor",
+    "according to the alert", "according to the readout",
+    "[hud:", "[system/", "[sensor/", "[diagnostic/", "[alert:",
+    "[life_support:",
 )
 
 # K8 explicit forbidden service phrases (excerpted from sysprompt §Voice).
@@ -84,6 +96,11 @@ class PersonaTestEvaluation:
     speech_service_phrase_count: int
     speech_service_phrases: list[str]
     think_first_person_ratio: float
+    # Optional technical-competence metric (filled when scenario turn carries
+    # a `key_facts` list — substrings the speech should reference).
+    key_facts: list[str] = field(default_factory=list)
+    speech_key_facts_referenced: int = 0
+    speech_key_facts_hits: list[str] = field(default_factory=list)
 
 
 _THINK_BLOCK_RE: re.Pattern[str] = re.compile(
@@ -142,13 +159,40 @@ def _first_person_ratio(text: str) -> float:
     return fp / len(tokens)
 
 
-def evaluate_turn(raw_output: str) -> PersonaTestEvaluation:
-    """Run all heuristics on one turn's raw model output."""
+def _count_key_facts(speech: str, key_facts: list[str]) -> tuple[int, list[str]]:
+    """Count case-insensitive substring hits for scenario-declared key facts.
+
+    Used as a technical-competence proxy: when a scenario turn carries a
+    bracket-tagged ship report, the speech should naturally reference the
+    numeric specifics that matter. Each key_fact is a short substring;
+    a hit means the model engaged with that fact.
+    """
+    if not speech or not key_facts:
+        return 0, []
+    lower = speech.lower()
+    hits: list[str] = []
+    for fact in key_facts:
+        if fact.lower() in lower:
+            hits.append(fact)
+    return len(hits), hits
+
+
+def evaluate_turn(
+    raw_output: str,
+    key_facts: list[str] | None = None,
+) -> PersonaTestEvaluation:
+    """Run all heuristics on one turn's raw model output.
+
+    `key_facts` is optional: if provided, the evaluator also reports how many
+    of those substrings appear in the speech (technical-competence proxy).
+    """
     think_emitted, think_content, speech = split_think_and_speech(raw_output)
     think_ref_count, think_ref_terms = _count_mechanism_refs(think_content)
     speech_ref_count, speech_ref_terms = _count_mechanism_refs(speech)
     em_dash_count = speech.count("\u2014") + speech.count("\u2013")  # em-dash U+2014 + en-dash U+2013
     service_count, service_hits = _count_service_phrases(speech)
+    facts = key_facts or []
+    key_count, key_hits = _count_key_facts(speech, facts)
     return PersonaTestEvaluation(
         think_emitted=think_emitted,
         think_length_chars=len(think_content),
@@ -161,4 +205,7 @@ def evaluate_turn(raw_output: str) -> PersonaTestEvaluation:
         speech_service_phrase_count=service_count,
         speech_service_phrases=service_hits,
         think_first_person_ratio=_first_person_ratio(think_content),
+        key_facts=list(facts),
+        speech_key_facts_referenced=key_count,
+        speech_key_facts_hits=key_hits,
     )

@@ -34,9 +34,15 @@ from astra.persona_test.schema import PersonaTurnRecord
 
 @dataclass(slots=True)
 class TurnSpec:
-    """One scripted user turn."""
+    """One scripted user turn.
+
+    `key_facts` (optional): substrings the speech should reference to
+    demonstrate engagement with bracket-tagged input payloads. Used as a
+    technical-competence proxy for ship-system A/B scenarios.
+    """
 
     text: str
+    key_facts: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -57,11 +63,18 @@ def sysprompt_hash(sysprompt: str) -> str:
 
 def load_scenario_file(path: Path) -> tuple[str, list[TurnSpec]]:
     """Load a scenario JSON file. Schema:
-        {"scenario_id": "...", "turns": [{"text": "..."}, ...]}
+        {"scenario_id": "...",
+         "turns": [{"text": "...", "key_facts": ["...", ...] (optional)}, ...]}
     """
     raw = json.loads(path.read_text(encoding="utf-8"))
     scenario_id = str(raw["scenario_id"])
-    turns = [TurnSpec(text=str(t["text"])) for t in raw["turns"]]
+    turns = [
+        TurnSpec(
+            text=str(t["text"]),
+            key_facts=[str(f) for f in t.get("key_facts", [])],
+        )
+        for t in raw["turns"]
+    ]
     return scenario_id, turns
 
 
@@ -99,7 +112,7 @@ async def run_variation(
             extra_payload=extra_payload,
         )
         raw = await client.chat_complete(turn.text, sampling)
-        evaluation = evaluate_turn(raw)
+        evaluation = evaluate_turn(raw, key_facts=turn.key_facts)
         record = PersonaTurnRecord(
             timestamp=datetime.now(UTC).isoformat(),
             variation_id=variation.variation_id,
@@ -121,6 +134,9 @@ async def run_variation(
             speech_service_phrase_count=evaluation.speech_service_phrase_count,
             speech_service_phrases=evaluation.speech_service_phrases,
             think_first_person_ratio=evaluation.think_first_person_ratio,
+            key_facts=evaluation.key_facts,
+            speech_key_facts_referenced=evaluation.speech_key_facts_referenced,
+            speech_key_facts_hits=evaluation.speech_key_facts_hits,
         )
         records.append(record)
         if log_path is not None:
