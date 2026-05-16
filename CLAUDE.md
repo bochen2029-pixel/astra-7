@@ -52,18 +52,36 @@ This is the hardest project-level lock in the canon. New files compile, not inte
 
 If a need can only be met by Python today, that need is deferred until a C/C++ replacement exists. Python is not a fallback.
 
-### Existing Python (mostly frozen; Sculptor carve-out)
+### Existing Python (textverse carve-out widened; everything else frozen or forbidden)
 
-Most existing Python artifacts run as-is. **No new features. No extensions.** Bug fixes only when they block other work, with explicit operator approval per fix.
+The `proto/textverse/` directory — the entire closed-loop verification bench plus Sculptor plus all associated infrastructure — retains active Python development latitude. This is the canonical measurement instrument for ASTRA-7 and is **permitted Python additions, modifications, and extensions** per operator authorization (2026-05-15, widened from initial Sculptor-only carve-out).
 
-- `proto/textverse/` **excluding `astra/sculptor/`** — Phase 1 closed-loop bench. The measurement instrument. Frozen. Bug fixes only.
-- `proto/verify_nexus.py` — 45-assertion Python mirror of `astra_nexus.cpp`. Frozen; C++ test harness replaces when written.
+**Scope of the textverse carve-out (Python development allowed):**
 
-**Sculptor carve-out (2026-05-15, operator-authorized):** `proto/textverse/astra/sculptor/` retains active Python development latitude as the load-bearing autonomous research methodology. New `HypothesisGenerator` subclasses (including LLM-flavored hypothesizers per `proto/textverse/tuning/SCULPTOR_STARTUP.md` §6.1), new judges, new convergence detectors, new diagnostic tooling, and new bench-infrastructure forward-fixes are permitted within the Sculptor pipeline. Rationale: Sculptor IS the active measurement substrate producing durable research findings (4 durable promotes + composite-scenario-dependence + bank-exhausted finding as of run-5); rewriting in C/C++ at this stage is premature optimization that would slow the science. Sculptor's C/C++ port, if pursued later, happens after Sculptor either converges or is structurally subsumed by Phase E infrastructure — not now.
+- `proto/textverse/astra/` — entire textverse module tree, all subdirectories (sculptor, harness, judge, scenarios, grammar, llm, physics, ship, state_bus, universe, core, cli, etc.)
+- `proto/textverse/tests/` — all test files
+- `proto/textverse/tuning/` — Sculptor configuration, research log artifacts, scope.yaml
+- `proto/textverse/scripts/` — bench utility scripts
+- `proto/textverse/prompts/` — sysprompt and addendum markdown (already covered as data files)
+- New Python files in any subdirectory of `proto/textverse/`
 
-The carve-out is narrow: only the Sculptor pipeline itself. Test files under `proto/textverse/tests/test_sculptor_*.py` are covered (they test the active pipeline). Anything else in `proto/textverse/` (the bench measurement instrument, the LLM client, the persona harness, the scenario runner, the LCP judge, the CLI) remains frozen. Bug fixes there still require explicit operator approval per fix.
+The carve-out exists because textverse IS the active measurement instrument that validates everything else. The audit (`AUDIT_2026-05-15.md`) identified multiple Phase 0.x forward-work items in textverse modules: REEL canonical schema, WarpState in StateBus, `observation_calc.py` full expansion to §6.3 module, ephemeral instances per §4.9 (consolidate_reel, generate_journal, detect_drift), output validator extension for Narrator-LLM calculator-bound enforcement, SaveFile v3 serialization, `detect_regime()` callable. All of those are now **permitted Python work**, not blocked.
 
-The `book/production/` Python toolchain has done its job (volume 1 submitted to KDP). It is shipped and dormant. **No further development.** Future book volume production happens in C/C++/C# tooling, not by extending the Python scripts.
+**Rationale for widening:**
+
+- Textverse is the active research substrate per spec §15.7. It is **permanent infrastructure**, not throw-away scaffolding — it runs alongside UE5 forever as the contract-conformance regression environment.
+- Forcing a C/C++ rewrite at this stage is premature optimization that would slow both the science (Sculptor research methodology) and the audit-resolution forward plan (Phase 0.x ephemeral instances + adversarial probes).
+- The eventual textverse → UE5 substrate transition (Phase 2.0 per §12) happens by **swapping two adapter components** (perception assembler + tool dispatcher), NOT by rewriting the entire bench in C/C++.
+- The Python latitude is bounded to the measurement instrument; it does not extend into shipped-game runtime, production tooling, or any other track.
+
+**Still frozen / forbidden (no relaxation):**
+
+- `proto/verify_nexus.py` — frozen; C++ test harness replaces when written
+- `book/production/` — shipped and dormant; volume 2 + 3 production goes through fresh C/C++/C# tooling
+- All other tracks (Track B UE5 plugin, Track C nexus C++ extensions, new asset bake tools, build helpers, CI scripts outside textverse): C/C++/C# per the directive
+- New `.py` files **anywhere outside `proto/textverse/`**: rejected at review
+- Python interpreters, libpython linkage, embedded interpreters in any shipped-game or engine-adjacent code: forbidden
+- Python wrappers around C/C++ libraries (e.g., `faster-whisper`, `pyvista`) in any new context: use the C++ library directly
 
 ### Rationale
 
@@ -97,10 +115,10 @@ The `book/production/` Python toolchain has done its job (volume 1 submitted to 
 
 ### Enforcement
 
-- Any new `.py` file anywhere **except `proto/textverse/astra/sculptor/`** (and its tests `proto/textverse/tests/test_sculptor_*.py`): rejected at review. Sculptor carve-out is the only exception.
+- Any new `.py` file anywhere **except inside `proto/textverse/`**: rejected at review. Textverse is the only Python-permitted location.
 - Any new dependency dragging in Python as transitive dep: rejected. Vet libraries by installed footprint, not advertised interface.
 - Build-time audit (per §5.10) extended to flag any new `.py` and any new dependency requiring `python` / `libpython` / pip-installed packages.
-- `proto/textverse/` (excluding `astra/sculptor/`) and `proto/verify_nexus.py` get `LEGACY.md` markers noting frozen status. `proto/textverse/astra/sculptor/` is active per the Sculptor carve-out above and does NOT get a LEGACY marker.
+- `proto/verify_nexus.py` gets a `LEGACY.md` marker noting frozen status. `proto/textverse/` is active per the widened textverse carve-out above and does NOT get a LEGACY marker.
 - `book/production/` is dormant; the directory is closed to new work; volume 2 + 3 production goes through fresh C/C++/C# tooling when authored.
 - Canon document updates citing Python as canonical for new work: flagged for correction.
 
