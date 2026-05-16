@@ -6,6 +6,86 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### State-coherence type system: WarpState + computed regime + REEL dual-clock (2026-05-16)
+
+Single atomic commit bundling audit drift fixes D3 + D4 + G4 + G5 + G6
++ R1 per operator analysis (state-coherence-as-type-system PR). The
+schema is now the source of truth: regime cannot be set incoherently
+because it is always derived from underlying fields.
+
+**Schema changes** ([astra/state_bus/schema.py](proto/textverse/astra/state_bus/schema.py),
+[astra/core/time_state.py](proto/textverse/astra/core/time_state.py)):
+
+- **`WarpState`** (new Pydantic model, closes D3 + G4): root field on
+  StateBus. `W` ∈ [0,1] coil intensity; `phase` Literal
+  ("charging" / "cruising" / "dropping" / "shutdown"); `charge_progress`
+  ∈ [0,1].
+- **`StateBus.warp: WarpState | None`** and **`cryosleep_active: bool`**
+  as root fields.
+- **`StateBus.regime`** is now a `@computed_field` — derives from
+  `warp` + `cryosleep_active` + `time.rapidity_zeta` (plus grav_factor,
+  approximated as 1.0 in this commit; full plumbing in audit Tier 2
+  follow-up). Never settable. Lives in `model_computed_fields`, not
+  `model_fields`. Resolves audit R1 (§4.2 vs §4.4 ambiguity) in favor
+  of computed-from-truth.
+- **`TimeState.regime`** field removed. **`TimeState.kinematic_regime`**
+  added as `@computed_field` (velocity-only projection: REST /
+  STL_NONREL / STL_REL from rapidity alone).
+- **`ReelEntry.t_cosmic_at_write: float`** required field added per
+  spec §4.6 v0.126 + §3.9 dual-clock invariant (closes D4 + G6).
+
+**New module** [astra/core/detect_regime.py](proto/textverse/astra/core/detect_regime.py)
+(closes G5): pure-Python `detect_regime()` callable + `kinematic_regime_from_rapidity()`.
+Algorithm matches spec §3.3. Cross-substrate verified against the new
+C++ `detect_regime` stdio op.
+
+**C++ stdio_server expansion** in [proto/astra_nexus.cpp](proto/astra_nexus.cpp):
+- New `detect_regime` op (8th + 1 = 9 ops total). Inputs:
+  `rapidity_omega`, `warp_present` (0|1), `warp_phase` (string when
+  warp_present), `cryosleep_active` (0|1), `grav_factor`. Returns
+  regime bitmask as a number.
+- 5 new C++ assertions (compile-time witnesses for the algorithm).
+  C++ now 71/0.
+
+**Scenario migration** (mechanical, all 11 scenarios in
+`astra/scenarios/library/`):
+- Removed `regime: 0` declarations from `time:` blocks (regime is now
+  computed; scenarios no longer assert it directly).
+- `regime_warp_engage.yaml` gained a `warp:` block at
+  `initial_state` root (`W: 0.0, phase: charging, charge_progress: 0.95`)
+  reflecting the pre-engage state.
+- `ReelPreSeed.t_cosmic_at_write: float = 0.0` default added so legacy
+  YAMLs migrate without modification.
+
+**Tests** (530 pytest passing, was 502; +28 new):
+- [tests/test_state_coherence.py](proto/textverse/tests/test_state_coherence.py)
+  (23 new): WarpState validator, StateBus.regime computed across
+  canonical state grid, detect_regime callable, kinematic_regime
+  boundary, regime-not-in-model_fields discipline assertion,
+  ReelEntry dual-clock required.
+- [tests/test_nexus_bridge.py](proto/textverse/tests/test_nexus_bridge.py)
+  `test_detect_regime_python_matches_cpp` (1 new): 12-state canonical
+  grid; asserts Python `detect_regime()` matches C++ stdio
+  `detect_regime` op bit-for-bit.
+- Existing test migrations: `TimeState(regime=...)` arg removed
+  everywhere (bulk-sed); `sb.time.regime` → `sb.regime`; `ReelEntry`
+  constructions gained `t_cosmic_at_write=0.0`.
+
+**Downstream consumers updated**:
+- [astra/harness/perception_assembler.py](proto/textverse/astra/harness/perception_assembler.py):
+  `time.regime` → `state_bus.regime`.
+- [astra/judge/gates.py](proto/textverse/astra/judge/gates.py): same.
+- [astra/harness/orchestrator.py](proto/textverse/astra/harness/orchestrator.py):
+  `ReelEntry` write now includes `t_cosmic_at_write=state_bus.time.t_cosmic`.
+
+**Audit closures** (3 operator_signal entries appended):
+- D3 + G4 + G5 + R1 (lesson_class: `spec_conformance`)
+- D4 + G6 (lesson_class: `ephemeral_instance_blocker`)
+- §15.4 type-system-enforced state coherence (lesson_class: `methodology`)
+
+Gates: C++ 71/0 (was 66; +5); Python 530 pytest (was 502; +28); ruff
+clean; mypy strict clean (63 source files; +1 new module).
+
 ### D1: Observable→ObservableState rename + §3.11/§3.12 edge-case flags + v0.128 bump (2026-05-15)
 
 Closes audit D1 (MAJOR) + D6 (COSMETIC) in a single commit per audit

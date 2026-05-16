@@ -25,11 +25,24 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ReelEntry(BaseModel):
-    """One REEL entry — ASTRA-voice prose about what she attended to."""
+    """One REEL entry — ASTRA-voice prose about what she attended to.
+
+    Per spec §4.6 v0.126 (required) and §3.9 (dual-clock invariant):
+    both `tau_ship` and `t_cosmic` must be recorded at write time. The
+    cryosleep journal generator (§3.9) cannot satisfy its input contract
+    without `t_cosmic_at_write` — it's the only way to reconstruct
+    "while you were resting" prose with the correct cosmic-time span.
+
+    Remaining canonical fields per spec §4.6 (t_emit_event, regime_at_write,
+    author_instance_id, retrieval_metadata) are reasonable v0 deferrals
+    per §4.6's "inline placeholder" framing — surfaced as audit D4
+    partial; will land with the §4.9 ephemeral-instance work.
+    """
 
     model_config = ConfigDict(frozen=True)
 
-    tau_ship: float = Field(ge=0.0)             # τ_ship at write time
+    tau_ship: float = Field(ge=0.0)              # τ_ship at write time
+    t_cosmic_at_write: float = Field(ge=0.0)     # required per §4.6 v0.126 / §3.9
     body: str                                    # prose; ASTRA's voice
     irreversibility_flag: bool = False           # True for entries about
                                                   # decisions / outcomes that

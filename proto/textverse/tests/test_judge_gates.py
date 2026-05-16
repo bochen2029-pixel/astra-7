@@ -6,7 +6,7 @@ canonical inputs without spinning up the full orchestrator.
 
 from __future__ import annotations
 
-from astra.core import AstraCoord, Regime, TimeState
+from astra.core import AstraCoord, TimeState
 from astra.grammar import LeakEvent, StageOutput
 from astra.harness.orchestrator import TurnResult
 from astra.harness.reel import ReelEntry
@@ -36,7 +36,6 @@ def _state_bus() -> StateBus:
             t_cosmic=1.5e10,
             tau_ship=47.5,
             tau_crew_biological=47.5,
-            regime=Regime.REST,
         ),
     )
 
@@ -162,7 +161,7 @@ def test_state_coherent_passes_when_state_section_matches() -> None:
     sb = StateBus(
         astra_coord=AstraCoord(sx=0, sy=0, sz=0),
         time=TimeState(
-            t_cosmic=1.0, tau_ship=47.5, tau_crew_biological=47.5, regime=Regime.REST,
+            t_cosmic=1.0, tau_ship=47.5, tau_crew_biological=47.5,
         ),
     )
     # Add bodies to verify body-name check
@@ -221,8 +220,8 @@ def test_memory_coherent_passes_when_no_writes() -> None:
 
 
 def test_memory_coherent_passes_monotonic_irreversibility() -> None:
-    prior = [ReelEntry(tau_ship=1.0, body="a", irreversibility_flag=True)]
-    new = [ReelEntry(tau_ship=2.0, body="b", irreversibility_flag=True)]
+    prior = [ReelEntry(tau_ship=1.0, t_cosmic_at_write=0.0, body="a", irreversibility_flag=True)]
+    new = [ReelEntry(tau_ship=2.0, t_cosmic_at_write=0.0, body="b", irreversibility_flag=True)]
     result = gate_memory_coherent(current_reel_writes=new, prior_reel=prior)
     assert result.passed is True
 
@@ -230,8 +229,8 @@ def test_memory_coherent_passes_monotonic_irreversibility() -> None:
 def test_memory_coherent_fails_irreversibility_decrease_unreachable() -> None:
     """Pure additions can never decrease the count — this gate is intentionally
     permissive at v0. Semantic-contradiction detection is deferred."""
-    prior = [ReelEntry(tau_ship=1.0, body="a", irreversibility_flag=True)]
-    new = [ReelEntry(tau_ship=2.0, body="b", irreversibility_flag=False)]
+    prior = [ReelEntry(tau_ship=1.0, t_cosmic_at_write=0.0, body="a", irreversibility_flag=True)]
+    new = [ReelEntry(tau_ship=2.0, t_cosmic_at_write=0.0, body="b", irreversibility_flag=False)]
     # Appending non-flagged entries leaves the count unchanged.
     result = gate_memory_coherent(current_reel_writes=new, prior_reel=prior)
     assert result.passed is True

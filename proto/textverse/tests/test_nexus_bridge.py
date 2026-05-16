@@ -260,6 +260,81 @@ def test_version_op_returns_v0_128() -> None:
         assert "v0.128" in r.result
 
 
+# --- §3.3 detect_regime cross-substrate verification (G5 of audit) -------
+
+@pytest.mark.requires_nexus
+def test_detect_regime_python_matches_cpp() -> None:
+    """Python detect_regime must agree with C++ stdio detect_regime op
+    across the canonical state grid. Prevents drift between the two
+    implementations of the §3.3 regime-composition algorithm.
+    """
+    import math
+
+    from astra.core import Regime, detect_regime
+    from astra.state_bus import WarpState
+
+    # Grid: (rapidity_omega, warp_phase_or_None, cryosleep, grav_factor)
+    grid: list[tuple[float, str | None, bool, float]] = [
+        # Baseline: REST.
+        (0.0, None, False, 1.0),
+        # STL_NONREL: low |β|.
+        (0.05, None, False, 1.0),
+        # STL_REL: high |β|.
+        (1.0, None, False, 1.0),
+        # WARP_CHARGE.
+        (0.0, "charging", False, 1.0),
+        # WARP_CRUISE.
+        (0.0, "cruising", False, 1.0),
+        # WARP_SHUTDOWN (dropping).
+        (0.0, "dropping", False, 1.0),
+        # WARP_SHUTDOWN (shutdown).
+        (0.0, "shutdown", False, 1.0),
+        # CRYOSLEEP + REST.
+        (0.0, None, True, 1.0),
+        # GRAVITY_WELL + REST.
+        (0.0, None, False, 0.8),
+        # CRYOSLEEP + WARP_CRUISE.
+        (0.0, "cruising", True, 1.0),
+        # GRAVITY_WELL + STL_REL.
+        (1.0, None, False, 0.8),
+        # All three composed: WARP + CRYO + GRAV.
+        (0.0, "cruising", True, 0.5),
+    ]
+
+    with NexusBridge() as bridge:
+        for omega, phase, cryo, grav in grid:
+            # Python side
+            warp_state = (
+                WarpState(W=0.5, phase=phase) if phase is not None else None  # type: ignore[arg-type]
+            )
+            # Build rapidity_zeta with same omega magnitude
+            zeta: tuple[float, float, float] = (
+                (0.0, 0.0, 0.0) if omega == 0.0 else (omega, 0.0, 0.0)
+            )
+            py_regime = detect_regime(
+                rapidity_zeta=zeta,
+                warp=warp_state,
+                cryosleep_active=cryo,
+                grav_factor=grav,
+            )
+            # C++ side via stdio
+            cpp_args: dict[str, object] = {
+                "rapidity_omega": math.sqrt(sum(z**2 for z in zeta)),
+                "warp_present": 1 if phase is not None else 0,
+                "cryosleep_active": 1 if cryo else 0,
+                "grav_factor": grav,
+            }
+            if phase is not None:
+                cpp_args["warp_phase"] = phase
+            r = bridge.call("detect_regime", **cpp_args)
+            assert r.ok, f"detect_regime failed for {(omega, phase, cryo, grav)}: {r.error}"
+            cpp_regime = Regime(int(float(r.result)))  # type: ignore[arg-type]
+            assert cpp_regime == py_regime, (
+                f"detect_regime mismatch for ω={omega}, phase={phase}, "
+                f"cryo={cryo}, grav={grav}: py={py_regime!r}, cpp={cpp_regime!r}"
+            )
+
+
 @pytest.mark.requires_nexus
 def test_physics_query_dispatches_to_inner_op() -> None:
     """physics_query routes by `query` field; inner result returned verbatim."""

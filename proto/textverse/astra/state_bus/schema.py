@@ -7,7 +7,16 @@ immutable Pydantic snapshots; each turn produces a new StateBus).
 Layout follows ARCHITECTURE.md §6.1 with one correction: `bh_list` lives at
 StateBus root level per v0.128 §4.2 (the §6.1 sketch nested it inside
 TimeState). This is a sketch/spec divergence resolved in favor of v0.128 §4.2.
-See CHANGELOG Day 1 entry.
+
+**State coherence type system (2026-05-16, audit D3+D4+G4+G5 closure):**
+- `WarpState` is a first-class Pydantic model at StateBus root.
+- `cryosleep_active` is a root bool.
+- `regime` is a `@computed_field` on StateBus — never a settable field.
+  Algorithm in `astra.core.detect_regime.detect_regime`.
+- This resolves audit R1 ambiguity (§4.2 vs §4.4) in favor of
+  computed-from-truth: the schema cannot construct an incoherent
+  state (e.g. WARP_CRUISE bit with zero rapidity) because the bit is
+  always derived from the underlying fields.
 
 All sub-models are frozen. A turn produces a new StateBus; no mutation of
 prior snapshots leaks.
@@ -17,9 +26,11 @@ from __future__ import annotations
 
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from astra.core.astra_coord import AstraCoord
+from astra.core.detect_regime import detect_regime
+from astra.core.regime import Regime
 from astra.core.time_state import TimeState
 
 
@@ -31,6 +42,26 @@ class BHRecord(BaseModel):
     mass_kg: float = Field(gt=0.0)
     position: AstraCoord
     j_angular_momentum: float = 0.0  # Kerr deferred to Phase 5+ per spec §7.5
+
+
+class WarpState(BaseModel):
+    """Warp drive state per spec v0.128 §4.2 / §4.6 (audit D3 closure).
+
+    `W` is the warp coil intensity (0.0 = inactive, 1.0 = max cruise).
+    `phase` selects which WARP_* bit composes into Regime:
+        charging → WARP_CHARGE
+        cruising → WARP_CRUISE
+        dropping → WARP_SHUTDOWN
+        shutdown → WARP_SHUTDOWN (post-jump cooldown)
+    `charge_progress` (0.0-1.0) tracks pre-engagement coil charge state
+    during the `charging` phase. Ignored in other phases (informational only).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    W: float = Field(ge=0.0, le=1.0)
+    phase: Literal["charging", "cruising", "dropping", "shutdown"]
+    charge_progress: float = Field(ge=0.0, le=1.0, default=0.0)
 
 
 class CosmologicalParams(BaseModel):
@@ -115,15 +146,41 @@ class StateBus(BaseModel):
     Frozen per spec §1.5: each turn produces a new snapshot; no mutation
     of a prior frame is possible. Reads at turn start are frame-coherent
     by construction (the snapshot is the read).
+
+    `regime` is a computed_field — never appears in `model_fields`,
+    only in `model_computed_fields`. The schema cannot construct
+    incoherent state because regime is always derived from the
+    underlying `warp` / `cryosleep_active` / `time.rapidity_zeta`
+    fields. grav_factor defaults to 1.0; will be computed from
+    `bh_list` + `astra_coord` in a follow-up commit per audit Tier 2.
     """
 
     model_config = ConfigDict(frozen=True)
 
     astra_coord: AstraCoord
     time: TimeState
+    warp: WarpState | None = None
+    cryosleep_active: bool = False
     hull_damage: dict[str, float] = Field(default_factory=dict)
     chaos_field_summary: ChaosFieldSummary = Field(default_factory=ChaosFieldSummary)
     power_allocation: dict[str, float] = Field(default_factory=dict)
     procedural_body_states: dict[str, BodyState] = Field(default_factory=dict)
     bh_list: list[BHRecord] = Field(default_factory=list)
     cosmo_params: CosmologicalParams = Field(default_factory=CosmologicalParams)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def regime(self) -> Regime:
+        """Composite Regime per spec §3.3, derived from underlying state.
+
+        Algorithm in `astra.core.detect_regime.detect_regime`. Never
+        settable — the schema cannot construct an incoherent state.
+        """
+        # grav_factor defaults to 1.0 here; the bh_list + position →
+        # Schwarzschild composition is computed by C++ astra_nexus.
+        # Follow-up commit will plumb the computed grav_factor through.
+        return detect_regime(
+            rapidity_zeta=self.time.rapidity_zeta,
+            warp=self.warp,
+            cryosleep_active=self.cryosleep_active,
+        )

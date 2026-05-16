@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from astra.core import AstraCoord, Regime, TimeState
+from astra.core import AstraCoord, TimeState
 from astra.harness import ReelEntry, assemble_perception_bundle
 from astra.state_bus import BodyState, KeplerianElements, StateBus
 
@@ -10,16 +10,14 @@ from astra.state_bus import BodyState, KeplerianElements, StateBus
 def _minimal_state_bus(
     *,
     tau_ship: float = 47.0,
-    regime: Regime = Regime.REST,
 ) -> StateBus:
-    """Build a minimal StateBus for assembler tests."""
+    """Build a minimal StateBus for assembler tests (REST regime by default)."""
     return StateBus(
         astra_coord=AstraCoord(sx=0, sy=0, sz=0),
         time=TimeState(
             t_cosmic=1.5e10,
             tau_ship=tau_ship,
             tau_crew_biological=tau_ship,
-            regime=regime,
         ),
         procedural_body_states={
             "earth": BodyState(
@@ -97,7 +95,7 @@ def test_reel_retrievals_in_recent_section() -> None:
         state_bus=_minimal_state_bus(),
         operator_text="",
         reel_retrievals=[
-            ReelEntry(tau_ship=46.0, body="third-harmonic drift noted cycle 46"),
+            ReelEntry(tau_ship=46.0, t_cosmic_at_write=0.0, body="third-harmonic drift noted cycle 46"),
         ],
     )
     assert "third-harmonic drift noted cycle 46" in bundle

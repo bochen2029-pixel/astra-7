@@ -14,6 +14,7 @@ astra.physics.nexus_bridge (Day 2).
 """
 
 from astra.core.astra_coord import LOCAL_OFFSET_MAX_M, SECTOR_SIZE_M, AstraCoord
+from astra.core.detect_regime import detect_regime, kinematic_regime_from_rapidity
 from astra.core.hull_sdf import PROVISIONAL_ZONES
 from astra.core.power import SUBSYSTEMS
 from astra.core.rapidity import OMEGA_MAX, rapidity_magnitude
@@ -31,5 +32,7 @@ __all__ = [
     "Regime",
     "ShipKinematicState",
     "TimeState",
+    "detect_regime",
+    "kinematic_regime_from_rapidity",
     "rapidity_magnitude",
 ]

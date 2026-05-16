@@ -47,7 +47,7 @@ def _render_state(state_bus: StateBus) -> str:
     time = state_bus.time
     lines = [
         f"τ_ship: watch {int(time.tau_ship)}, mid-shift.",
-        f"regime: {regime_label(time.regime)} near origin.",
+        f"regime: {regime_label(state_bus.regime)} near origin.",
     ]
     if time.rapidity_zeta == (0.0, 0.0, 0.0):
         lines.append("ship vector stable, no thrust, no warp.")

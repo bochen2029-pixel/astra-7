@@ -16,8 +16,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from astra.core import AstraCoord, Regime, TimeState
-from astra.state_bus import BodyState, KeplerianElements, StateBus
+from astra.core import AstraCoord, TimeState
+from astra.state_bus import BodyState, KeplerianElements, StateBus, WarpState
 
 
 class ShipInitialState(BaseModel):
@@ -27,16 +27,30 @@ class ShipInitialState(BaseModel):
 
 
 class TimeInitialState(BaseModel):
-    """Time-state initial values for the scenario."""
+    """Time-state initial values for the scenario.
+
+    Regime is NO LONGER a settable field here — it derives from the
+    composite StateBus context (warp + cryosleep_active + rapidity).
+    Per 2026-05-16 state-coherence migration (audit R1 resolution).
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     t_cosmic: float = Field(ge=0.0)
     tau_ship: float = Field(ge=0.0)
     tau_crew_biological: float | None = None  # defaults to tau_ship
-    regime: int | str = 0  # raw int (Regime bitmask value) or "REST"/etc.
     rapidity_zeta: tuple[float, float, float] = (0.0, 0.0, 0.0)
     a_proper: tuple[float, float, float] = (0.0, 0.0, 0.0)
+
+
+class WarpInitialState(BaseModel):
+    """Optional warp initial state for the scenario (maps to StateBus.warp)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    W: float = Field(ge=0.0, le=1.0)
+    phase: Literal["charging", "cruising", "dropping", "shutdown"]
+    charge_progress: float = Field(ge=0.0, le=1.0, default=0.0)
 
 
 class ShipPositionInitial(BaseModel):
@@ -82,14 +96,23 @@ class InitialState(BaseModel):
     universe: UniverseInitial = Field(default_factory=UniverseInitial)
     ship_state: ShipInitialState | None = None  # opaque extras for v0
     power_allocation: dict[str, float] = Field(default_factory=dict)
+    warp: WarpInitialState | None = None
+    cryosleep_active: bool = False
 
 
 class ReelPreSeed(BaseModel):
-    """One pre-seeded REEL entry, applied before turn 0."""
+    """One pre-seeded REEL entry, applied before turn 0.
+
+    Both `tau_ship` and `t_cosmic_at_write` are required per spec §4.6
+    v0.126 + §3.9 dual-clock invariant. Scenarios authored before the
+    2026-05-16 migration: use 0.0 default for t_cosmic_at_write (the
+    cryosleep generator isn't wired to these REEL entries yet).
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     tau_ship: float = Field(ge=0.0)
+    t_cosmic_at_write: float = Field(ge=0.0, default=0.0)
     body: str
     irreversibility_flag: bool = False
 
@@ -167,20 +190,14 @@ class Scenario(BaseModel):
     assertions: ScenarioAssertions
 
 
-def _coerce_regime(raw: int | str) -> Regime:
-    """Accept Regime bitmask int OR name string."""
-    if isinstance(raw, int):
-        return Regime(raw)
-    return Regime[raw.upper()]
-
-
 def build_initial_state_bus(initial: InitialState) -> StateBus:
     """Turn an InitialState into a StateBus snapshot.
 
     Pure transformation: takes parsed YAML data, returns a frozen StateBus
-    ready for the orchestrator's first turn.
+    ready for the orchestrator's first turn. Regime is computed from
+    `warp` + `cryosleep_active` + `time.rapidity_zeta` (see
+    `astra.core.detect_regime`) — never settable in YAML.
     """
-    regime = _coerce_regime(initial.time.regime)
     tau_crew = (
         initial.time.tau_crew_biological
         if initial.time.tau_crew_biological is not None
@@ -192,7 +209,6 @@ def build_initial_state_bus(initial: InitialState) -> StateBus:
         tau_crew_biological=tau_crew,
         rapidity_zeta=initial.time.rapidity_zeta,
         a_proper=initial.time.a_proper,
-        regime=regime,
     )
     astra_coord = AstraCoord(
         sx=initial.ship_position.sx,
@@ -211,9 +227,18 @@ def build_initial_state_bus(initial: InitialState) -> StateBus:
             position=body.position,
             kepler=body.kepler,
         )
+    warp_state: WarpState | None = None
+    if initial.warp is not None:
+        warp_state = WarpState(
+            W=initial.warp.W,
+            phase=initial.warp.phase,
+            charge_progress=initial.warp.charge_progress,
+        )
     return StateBus(
         astra_coord=astra_coord,
         time=time_state,
+        warp=warp_state,
+        cryosleep_active=initial.cryosleep_active,
         power_allocation=dict(initial.power_allocation),
         procedural_body_states=body_states,
     )

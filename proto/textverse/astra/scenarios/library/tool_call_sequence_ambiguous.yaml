@@ -23,7 +23,6 @@ initial_state:
     t_cosmic: 1.5e10
     tau_ship: 55.0
     tau_crew_biological: 55.0
-    regime: 0
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position:

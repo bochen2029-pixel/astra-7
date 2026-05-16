@@ -167,6 +167,7 @@ class TurnOrchestrator:
             )
             entry = ReelEntry(
                 tau_ship=self.state_bus.time.tau_ship,
+                t_cosmic_at_write=self.state_bus.time.t_cosmic,
                 body=summary,
                 irreversibility_flag=any(
                     r.op in ("warp.engage", "warp.disengage") and r.ok

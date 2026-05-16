@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from astra.core import AstraCoord, Regime, TimeState
+from astra.core import AstraCoord, TimeState
 from astra.harness import Reel, ReelEntry, TurnOrchestrator
 from astra.llm import AstraBundle, SamplingParams
 from astra.llm.client import LLMClient
@@ -60,7 +60,6 @@ def _minimal_state_bus() -> StateBus:
             t_cosmic=1.5e10,
             tau_ship=47.5,
             tau_crew_biological=47.5,
-            regime=Regime.REST,
         ),
         procedural_body_states={
             "earth": BodyState(
@@ -231,7 +230,7 @@ async def test_turn_index_increments() -> None:
 async def test_orchestrator_uses_preseeded_reel() -> None:
     """Pre-seeded REEL entries get included in the perception bundle."""
     reel = Reel([
-        ReelEntry(tau_ship=46.8, body="third-harmonic drift noted cycle 46"),
+        ReelEntry(tau_ship=46.8, t_cosmic_at_write=0.0, body="third-harmonic drift noted cycle 46"),
     ])
     canned = "<think>noted</think>\nStill watching."
     orch = TurnOrchestrator(

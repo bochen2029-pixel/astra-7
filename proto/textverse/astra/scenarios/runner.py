@@ -225,6 +225,7 @@ class ScenarioRunner:
         entries = [
             ReelEntry(
                 tau_ship=p.tau_ship,
+                t_cosmic_at_write=p.t_cosmic_at_write,
                 body=p.body,
                 irreversibility_flag=p.irreversibility_flag,
             )

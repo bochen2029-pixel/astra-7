@@ -169,7 +169,7 @@ def gate_state_coherent(
     if state_section is None:
         return _gate_fail(LCPGate.STATE_COHERENT, "no <state> section in perception bundle")
 
-    expected_regime = regime_label(state_bus.time.regime)
+    expected_regime = regime_label(state_bus.regime)
     if expected_regime not in state_section and expected_regime.upper() not in state_section.upper():
         return _gate_fail(
             LCPGate.STATE_COHERENT,

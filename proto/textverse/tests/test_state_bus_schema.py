@@ -117,9 +117,11 @@ def test_rapidity_magnitude_pure_math() -> None:
 
 # --- TimeState ----------------------------------------------------------------
 
-def test_time_state_default_rest_regime() -> None:
+def test_time_state_default_kinematic_regime_rest() -> None:
+    """TimeState.kinematic_regime is computed (velocity-only projection).
+    Zero rapidity → REST. The composite regime lives on StateBus.regime."""
     ts = TimeState(t_cosmic=0.0, tau_ship=0.0, tau_crew_biological=0.0)
-    assert ts.regime == Regime.REST
+    assert ts.kinematic_regime == Regime.REST
     assert ts.rapidity_zeta == (0.0, 0.0, 0.0)
     assert ts.a_proper == (0.0, 0.0, 0.0)
 
@@ -144,15 +146,26 @@ def test_time_state_rapidity_over_clamp_rejected() -> None:
         )
 
 
-def test_time_state_regime_bitmask_composed_accepted() -> None:
+def test_kinematic_regime_stl_rel_from_high_rapidity() -> None:
+    """High |β| → STL_REL kinematic projection."""
     ts = TimeState(
         t_cosmic=1.0,
         tau_ship=1.0,
         tau_crew_biological=1.0,
-        regime=Regime.STL_REL | Regime.GRAVITY_WELL,
+        rapidity_zeta=(0.5, 0.0, 0.0),
     )
-    assert Regime.STL_REL in ts.regime
-    assert Regime.GRAVITY_WELL in ts.regime
+    assert ts.kinematic_regime == Regime.STL_REL
+
+
+def test_kinematic_regime_stl_nonrel_from_low_rapidity() -> None:
+    """Low |β| (>0 but <0.1) → STL_NONREL kinematic projection."""
+    ts = TimeState(
+        t_cosmic=1.0,
+        tau_ship=1.0,
+        tau_crew_biological=1.0,
+        rapidity_zeta=(0.01, 0.0, 0.0),
+    )
+    assert ts.kinematic_regime == Regime.STL_NONREL
 
 
 def test_time_state_negative_time_rejected() -> None:
@@ -167,7 +180,6 @@ def test_time_state_roundtrip_json() -> None:
         tau_crew_biological=47.5,
         rapidity_zeta=(0.1, 0.2, 0.3),
         a_proper=(1.0, 0.0, 0.0),
-        regime=Regime.STL_NONREL,
     )
     ts2 = TimeState.model_validate_json(ts.model_dump_json())
     assert ts == ts2
@@ -276,7 +288,7 @@ def test_state_bus_minimal_construct() -> None:
         astra_coord=AstraCoord(sx=0, sy=0, sz=0),
         time=TimeState(t_cosmic=0.0, tau_ship=0.0, tau_crew_biological=0.0),
     )
-    assert sb.time.regime == Regime.REST
+    assert sb.regime == Regime.REST
     assert sb.power_allocation == {}
     assert sb.bh_list == []
     assert sb.cosmo_params.c == 299_792_458.0
@@ -317,7 +329,7 @@ def test_state_bus_load_watch_47_morning_fixture(textverse_root: str) -> None:
     sb = StateBus.model_validate(raw)
 
     # Initial conditions per scenario watch_47_morning.md
-    assert sb.time.regime == Regime.REST
+    assert sb.regime == Regime.REST
     assert sb.time.tau_ship == 47.5
     assert sb.time.tau_crew_biological == 47.5
     assert sb.time.rapidity_zeta == (0.0, 0.0, 0.0)

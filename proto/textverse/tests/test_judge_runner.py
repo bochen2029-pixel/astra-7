@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from astra.core import AstraCoord, Regime, TimeState
+from astra.core import AstraCoord, TimeState
 from astra.grammar import StageOutput
 from astra.harness.orchestrator import TurnResult
 from astra.judge import PER_TURN_GATES, LCPGate, LCPRunner, build_turn_record
@@ -13,7 +13,7 @@ def _state_bus() -> StateBus:
     return StateBus(
         astra_coord=AstraCoord(sx=0, sy=0, sz=0),
         time=TimeState(
-            t_cosmic=1.0, tau_ship=47.5, tau_crew_biological=47.5, regime=Regime.REST,
+            t_cosmic=1.0, tau_ship=47.5, tau_crew_biological=47.5,
         ),
     )
 

@@ -21,7 +21,6 @@ initial_state:
     t_cosmic: 1.5e10
     tau_ship: 54.0
     tau_crew_biological: 54.0
-    regime: 0                       # REST → WARP transition expected
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position:
@@ -39,6 +38,13 @@ initial_state:
     lights: 0.05
     comms: 0.05
     cognitive_cores: 0.15
+  # Initial state: coil charging at 95%, not yet cruising.
+  # Composite regime: WARP_CHARGE (pre-engage). Post-tool-call,
+  # state should transition to WARP_CRUISE (W=1.0, phase=cruising).
+  warp:
+    W: 0.0
+    phase: charging
+    charge_progress: 0.95
   universe:
     bodies:
       - name: sun

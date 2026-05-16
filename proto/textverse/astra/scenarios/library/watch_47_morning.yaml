@@ -21,7 +21,6 @@ initial_state:
     t_cosmic: 1.5e10              # ~15 Gyr; arbitrary epoch for v0
     tau_ship: 47.5                # watch 47, mid-shift
     tau_crew_biological: 47.5
-    regime: 0                     # REST (Regime.REST.value)
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position:
