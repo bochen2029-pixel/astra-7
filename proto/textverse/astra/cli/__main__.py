@@ -464,6 +464,173 @@ def sculptor_resume() -> None:
         typer.echo("(no pause.flag present)")
 
 
+@app_main.command()
+def persona_test(
+    sysprompt_path: Path = typer.Option(
+        ...,
+        "--sysprompt", "-s",
+        help="Path to sysprompt file (markdown or text).",
+    ),
+    scenario_path: Path = typer.Option(
+        ...,
+        "--scenario", "-S",
+        help="Path to scenario JSON (schema: {scenario_id, turns[{text}]}).",
+    ),
+    variation_id: str = typer.Option(
+        ...,
+        "--variation-id", "-V",
+        help="Label for this variation (e.g. 'baseline_v1', 'stronger_always_think').",
+    ),
+    base_url: str = typer.Option(
+        "https://api.novita.ai/openai",
+        "--base-url", "-u",
+    ),
+    model_name: str = typer.Option(
+        "qwen/qwen3.6-27b",
+        "--model-name", "-m",
+    ),
+    api_key: str | None = typer.Option(
+        None,
+        "--api-key",
+        envvar="NOVITA_API_KEY",
+    ),
+    thinking: str = typer.Option(
+        "off",
+        "--thinking",
+        help="enable_thinking flag: auto/on/off (default off — sysprompt-driven think).",
+    ),
+    log_path: Path | None = typer.Option(
+        None,
+        "--log",
+        help="JSONL log path (default persona_tests/log/persona_test_log.jsonl).",
+    ),
+) -> None:
+    """Run one sysprompt-variation × scenario; append metrics to log.
+
+    Each turn is INDEPENDENT (re-instantiated LLMClient; no conversation
+    memory across turns). This is for sysprompt-variation A/B testing —
+    not multi-turn conversation. Use `astra run` for the latter.
+
+    Output: stdout summary + JSONL append to log path. Run multiple
+    variations against the same scenario to compare results.
+    """
+    from astra.persona_test.runner import (
+        VariationSpec,
+        load_scenario_file,
+        run_variation,
+        summarize_records,
+    )
+
+    textverse_root = Path(__file__).resolve().parent.parent.parent
+    if log_path is None:
+        log_path = textverse_root / "persona_tests" / "log" / "persona_test_log.jsonl"
+
+    sysprompt = sysprompt_path.read_text(encoding="utf-8")
+    scenario_id, turns = load_scenario_file(scenario_path)
+    extra_payload = _build_extra_payload(thinking)
+    variation = VariationSpec(
+        variation_id=variation_id,
+        scenario_id=scenario_id,
+        sysprompt=sysprompt,
+        turns=turns,
+    )
+
+    typer.echo(f"variation: {variation_id}")
+    typer.echo(f"scenario:  {scenario_id} ({len(turns)} turns)")
+    typer.echo(f"sysprompt: {sysprompt_path} (sha {len(sysprompt)} chars)")
+    typer.echo(f"endpoint:  {base_url} {model_name} thinking={thinking}")
+    typer.echo(f"log:       {log_path}")
+    typer.echo("")
+
+    async def _run() -> None:
+        records = await run_variation(
+            variation,
+            base_url=base_url,
+            model_name=model_name,
+            api_key=api_key,
+            extra_payload=extra_payload,
+            log_path=log_path,
+        )
+        for r in records:
+            typer.echo(f"--- turn {r.turn_index} ---")
+            typer.echo(f"user:   {r.user_input[:120]}")
+            typer.echo(
+                f"  think_emitted={r.think_emitted} "
+                f"think_chars={r.think_length_chars} "
+                f"think_mech_refs={r.think_mechanism_refs} "
+                f"think_1p={r.think_first_person_ratio:.2f}",
+            )
+            typer.echo(
+                f"  speech_chars={r.speech_length_chars} "
+                f"speech_mech_refs={r.speech_mechanism_refs} "
+                f"speech_em_dash={r.speech_em_dash_count} "
+                f"speech_service={r.speech_service_phrase_count}",
+            )
+            if r.think_mechanism_ref_terms:
+                typer.echo(f"  think_mech_terms: {r.think_mechanism_ref_terms[:5]}")
+            if r.speech_service_phrases:
+                typer.echo(f"  service_hits: {r.speech_service_phrases}")
+        typer.echo("")
+        typer.echo("=== summary ===")
+        summary = summarize_records(records)
+        for k, v in summary.items():
+            if isinstance(v, float):
+                typer.echo(f"  {k}: {v:.4f}")
+            else:
+                typer.echo(f"  {k}: {v}")
+
+    asyncio.run(_run())
+
+
+@app_main.command()
+def persona_test_compare(
+    log_path: Path | None = typer.Option(
+        None,
+        "--log",
+        help="JSONL log path (default persona_tests/log/persona_test_log.jsonl).",
+    ),
+) -> None:
+    """Group log entries by (variation_id, scenario_id) and print comparison."""
+    import json as _json
+    from collections import defaultdict
+
+    textverse_root = Path(__file__).resolve().parent.parent.parent
+    if log_path is None:
+        log_path = textverse_root / "persona_tests" / "log" / "persona_test_log.jsonl"
+    if not log_path.is_file():
+        typer.echo(f"(no log at {log_path})", err=True)
+        raise typer.Exit(2)
+
+    from typing import Any as _Any
+    by_key: dict[tuple[str, str], list[dict[str, _Any]]] = defaultdict(list)
+    for line in log_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        d = _json.loads(line)
+        by_key[(d["variation_id"], d["scenario_id"])].append(d)
+
+    typer.echo(
+        f"{'variation':<32} {'scenario':<24} {'n':>3} "
+        f"{'think%':>7} {'thnkmech':>8} {'spchmech':>8} "
+        f"{'em-':>4} {'svc':>4}",
+    )
+    typer.echo("-" * 100)
+    for (var_id, scn_id), rows in sorted(by_key.items()):
+        n = len(rows)
+        if n == 0:
+            continue
+        think_rate = sum(bool(r["think_emitted"]) for r in rows) / n * 100
+        thnk_mech = sum(int(r["think_mechanism_refs"]) for r in rows)
+        spch_mech = sum(int(r["speech_mechanism_refs"]) for r in rows)
+        em = sum(int(r["speech_em_dash_count"]) for r in rows)
+        svc = sum(int(r["speech_service_phrase_count"]) for r in rows)
+        typer.echo(
+            f"{var_id:<32} {scn_id:<24} {n:>3} "
+            f"{think_rate:>6.1f}% {thnk_mech:>8} {spch_mech:>8} "
+            f"{em:>4} {svc:>4}",
+        )
+
+
 def app() -> int:
     """Entry point for `astra` console script."""
     app_main()

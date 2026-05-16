@@ -54,3 +54,9 @@ scenarios/output/
 # Local log files
 logs/
 *.log
+
+# Persona-test research artifacts (operator-local research log)
+persona_tests/log/
+persona_tests/sysprompts/*
+!persona_tests/sysprompts/.gitkeep
+!persona_tests/sysprompts/README.md

@@ -55,14 +55,18 @@ def test_all_submodules_importable() -> None:
 
 def test_no_wall_clock_imports_in_scaffolding() -> None:
     """Per v0.128 §1.2: no module imports datetime, time, or other wall-clock
-    sources, with two narrow exceptions:
+    sources, with three narrow exceptions:
 
     - astra/judge/        — measures real-time iteration cost (LCP timing).
     - astra/llm/llama_server.py — polls subprocess /health for sidecar startup;
                                   uses time.monotonic() / time.sleep() for
                                   infrastructure timeouts only, not game state.
+    - astra/persona_test/ — research-tier sysprompt-variation harness; timestamps
+                            are metadata in JSONL log entries for cross-run
+                            comparison, never fed into ASTRA's perception bundle
+                            or State Bus. Same rationale as judge/ tier.
 
-    Both exceptions are infrastructure-only paths; neither feeds wall-clock
+    All exceptions are infrastructure-only paths; none feeds wall-clock
     values back into ASTRA's perception bundle, the State Bus, or any
     fictional-time computation. Day 1+ code must keep passing this test.
     """
@@ -73,6 +77,7 @@ def test_no_wall_clock_imports_in_scaffolding() -> None:
     allowed_paths = (
         "astra/judge/",                  # iteration timing
         "astra/llm/llama_server.py",     # subprocess /health polling
+        "astra/persona_test/",           # research-log timestamps (metadata only)
     )
 
     violations: list[str] = []

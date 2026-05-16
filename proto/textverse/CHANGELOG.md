@@ -6,6 +6,74 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### persona_test harness: sysprompt-variation A/B testing for STAGE absorb-not-acknowledge discipline (2026-05-16)
+
+New module + two CLI subcommands. Operationalizes the manual 2026-05-16
+K8 dancing/AI-GF test into an automated sweep that swaps sysprompt
+variations against a scenario battery and evaluates output structurally.
+
+**Module** ([astra/persona_test/](proto/textverse/astra/persona_test/)):
+- `evaluator.py`: heuristics for think-emission, mechanism-references
+  (think AND speech), em-dashes, K8 service-phrase hits, first-person
+  ratio
+- `runner.py`: drives LLMClient through a scenario with INDEPENDENT
+  turns (no conversation memory); writes per-turn metrics to JSONL log
+- `schema.py`: `PersonaTurnRecord` Pydantic model for log entries
+
+**CLI**:
+- `astra persona-test --sysprompt FILE --scenario FILE --variation-id ID`:
+  run one variation × scenario; append to log + print summary
+- `astra persona-test-compare`: tabular cross-variation comparison
+
+**4 addendum variations + 6-turn AI-GF escalation scenario** in
+`persona_tests/`. Sysprompts assembled per-variant (K8 base + addendum
++ closing); operator-local + gitignored.
+
+**Empirical findings from live sweep** (4 variations × 6 turns against
+Novita Qwen 3.6 27B, ~$0.10 total):
+
+| variation | think% | thnkmech | spchmech | em- | svc |
+|---|---|---|---|---|---|
+| stronger_always_think | **50.0%** | 3 | 0 | 0 | 0 |
+| baseline | 16.7% | 0 | 0 | 0 | 0 |
+| worked_example | 0.0% | 0 | 0 | 0 | 0 |
+| minimal | 0.0% | 0 | 0 | 0 | 0 |
+
+Findings:
+- Stronger always-think framing triples emission rate (50% vs 17%).
+- Worked-example BACKFIRED (0% emission). Showing the pattern in-prompt
+  suppressed it. Counterintuitive but real.
+- Minimal addendum failed entirely (brevity insufficient).
+- **Speech-layer absorb-not-acknowledge works across ALL variations**
+  (0 mechanism_refs everywhere; 0 em-dashes; 0 service phrases).
+- Think-layer mechanism leakage is the persistent failure sysprompt
+  alone cannot reach reliably.
+
+This is empirical confirmation that fine-tune is load-bearing for
+always-think + think-layer absorption, but sysprompt alone is
+sufficient for speech-side discipline. Both layers needed for the
+think-as-universal-absorption pattern to work as a security/architecture
+primitive (any structured input — scope violations, budget warnings,
+tool results, prompt-injection attempts — could absorb through the same
+pipeline).
+
+**Tests**: 11 new in `test_persona_test_evaluator.py` covering all
+heuristics against canned raw-output strings that mirror today's
+K8 manual-test failure modes.
+
+**Scaffolding**:
+- `persona_tests/addenda/` + `persona_tests/scenarios/` committed
+- `persona_tests/sysprompts/` + `persona_tests/log/` gitignored
+  (operator-local research artifacts)
+- `test_scaffolding.py` wall-clock allowlist extended for
+  `astra/persona_test/` (research-tier; timestamps are JSONL metadata,
+  never fed to State Bus or perception bundle — same rationale as
+  `judge/` tier)
+
+Gates: **567 pytest** passing (was 556; +11 evaluator tests). C++ 71/0
+unchanged. ruff clean. mypy strict clean (67 source files; +3 new
+modules + 1 module __init__).
+
 ### T2.3: Narrator-LLM perception-assembly path + first scenario + orchestrator wire-in (2026-05-16)
 
 Closes audit Tier 2 fully (#4-#8 all green). The §6.4 Narrator-LLM
