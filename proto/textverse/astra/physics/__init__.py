@@ -16,10 +16,24 @@ from astra.physics.nexus_bridge import (
     NexusResponse,
     compute_apparent_rate,
 )
+from astra.physics.observation_calc import (
+    ObservableState,
+    RegimeLabel,
+    composition_rule_evaluate,
+    kepler_at,
+    observe,
+    retarded_time_solve,
+)
 
 __all__ = [
     "NexusBridge",
     "NexusBridgeError",
     "NexusResponse",
+    "ObservableState",
+    "RegimeLabel",
+    "composition_rule_evaluate",
     "compute_apparent_rate",
+    "kepler_at",
+    "observe",
+    "retarded_time_solve",
 ]

@@ -6,6 +6,54 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### T2.1 + T2.2: Python observation_calc + Narrator calculator-bound auto-validation (2026-05-16)
+
+Closes audit Tier 2 #7 + #8, plus G3, G13, D5, 2A-F3. The §6.4
+Narrator-LLM tool surface is now fully reachable from Python AND
+auto-enforces §15.6 calculator-bound discipline.
+
+**T2.1 — Python observe() wrapper** ([astra/physics/observation_calc.py](proto/textverse/astra/physics/observation_calc.py)):
+
+The prior 33-line re-export shim is now the real §6.3 module:
+- `ObservableState` Pydantic model — mirrors the C++ struct (11 fields
+  including v0.128 D1 `beyond_photon_history` + `beyond_hubble_horizon`).
+  `d_proper` (renamed from `d` per D1). Bools coerced from wire-format 0/1.
+- `observe()` typed wrapper — calls C++ `observe` stdio op, returns
+  `ObservableState`. Optional `body_t_source_start` arg for §3.11
+  photon-history bound.
+- `kepler_at()`, `composition_rule_evaluate()`, `retarded_time_solve()`
+  thin wrappers for the §6.4 Narrator tool ops.
+- Two-mode operation: pass a long-lived `NexusBridge` for hot paths
+  (shared subprocess), or call standalone (per-call subprocess).
+
+Closes audit D5 + G3 + Tier 2 #7.
+
+**T2.2 — NarratorBundle calculator-bound auto-validation** ([astra/llm/narrator_bundle.py](proto/textverse/astra/llm/narrator_bundle.py)):
+
+`compose()` now accepts an optional `trace_pool` arg. When provided:
+- Validates output against the calculator-bound discipline (§15.6).
+- On hard-severity failure, retries with halved temperature up to
+  `validator.max_retries` times.
+- Soft-severity logs drift and returns.
+- After exhausted retries, raises `NarratorValidationError` carrying
+  the final `ValidationReport` and attempt count for operator forensics.
+
+Backward-compat preserved: `compose()` without `trace_pool` returns the
+single chat_complete output unchanged. `validate_output()` kept as
+public method for non-compose callers.
+
+Closes audit Tier 2 #8 + G13 + 2A-F3. **§15.6 universality now holds
+for both LLMs**: ASTRA-side validator in `astra/llm/validator.py`
+(pre-existing) + Narrator-side auto-wrap in `compose()` (this commit).
+
+**Tests**: 20 new (11 in `test_observation_calc.py` + 9 in
+`test_narrator_calculator_bound.py`). Live `requires_nexus` coverage
+for observation_calc; stubbed-client coverage for narrator validation
++ retry + temperature reduction.
+
+Gates: Python 550 pytest (was 530; +20). ruff clean. mypy strict
+clean (63 source files).
+
 ### State-coherence type system: WarpState + computed regime + REEL dual-clock (2026-05-16)
 
 Single atomic commit bundling audit drift fixes D3 + D4 + G4 + G5 + G6

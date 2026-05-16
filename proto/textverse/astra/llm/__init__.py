@@ -37,7 +37,11 @@ from astra.llm.llama_server import (
     LlamaServerInstance,
     LlamaServerOrchestrator,
 )
-from astra.llm.narrator_bundle import NarratorBundle, load_narrator_sysprompt
+from astra.llm.narrator_bundle import (
+    NarratorBundle,
+    NarratorValidationError,
+    load_narrator_sysprompt,
+)
 from astra.llm.validator import (
     CalculatorBoundValidator,
     UngroundedNumber,
@@ -62,6 +66,7 @@ __all__ = [
     "LlamaServerInstance",
     "LlamaServerOrchestrator",
     "NarratorBundle",
+    "NarratorValidationError",
     "RulesBasedAdapter",
     "SamplingParams",
     "UngroundedNumber",
