@@ -1,5 +1,13 @@
 """LLM-backed HypothesisGenerator (Sculptor Stage A: local Qwen; Stage B: Claude).
 
+2026-05-16 fix: propose() runs the LLM call by detecting the active asyncio
+loop and using a thread-isolated runner so it works whether called from a
+sync entry point or from inside meta_agent.run_one_iteration (which is async).
+The HypothesisGenerator Protocol is sync by design (single propose() call
+per iteration; no streaming); the runner indirection lets the LLM client
+stay native-async without forcing the Protocol to flip.
+
+
 Per SCULPTOR_STARTUP §6.1 + operator directive 2026-05-15 (post-run-5):
 the discrete 30-entry stub bank exhausted at composite ceiling against
 the 11-scenario library. To break out of the discrete-search ceiling,
@@ -27,7 +35,8 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from collections.abc import Callable
+import threading
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -145,6 +154,45 @@ def _extract_json(text: str) -> dict[str, Any]:
     return json.loads(match.group(0))  # type: ignore[no-any-return]
 
 
+def _run_coro_sync[T](coro: Coroutine[Any, Any, T]) -> T:
+    """Run an async coroutine from a sync caller, regardless of outer loop state.
+
+    Three cases:
+    - No event loop running in this thread: use `asyncio.run`.
+    - An event loop IS running (we're nested inside async code): spawn a
+      worker thread with its own loop and run the coroutine there.
+    - asyncio.run available but get_event_loop deprecated path: handled by
+      the no-loop branch.
+
+    The meta-agent calls propose() from inside `await run_one_iteration()`,
+    so the running-loop case is the production path; the no-loop case is
+    for unit tests that exercise propose() directly.
+    """
+    try:
+        asyncio.get_running_loop()
+        loop_running = True
+    except RuntimeError:
+        loop_running = False
+    if not loop_running:
+        return asyncio.run(coro)
+    # Running loop: isolate in a worker thread with its own loop.
+    result: list[T] = []
+    error: list[BaseException] = []
+
+    def _worker() -> None:
+        try:
+            result.append(asyncio.run(coro))
+        except BaseException as e:
+            error.append(e)
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    t.join()
+    if error:
+        raise error[0]
+    return result[0]
+
+
 _OPERATIONS: dict[str, Callable[[dict[str, Any]], Callable[[str], str]]] = {
     "append_paragraph": lambda args: _append_paragraph(str(args["text"])),
     "replace_substring": lambda args: _replace_substring(str(args["old"]), str(args["new"])),
@@ -216,7 +264,7 @@ class LLMHypothesisGenerator:
         user_prompt = _build_user_prompt(recent, latest_composite, scope_contract)
         last_err: Exception | None = None
         for _attempt in range(self.max_parse_retries + 1):
-            raw = asyncio.run(self.client.chat_complete(user_prompt, self.sampling))
+            raw = _run_coro_sync(self.client.chat_complete(user_prompt, self.sampling))
             try:
                 payload = _extract_json(raw)
                 return _hypothesis_from_json(payload, scope_contract)
