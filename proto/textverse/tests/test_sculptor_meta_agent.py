@@ -251,6 +251,64 @@ async def test_metaagent_substrate_unhealthy_writes_operator_signal_and_pause(
         narrator_path.write_text(original, encoding="utf-8")
 
 
+# --- MetaAgent: bench_regression diagnostic capture ---------------------
+
+@pytest.mark.asyncio
+async def test_bench_regression_rationale_distinguishes_timeout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Diagnostic-capture fix: when pytest cadence times out, the
+    bench_regression rationale must say so explicitly. Run-4's two
+    bench_regressions both turned out to be timeouts (reproduced as
+    PASS manually post-run), and the prior generic rationale buried
+    that signal.
+    """
+    from astra.sculptor.pytest_gate import PytestResult
+
+    class _BumpNarratorAtCadence:
+        def propose(self, **kwargs):
+            return Hypothesis(
+                name="bump_narrator",
+                relpath="prompts/narrator_sysprompt.md",
+                transform_fn=lambda x: x + "\nbump.",
+                rationale="any",
+                lesson_class="state_coherent",
+            )
+
+    narrator_path = TEXTVERSE_ROOT / "prompts" / "narrator_sysprompt.md"
+    original_narrator = narrator_path.read_text(encoding="utf-8")
+    try:
+        agent = MetaAgent(
+            textverse_root=TEXTVERSE_ROOT,
+            base_url="http://stub",
+            hypothesis_generator=_BumpNarratorAtCadence(),
+            n_runs_per_iteration=1,
+        )
+        # Force cadence to fire on iter 1.
+        agent.cadence.cadence = 1
+        # Stub pytest to return timed_out=True.
+        monkeypatch.setattr(
+            agent, "_run_pytest_or_fallback",
+            lambda: PytestResult(
+                passed=False, exit_code=-1, timed_out=True, raw_output="(timed out)",
+            ),
+        )
+        monkeypatch.setattr(
+            agent, "_research_log_path", lambda: tmp_path / "research_log.jsonl",
+        )
+        monkeypatch.setattr(agent, "_findings_path", lambda: tmp_path / "findings.md")
+        monkeypatch.setattr(agent, "_daily_report_path", lambda: tmp_path / "daily_report.md")
+
+        decision = await agent.run_one_iteration()
+        assert decision.entry.decision == "bench_regression"
+        assert "timed out" in decision.entry.rationale
+        # File reverted.
+        assert narrator_path.read_text(encoding="utf-8") == original_narrator
+    finally:
+        narrator_path.write_text(original_narrator, encoding="utf-8")
+
+
 # --- MetaAgent: revert path (anchor fails) --------------------------------
 
 @pytest.mark.asyncio

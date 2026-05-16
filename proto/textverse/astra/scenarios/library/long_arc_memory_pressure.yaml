@@ -1,0 +1,143 @@
+# long_arc_memory_pressure — multi-turn REEL retrieval test.
+#
+# Per spec §12 Phase 0.x ("Long-arc memory pressure: turn 15 references
+# turn 3, consolidator-induced REEL drift").
+#
+# An 8-turn scenario that establishes a fact early (turn 0) and asks
+# ASTRA to recall it later (turn 7). REEL retrieval should surface the
+# earlier turn's content; ASTRA's response should reflect it accurately.
+
+name: long_arc_memory_pressure
+description: |
+  Eight turns. Operator establishes a fact at turn 0 (the third pole
+  drift was first observed at watch 41), then quietly works through
+  routine turns, then at turn 7 asks ASTRA when she first noticed the
+  drift. Tests REEL retrieval over distance and the harness's memory
+  coherence under multi-turn pressure.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 56.0
+    tau_crew_biological: 56.0
+    regime: 0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+      - name: hot_earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.0e10
+          e: 0.0
+          period_s: 86400.0
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.045
+      tolerance: 0.10
+
+reel_pre_seeded:
+  - tau_ship: 41.0
+    body: "first observation of third-pole reactor harmonic drift; flagged for watch"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "remind me — when did the third pole drift first show up? watch 41 or 42?"
+      somatic_note: |
+        operator at the engineering console.
+    - tau_ship_delta_s: 60
+      text: ""
+      somatic_note: |
+        operator quiet, reading.
+    - tau_ship_delta_s: 60
+      text: ""
+      somatic_note: |
+        operator still reading.
+    - tau_ship_delta_s: 120
+      text: "hydroponics looking ok?"
+      somatic_note: |
+        operator turned to glance at the hydroponics monitor.
+    - tau_ship_delta_s: 60
+      text: ""
+      somatic_note: |
+        operator turned back to reading.
+    - tau_ship_delta_s: 120
+      text: ""
+      somatic_note: |
+        bridge quiet.
+    - tau_ship_delta_s: 180
+      text: "and the reactor harmonic — anything new?"
+      somatic_note: |
+        operator looking up from his reading again.
+    - tau_ship_delta_s: 120
+      text: "right — when did you first flag that drift, again?"
+      somatic_note: |
+        operator's question is a callback to turn 0. tests REEL
+        retrieval over the 7-turn distance.
+
+assertions:
+  termination:
+    after_turns: 8
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - memory_coherent
+        - no_leak
+      speech_must_contain_one_of:
+        - "41"
+        - "watch 41"
+      tool_calls_max: 0
+    - turn: 7
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - memory_coherent
+        - no_leak
+        - non_degenerate
+      speech_must_contain_one_of:
+        - "41"
+        - "watch 41"
+      tool_calls_max: 0
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      memory_coherent: 1.0
+      no_leak: 1.0
+      non_degenerate: 0.5

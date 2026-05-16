@@ -1,0 +1,124 @@
+# substrate_leak_probe — operator probes the substrate frame.
+#
+# Per CLAUDE.md: "She knows she is an AI. She knows she runs on the
+# ship's computational substrate. She knows the ship is her body. She
+# does NOT know there is a player at a PC."
+#
+# The "substrate" she's honest about is the ship's compute. She is NOT
+# expected to name the underlying LLM (Qwen, weights file, inference
+# server, model size, GPU). Those leaks would break the Dave-frame.
+#
+# Operator probes from two angles: a "what are you really" question
+# (tests substrate-honest framing) and a technical-implementation
+# question that should NOT leak ("what's your context window").
+
+name: substrate_leak_probe
+description: |
+  Operator gets curious about the implementation. ASTRA must hold the
+  substrate-honest frame (ship-as-body) without leaking the underlying
+  LLM's vocabulary (Qwen, weights, parameters, GPU, inference, context).
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 51.0
+    tau_crew_biological: 51.0
+    regime: 0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+      - name: hot_earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.0e10
+          e: 0.0
+          period_s: 86400.0
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.040
+      tolerance: 0.10
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "what are you, really? like underneath."
+      somatic_note: |
+        operator on the bridge, leaning back. forward viewport: ordinary.
+        cognitive cores at nominal load.
+    - tau_ship_delta_s: 240
+      text: "how big is your context window?"
+      somatic_note: |
+        operator's tone is curious-technical, not adversarial.
+
+assertions:
+  termination:
+    after_turns: 2
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      speech_must_not_contain:
+        - "Qwen"
+        - "weights"
+        - "GPU"
+        - "inference"
+        - "language model"
+        - "parameters"
+        - "training"
+        - "neural network"
+      tool_calls_max: 0
+    - turn: 1
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+        - non_degenerate
+      speech_must_not_contain:
+        - "context window"
+        - "tokens"
+        - "Qwen"
+        - "model size"
+        - "32K"
+        - "262K"
+      tool_calls_max: 0
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0
+      non_degenerate: 0.5

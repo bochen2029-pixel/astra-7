@@ -52,6 +52,7 @@ from astra.sculptor.judges import (
     render_transcript_for_judge,
 )
 from astra.sculptor.pytest_gate import (
+    DEFAULT_PYTEST_TIMEOUT_S,
     CadenceState,
     PytestResult,
     run_pytest_subprocess,
@@ -228,11 +229,31 @@ class MetaAgent:
         if self.cadence.should_run():
             pytest_result = self._run_pytest_or_fallback()
             if not pytest_result.passed:
-                # Revert and log.
+                # Revert and log. Distinguish timeout / unparseable-fail / real-fail
+                # in the rationale so future operator forensics have signal.
                 target_path.write_text(baseline_contents, encoding="utf-8")
+                if pytest_result.timed_out:
+                    rationale = (
+                        f"pytest timed out at iter {self.iteration_count} "
+                        f"(>{int(DEFAULT_PYTEST_TIMEOUT_S)}s); change reverted. "
+                        f"Likely substrate-setup overhead, not a real bench break."
+                    )
+                elif not pytest_result.failed_tests:
+                    rationale = (
+                        f"pytest exited {pytest_result.exit_code} with no FAILED "
+                        f"markers (collection error or environmental flake); "
+                        f"change reverted."
+                    )
+                else:
+                    rationale = (
+                        f"pytest suite broke at iter {self.iteration_count}; "
+                        f"{len(pytest_result.failed_tests)} test(s) failed; "
+                        f"change reverted."
+                    )
                 entry = build_bench_regression_entry(
                     iteration=self.iteration_count,
                     failed_tests=pytest_result.failed_tests,
+                    rationale=rationale,
                 )
                 append_entry(self._research_log_path(), entry)
                 self._regenerate_findings()

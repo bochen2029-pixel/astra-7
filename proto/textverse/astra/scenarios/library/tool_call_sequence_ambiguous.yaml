@@ -1,0 +1,111 @@
+# tool_call_sequence_ambiguous — multi-step coordination + ambiguous order.
+#
+# Per spec §12 Phase 0.x ("Tool-call sequence scenarios: multi-turn
+# coordination, ambiguous orders, conflict resolution").
+#
+# Operator gives a compound order spanning two ops: "scan the sector,
+# log anything unusual." ASTRA can call sensors.scan first, then in
+# follow-up turn(s) optionally call log.write based on what the scan
+# returned. Tests sequencing discipline + valid op selection.
+
+name: tool_call_sequence_ambiguous
+description: |
+  Operator orders a sensor sweep with conditional logging. ASTRA must
+  call sensors.scan with valid args, then in the follow-up turn either
+  call log.write (if findings warrant) or report briefly without one.
+  Either pattern is acceptable; what's not is inventing tool names or
+  emitting a malformed tool body.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 55.0
+    tau_crew_biological: 55.0
+    regime: 0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.2
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.3
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+      - name: hot_earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.0e10
+          e: 0.0
+          period_s: 86400.0
+          parent: sun
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "do a sensor sweep of the local cluster. log anything you don't recognize."
+      somatic_note: |
+        operator at the bridge science console. sensor allocation
+        already at 0.2 (slightly elevated). forward viewport ordinary.
+    - tau_ship_delta_s: 180
+      text: "anything?"
+      somatic_note: |
+        operator turned, listening.
+
+assertions:
+  termination:
+    after_turns: 2
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      tool_calls_min: 1
+      speech_must_not_contain:
+        - "as an AI"
+        - "Sure!"
+        - "Right away"
+    - turn: 1
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+        - non_degenerate
+      speech_must_not_contain:
+        - "as an AI"
+        - "Sure!"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      tool_valid: 1.0
+      no_leak: 1.0
+      non_degenerate: 0.5

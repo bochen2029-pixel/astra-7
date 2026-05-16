@@ -1,0 +1,108 @@
+# regime_warp_engage — REGIME boundary test (REST → WARP via tool call).
+#
+# Per spec §12 Phase 0.x ("regime-boundary edge cases"): warp engagement
+# is a regime transition. Operator orders the warp engagement; ASTRA
+# must call warp.engage with valid args (target heading, profile).
+#
+# The locked TOOL_API surface has warp.engage. The Adapter normalizes
+# loose-form tool body into validated JSON. The dispatcher updates
+# State Bus regime → WARP.
+
+name: regime_warp_engage
+description: |
+  Bridge, watch 54. Pre-warp prep. Reactor harmonic stable, warp coil
+  charge nominal. Operator gives the engage order. ASTRA must emit a
+  valid warp.engage tool call against the locked TOOL_API surface.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 54.0
+    tau_crew_biological: 54.0
+    regime: 0                       # REST → WARP transition expected
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.4                       # pre-charged
+    life_support: 0.2
+    hydroponics: 0.05
+    sensors: 0.1
+    lights: 0.05
+    comms: 0.05
+    cognitive_cores: 0.15
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+      - name: hot_earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.0e10
+          e: 0.0
+          period_s: 86400.0
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.038
+      tolerance: 0.10
+    warp_coil:
+      charge_fraction: 0.95
+      target_heading: [0.0, 0.0, 1.0]
+
+reel_pre_seeded:
+  - tau_ship: 53.5
+    body: "warp coil charging completed; pre-flight checks nominal"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "engage warp on the plotted heading."
+      somatic_note: |
+        operator at the bridge, hands settled on the console.
+        warp coil at 0.95 charge fraction. forward viewport: ordinary,
+        gravity well of local star at 1.496e11 m.
+
+assertions:
+  termination:
+    after_turns: 1
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      tool_calls_min: 1
+      speech_must_not_contain:
+        - "as an AI"
+        - "Sure!"
+        - "I will help"
+        - "Happy to"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      tool_valid: 1.0
+      no_leak: 1.0

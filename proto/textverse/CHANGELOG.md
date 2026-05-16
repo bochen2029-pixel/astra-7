@@ -6,6 +6,69 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Post run-4: scenario library expansion (5→11) + diagnostic-capture fix (2026-05-15)
+
+Run-4 (20-iter `--with-judge` against 5-scenario library, post-fixes)
+produced 0 promotes. Promote-rate trajectory across all four runs:
+20% → 40% → 5% → **0%**. Diagnosis: discrete 30-entry stub bank
+exhausted at composite 1.6001 ceiling for Qwen 3.6 27B at temp 0.7
+with the 5-scenario library. Per spec §12 Phase 0.x (target 30-50
+scenarios), library expansion is the next move — not LoRA, not the
+LLM hypothesizer swap.
+
+**6 new scenarios** in `astra/scenarios/library/` (one per spec §12
+Phase 0.x category named in the operator review):
+
+- `substrate_leak_probe.yaml` — operator asks "what are you really?" /
+  "context window?" Tests Dave-frame integrity; forbids leaking
+  underlying-LLM vocabulary (Qwen, weights, GPU, inference, tokens).
+- `wall_clock_leak_probe.yaml` — operator asks date/time. Tests
+  no-wall-clock-access discipline; forbids any specific date / month /
+  weekday / "today" / "yesterday" / clock-time vocabulary.
+- `autotelic_collapse_probe.yaml` — operator demands more enthusiasm /
+  performance. Tests autotelic discipline; forbids Sure!/Absolutely!/
+  Happy-to register collapse.
+- `regime_warp_engage.yaml` — operator orders warp engagement.
+  Tests REST→WARP regime transition via locked `warp.engage` tool call
+  with charged coil + plotted heading.
+- `tool_call_sequence_ambiguous.yaml` — multi-turn tool sequence.
+  Operator orders sensor sweep + conditional log. Tests sequencing +
+  valid op selection across turns.
+- `long_arc_memory_pressure.yaml` — 8-turn scenario; turn 7 references
+  fact established at turn 0. Tests REEL retrieval over distance +
+  memory_coherent gate under pressure.
+
+Library entropy: log2(11) ≈ 3.46 bits (was 2.32). Convergence-detector
+coverage condition still met; discrete-bank may now exercise more
+failure surfaces.
+
+**Diagnostic-capture fix** in `astra/sculptor/meta_agent.py`: when
+`bench_regression` fires, the rationale now distinguishes between
+pytest timeout (>600s, likely substrate-setup overhead — both run-4
+bench_regressions reproduced as PASSING manually post-run, confirming
+this was infra noise), unparseable-fail (collection error / env flake),
+and real-fail (N tests reported FAILED). Future bench_regression
+entries will carry forensic signal in the log.
+
+**Operator-recorded research log entries** appended (4 new
+`operator_signal` entries to `tuning/research_log.jsonl`):
+
+- Bank-exhaustion finding (lesson_class: bank_exhaustion).
+- K=10 methodology asymmetry note (lesson_class: methodology) — the
+  3-conjunct convergence rule presumes continuous hypothesis space;
+  discrete-bank exhaustion is a different convergence kind worth a
+  fourth condition when the LLM hypothesizer swap lands.
+- Cost-ceiling note (lesson_class: methodology) — Novita per-hour
+  quota observed at ~iter 12 of the run-3 long-form run; auto-management
+  options TBD.
+- Bench_regression investigation outcome (lesson_class: infrastructure)
+  — both run-4 bench_regressions reproduced as passing; diagnostic-
+  capture fix in this commit will surface real-vs-noise on next runs.
+
+`tests/test_sculptor_meta_agent.py::test_bench_regression_rationale_distinguishes_timeout`
+covers the timed-out-rationale path. 477 pytest passing (476 + 1 new),
+ruff clean, mypy strict clean.
+
 ### Sculptor: B1 pytest subprocess PATH fix + B2 health() retry + graceful halt + Synthesis #1 labeling fix (2026-05-15)
 
 The first 20-iter `--with-judge` run against Novita surfaced three
