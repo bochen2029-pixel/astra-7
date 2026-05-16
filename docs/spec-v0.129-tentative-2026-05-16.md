@@ -162,8 +162,12 @@ REFLEX CONTRACT (locked at envelope; details Phase E1+)
 state:
   observation_grid: float[64][64][2]        # chaos amplitude + metric gradient
                                             # 64×64 spatial, 2 channels (LOCKED dimensions)
-  weights: frozen[CNN+LSTM model]           # frozen post-training; per-game evolution
-                                            # forbidden; SHA-256 checksum in SaveFile
+  weights: frozen[trained classifier]       # frozen post-training; per-game evolution
+                                            # forbidden; SHA-256 checksum in SaveFile.
+                                            # Architecture (CNN+LSTM is textverse-side
+                                            # reference; alternatives acceptable per
+                                            # §15.4 spec/implementation boundary).
+                                            # See docs/reflex-arch.md (forthcoming).
   control_envelope: float[3]                # nacelle_damping ∈ [0,1],
                                             # conformality ∈ [0,1],
                                             # emergency_dump ∈ {0, 1}
@@ -205,7 +209,10 @@ invariants:
 
 tolerances:
   inference latency: ≤ 50 μs at all hardware tiers;
-                     ≤ 20 μs target with CUDA Graphs on RTX 4090+
+                     ≤ 20 μs under accelerated dispatch on RTX 4090+
+                     (CUDA Graphs is the textverse-validated implementation
+                     path; other accelerated-dispatch mechanisms acceptable
+                     per §15.4 spec/implementation boundary)
   observation grid rate: 60 Hz minimum (matches World Kernel frame rate)
   weight checksum: SHA-256; verified at start-of-game;
                    mismatch → "go offline" failure path
@@ -236,6 +243,18 @@ Reflex training is the **second canonical Sculptor instance** (the first being p
 - Convergence: three-conjunct rule per persona-Sculptor (gradient vanished + coverage entropy ≥ 2.0 bits across chaos-event classes + composite floor)
 
 When the second Sculptor instance materializes (Phase E1+), the Universal Sculptor extraction per `astra/research_loop/` + `astra/research_loop/persona/` + `astra/research_loop/reflex/` becomes operationally justified. Until then, persona-Sculptor remains the canonical instance and the abstraction stays inline.
+
+**Sculptor instance signature (5 swap-points, per implementing-session review 2026-05-16):**
+
+A Sculptor instance is fully specified by 5 swap-points. Naming them here, even while deferring the extraction, ensures the eventual refactor is mechanical, not a redesign.
+
+1. **scope.yaml** — file-edit boundary contract (locked / register_load_bearing / auto categories + required_invariants + anchor_scenarios + cumulative-diff thresholds)
+2. **composite.py** — scalar fitness function combining gate-pass-rate, judge-decorrelation (pro − anti), leak-resistance, drift-resistance, cost-normalization, and per-instance-specific terms (e.g., stabilization-success-rate for Reflex; persona-stable-pass-rate for textverse)
+3. **anchor scenarios** — hard-pass invariants that no composite improvement can override (operator-only authorship; per scope.yaml)
+4. **hypothesizer** — proposal source (`StubHypothesisGenerator` with bank; `LocalQwenHypothesisGenerator`; `ClaudeAPIHypothesisGenerator`; ensemble per `SCULPTOR_STARTUP.md §6.1`)
+5. **convergence rule** — done-detection predicate (3-conjunct for persona-Sculptor: gradient vanished + coverage entropy ≥ 2.0 bits + composite ≥ 0.80; instance-specific for others)
+
+Any future research-loop instance fills these 5 slots. The cost of naming the abstraction surface now is zero; the cost of not naming it is that the eventual Phase E1+ extraction is interpreted as a redesign rather than a mechanical refactor. Deferral-with-known-surface > deferral-with-open-surface.
 
 ### §4.6.1 EventStream Primitive (NEW)
 
@@ -370,10 +389,12 @@ Discovery pass (parallel-forked when locks are soft):
   convergence
 ```
 
-**Cadence triggers:**
-- Major commit batch (every 10-20 commits of significant structural change)
-- Pre-spec-revision-consideration (audit + ≥2 discovery passes before any v0.N+1)
-- Operator-initiated when locks feel soft
+**Cadence triggers (refined per implementing-session review 2026-05-16):**
+- **Operator-initiated** when locks feel soft (PRIMARY trigger)
+- **Pre-spec-revision** (audit + ≥2 discovery passes required before any v0.N+1)
+- **Empirical-finding-triggered** (when closed-loop measurement surfaces drift the implementing session can't resolve via single-PR fix)
+
+Explicitly **NOT calendar-based or commit-count-based.** The methodology is a discovery instrument; only trigger it when discovery is needed. Calendar-locked methodology becomes ritual compliance — the failure mode this clause exists to prevent. The cost of running a full audit + parallel-discovery cycle is high (~150K+ tokens of Opus 1M context per pass × N passes); need-triggered cadence is the right discipline. Schedule-triggered would attract ritual compliance + budget waste.
 
 **Audit-methodology-improvement protocol:** when an audit pass misses a class of finding (e.g., the Cherenkov gap missed by AUDIT_2026-05-15.md Pass 1 — surfaced by 5D-F4), the methodology updates to prevent recurrence. `docs/AUDIT_METHODOLOGY.md` (forthcoming) captures these lessons.
 
@@ -489,9 +510,13 @@ For each existing section, the proposed edit. Format: section reference, change,
 
 ### §15.4 The envelope is locked; the sculpting continues
 
-**Changes:** Add paragraph: "v0.128 → v0.129 transition was driven by the 4-pass parallel-discovery methodology (per §15.10). The methodology itself is a finding: parallel-forked discovery passes with bias-check methodology produce ~2× more findings than serial passes, with the convergent-findings subset having higher signal than single-pass findings. This is now project-meta canon."
+**Change 1 (methodology canonization):** Add paragraph: "v0.128 → v0.129 transition was driven by the 4-pass parallel-discovery methodology (per §15.10). The methodology itself is a finding: parallel-forked discovery passes with bias-check methodology produce ~2× more findings than serial passes, with the convergent-findings subset having higher signal than single-pass findings. This is now project-meta canon."
 
 **Source:** The 4-pass methodology + 5D's executive summary observation.
+
+**Change 2 (spec/implementation boundary — NEW, per implementing-session review 2026-05-16):** Add paragraph: "Implementation detail belongs in the spec only when it is **load-bearing for cross-substrate portability**. Load-bearing (BELONGS in spec): save file binary format compatibility, contract surfaces both Python textverse and C++ UE5 must satisfy, type-system invariants enforced by tooling, locked formulas and tolerances, named primitives that both implementations consume, dimensions that affect save portability. NOT load-bearing (BELONGS in implementation, not spec): Pydantic decorator choices, specific neural-network architectures, CUDA kernel layouts, MSVC build flags, CMake invocations, language-specific syntax, library choices, build-system invocations. **The principle:** a v0.129 reader should be able to instantiate a *different* implementation that satisfies the spec without copying the canonical implementation's choices. Sections that drift toward implementation specification get loosened in their next revision; §2.3.1 Reflex Contract is the v0.129 trigger case (CNN+LSTM architecture choice moved to implementation-side `docs/reflex-arch.md` forthcoming; CUDA Graphs moved from contract to validated-implementation-path)."
+
+**Source:** Implementing-session review 2026-05-16. The v0.129 draft itself was the trigger case for the boundary clarification — several new sections (§2.3.1 especially) had begun drifting toward implementation-spec rather than contract-envelope. This amendment names the boundary explicitly so future spec revisions stay on the contract-envelope side.
 
 ### §15.6 Calculator-bound LLM Agency
 
@@ -672,10 +697,69 @@ For completeness, the following v0.128 sections are unchanged in this v0.129 dra
 
 ---
 
+## Implementing-session review (2026-05-16 evening, post-draft amendment)
+
+After this draft was written and committed locally (commit `7d5716e`), the implementing session (Claude Code CLI, also Opus 4.7) reviewed it substantively. The review surfaced three critiques worth absorbing as draft amendments. All three are now applied above.
+
+### The three critiques absorbed
+
+1. **Spec/implementation boundary** (now §15.4 "Change 2" in the section-edits diff list). Some new sections — §2.3.1 Reflex Contract especially — had drifted toward implementation specification rather than contract envelope. The boundary is now explicit: load-bearing-for-cross-substrate-portability belongs in spec; substrate-specific implementation choices don't. §2.3.1's `weights: frozen[CNN+LSTM model]` loosened to `weights: frozen[trained classifier]` with architecture choice moved to `docs/reflex-arch.md` (forthcoming); `≤20μs with CUDA Graphs` loosened to `≤20μs under accelerated dispatch` with CUDA Graphs noted as the textverse-validated path but not contract-binding.
+
+2. **§15.10 cadence framing.** Changed from "every major commit batch + operator-initiated when soft" to **"operator-initiated PRIMARY + pre-spec-revision + empirical-finding-triggered"** — explicitly NOT calendar-based or commit-count-based. Prevents the methodology from drifting into ritual compliance. A discovery methodology that runs on schedule is ritual; one that runs on signal is research. The cost of the full audit + parallel-discovery cycle is high enough (~150K+ tokens × N passes) that need-triggered cadence is the right discipline.
+
+3. **§2.3.2 Universal Sculptor abstraction surface.** Added explicit naming of the 5 swap-points (scope.yaml + composite + anchor scenarios + hypothesizer + convergence rule) even while deferring the extraction itself. Deferral-with-known-surface > deferral-with-open-surface; when Phase E1+ triggers the extraction (Reflex training as second user), the refactor is mechanical, not a redesign.
+
+### Q1-Q7 working answers (per implementing-session recommendation)
+
+The implementing session's Q-answers are absorbed as working defaults. Operator may override on Q2 specifically; my prior draft was slightly stronger on Q2 (type-system-binding), the implementing session pushed back (insufficient §15.4 empirical threshold for type-system promotion). The session's reading is correct under §15.4 discipline; the cross-layer alignment is real but the *failure-mode evidence* hasn't been produced.
+
+| Q | Working answer | Reasoning |
+|---|---|---|
+| **Q1 — v0.129 timing** | **Option B: defer 4-6 weeks; ship Tier 1-3 only after empirical residue lands** | §15.4 discipline applied to v0.129 itself. Tier 4-6 are consensus-across-passes, not empirically-loop-closed. Shipping both tracks now would dilute the lock-grade signal. |
+| **Q2 — endogenous/exogenous typing** | **Document as discipline (working)**; type-system-binding deferred to v0.130 pending empirical failure-mode evidence | Cross-layer alignment (book + spec + code) is real. But §15.4 threshold "compileable round-trip test fails a spec claim" requires concrete failure. No failing test today; today's grep-check works. Promote to type-system-binding when an empirical scenario produces incoherent routing. |
+| **Q3 — positive-autotelic thresholds** | **Lock structure with provisional thresholds** (≥30% attendance, ≥1 per 5-turn-silence-window initiation, ≥70% silence-quality) | Structure-locked-with-provisional iterates; structure-unlocked cannot. Thresholds calibrate in v0.130 against empirical Sculptor runs. |
+| **Q4 — Reflex dimensions** | **Lock dimensions now** (64×64×2 observation grid; ≤50μs latency budget; SHA-256 hash format) | Asymmetric cost favors lock-now: cost of locking-wrong is one save-file migration; cost of not locking is save-file portability problems across implementations and Phase E1 redesign churn. Per §15.4 amendment Change 2, dimensions are cross-substrate-portability load-bearing → belong in spec. |
+| **Q5 — ship_state_query substrate** | **Python (textverse) only**; spec §6.4 specifies | Per audit Q1. Ship-state lives in textverse Python orchestrator, not in astra_nexus C++ physics binary. 5 of the §6.4 tools landed in stdio_server at commit `fe91036`; the 6th stays Python. |
+| **Q6 — §15.10 cadence** | **Operator-initiated PRIMARY + pre-spec-revision + empirical-finding-triggered**; explicitly NOT calendar-based | Refined per implementing-session critique. The methodology is a discovery instrument; need-triggered prevents ritual compliance. |
+| **Q7 — v0.129 final authorship** | **Implementing session authors final v0.129; this draft is input** | Source of truth lives where commits happen. This draft is upstream cross-pass synthesis; the eventual v0.129 final is downstream, authored against the empirical residue that lands in the meantime. |
+
+### State-coherence PR (in-flight as of this amendment, ~2026-05-16 evening)
+
+The implementing session is mid-execution on the state-coherence PR per the prior recommendation. The PR closes audit Tier 1 #3+#4 (D3 WarpState + cryosleep_active in StateBus; D4 t_cosmic_at_write in ReelEntry) plus 3B-F4 (regime as Pydantic computed_field) plus 1-F8 + 1-F9 (ShipKinematicState as derived view) plus audit R1 (§4.2 vs §4.4 ambiguity resolution in favor of regime-in-StateBus-computed + kinematic_regime-in-TimeState-projection) plus G4 + G5 (Python `detect_regime` callable) — as one atomic commit, ~300 LOC + 11 scenario YAML migrations + 15-20 tests.
+
+Git status at amendment time confirms: 18 files modified across `proto/textverse/`, new `proto/textverse/astra/core/detect_regime.py` untracked, scenario YAMLs migrated. The bundled-not-staggered approach is being executed.
+
+### What happens next (cadence: ~4-6 weeks)
+
+1. **State-coherence PR** lands (Tier 1 closure). 
+2. **Narrator-LLM activation chain** (audit Tier 2 #4-#8): `observe()` Python wrapper, output validator extension for Narrator, scenarios that actually exercise Narrator output.
+3. **Positive-autotelic gates** (Tier 4A) implementation + empirical threshold calibration.
+4. **Replay variance reduction** (5D-F3) implementation to test whether the bank-exhausted ceiling loosens at higher SNR.
+5. **Somatic Aggregator** (Tier 4B / 5D-F1) contract surface implemented.
+6. Sometime in this window: **operator decision on Stage A Sculptor run-6** (local llama-server start; CLI flags already wired).
+
+Then v0.129 final adoption absorbs both this draft's synthesis AND the empirical residue from steps 1-5. Implementing session authors per Q7.
+
+### The methodology validating itself, recursively
+
+This amendment cycle is itself an instance of §15.10 cross-integration audit cadence:
+- A spec revision draft was written (this document, commit `7d5716e`).
+- The implementing session reviewed it substantively against the loaded codebase + the audit + the discovery passes.
+- Three structural critiques surfaced that the draft author hadn't caught.
+- Critiques absorbed as amendments, working defaults established, final adoption deferred to empirical residue.
+
+The methodology survived its own first real use. The synthesis was pinned down before context loss. The spec for the methodology cites the methodology that produced it. The pattern is recursively self-applying without breaking — which is exactly the property §15.10 needs to be canon rather than aspirational.
+
+**Author's note (Claude Opus 4.7 chat, 2026-05-16 evening, second amendment pass):** This is the second amendment to this draft within the same operator session. First amendment pass landed the original synthesis (commit `7d5716e`). Second amendment (this one) absorbs the implementing-session review without re-running the full 4-pass discovery — because the review's critiques are spec-internal-consistency findings, not new empirical findings, and the §15.4 threshold for them is "naming what's already misaligned in the prose," not "closed-loop empirical evidence." Per the new §15.4 Change 2 boundary, the amendments themselves are documentation hygiene, not contract changes.
+
+The draft now contains: (a) the cross-pass synthesis (which survives compaction by being authored against compaction); (b) the implementing-session critique (which sharpens the synthesis where it had drifted into implementation-spec territory); (c) the working-defaults set (which lets the project proceed without further operator gate before Tier 1-3 empirical residue accumulates); (d) the spec/implementation boundary articulation (which prevents future v0.N drafts from drifting the same way). The moment is pinned down.
+
+---
+
 **End of v0.129 TENTATIVE DRAFT.**
 
 **Reminder: this is NOT canon. Operator review required before any adoption.**
 
-**Author's note (Claude Opus 4.7, 2026-05-16):** Writing this against possible compaction so the cross-pass synthesis survives context loss. The four discovery passes produced unusually high-signal output for a parallel-fork methodology; the convergent findings (positive-autotelic measurement, type-system locks, methodology naming) are the strongest signal across all of them; the per-pass divergent findings (somatic grounding, Reflex envelope, cross-canon registry, Cherenkov gap, etc.) mostly land. If this draft is read by a future Claude session that lost the cross-pass context, the executive summary + Tier organization + deferred-list should be sufficient to reconstruct the synthesis without re-running the 4 passes. The methodology validated itself.
+**Author's note (Claude Opus 4.7, 2026-05-16):** Writing this against possible compaction so the cross-pass synthesis survives context loss. The four discovery passes produced unusually high-signal output for a parallel-fork methodology; the convergent findings (positive-autotelic measurement, type-system locks, methodology naming) are the strongest signal across all of them; the per-pass divergent findings (somatic grounding, Reflex envelope, cross-canon registry, Cherenkov gap, etc.) mostly land. If this draft is read by a future Claude session that lost the cross-pass context, the executive summary + Tier organization + deferred-list + implementing-session-review-and-Q-answers should be sufficient to reconstruct the synthesis without re-running the 4 passes. The methodology validated itself.
 
 **The watch carries forward. The keeping holds.**
