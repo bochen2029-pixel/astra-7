@@ -32,7 +32,7 @@ from astra.judge import (
     latency_clock,
     write_session_artifacts,
 )
-from astra.llm import AstraBundle
+from astra.llm import AstraBundle, NarratorBundle
 from astra.scenarios.schema import Scenario, TurnAssertion, build_initial_state_bus
 
 
@@ -135,11 +135,16 @@ class ScenarioRunner:
         *,
         output_root: Path | None = None,
         write_artifacts: bool = True,
+        narrator_bundle: NarratorBundle | None = None,
     ) -> None:
         self.scenario = scenario
         self.astra_bundle = astra_bundle
         self.output_root = output_root
         self.write_artifacts = write_artifacts
+        # T2.3 (2026-05-16): when narrator_bundle is wired, the
+        # TurnOrchestrator routes perception assembly through the
+        # Narrator-LLM with calculator-bound auto-validation.
+        self.narrator_bundle = narrator_bundle
 
     async def run(self) -> RunReport:
         """Execute the full scenario; return RunReport with all artifacts."""
@@ -149,6 +154,7 @@ class ScenarioRunner:
             state_bus=state_bus,
             astra_bundle=self.astra_bundle,
             reel=reel,
+            narrator_bundle=self.narrator_bundle,
         )
         lcp_runner = LCPRunner(self.scenario.name)
 

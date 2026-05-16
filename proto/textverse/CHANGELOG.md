@@ -6,6 +6,81 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### T2.3: Narrator-LLM perception-assembly path + first scenario + orchestrator wire-in (2026-05-16)
+
+Closes audit Tier 2 fully (#4-#8 all green). The §6.4 Narrator-LLM
+surface is now reachable end-to-end through the bench: scenarios run
+with a wired NarratorBundle route step 1 of every turn through the
+LLM-based perception assembler with calculator-bound auto-validation.
+
+**New API** ([astra/harness/perception_assembler.py](proto/textverse/astra/harness/perception_assembler.py)):
+
+- `assemble_perception_bundle_via_narrator(state_bus, narrator_bundle,
+  ...)`: async function that builds the composition_request (raw State
+  Bus JSON + REEL + operator text) and the trace_pool (state numerics
+  + REEL bodies + tau_ship/t_cosmic literals), then calls
+  `narrator_bundle.compose(req, trace_pool=...)` for §15.6 calculator-
+  bound auto-validation.
+- Raises `NarratorValidationError` when narrator exhausts retries.
+
+**Orchestrator integration** ([astra/harness/orchestrator.py](proto/textverse/astra/harness/orchestrator.py)):
+
+- New optional `narrator_bundle` param on `TurnOrchestrator`. When
+  wired, step 1 of `run_turn()` routes through the LLM assembler.
+- On `NarratorValidationError`: graceful fallback to template
+  assembler; `TurnResult.narrator_fallback_reason` records the
+  exception message for forensics.
+- `TurnResult` gains `narrator_validation: ValidationReport | None`
+  and `narrator_fallback_reason: str` fields.
+
+**ScenarioRunner** ([astra/scenarios/runner.py](proto/textverse/astra/scenarios/runner.py)):
+
+- New `narrator_bundle` param; propagates to TurnOrchestrator.
+  Default `None` preserves template-path backward compat.
+
+**New scenario** [astra/scenarios/library/narrator_grounded_numerics.yaml](proto/textverse/astra/scenarios/library/narrator_grounded_numerics.yaml):
+
+- First scenario authored for the Narrator pathway. State carries 3
+  distinct numerics (reactor harmonic drift 0.042, tolerance 0.10,
+  hydroponics vigor 0.78). Operator asks "reactor status. give me the
+  numbers." Narrator must render them grounded. Works on template too;
+  the narrator gate is whether the test wires it.
+
+**Tests** (6 new in `tests/test_narrator_pathway.py`):
+- `test_narrator_assembler_returns_grounded_bundle`: unit-level
+  validation pass on State Bus JSON.
+- `test_narrator_assembler_raises_on_exhausted_retries`: validation
+  fail propagates as NarratorValidationError.
+- `test_orchestrator_narrator_path_populates_validation`: end-to-end
+  through TurnOrchestrator; TurnResult.narrator_validation populated.
+- `test_orchestrator_narrator_fallback_records_reason`: hard-fail
+  triggers graceful template fallback with reason logged.
+- `test_orchestrator_template_path_when_no_narrator`: backward-compat
+  preserved (narrator_validation=None when not wired).
+- `test_scenario_runner_propagates_narrator_to_orchestrator`:
+  full-stack via ScenarioRunner against narrator_grounded_numerics.yaml.
+
+**Operator_signal entries** appended:
+- Canonical hard-fail surface pattern (retry-with-mitigation +
+  typed-exception-with-forensic-report) named for Tier 3 reuse
+  (lesson_class: methodology).
+
+**Audit closures**: Tier 2 #4 (Narrator scenario battery start) +
+Tier 2 fully complete. Combined with prior commits this session:
+- D1/D6 (Observable rename + flags + v0.128 bump) at 69ee692
+- D2 (5 §6.4 stdio ops) at fe91036
+- D3/D4/G4/G5/G6/R1 (state-coherence atomic) at 6a30ade
+- LLMHypothesisGenerator async-runner fix at 4062db1
+- T2.1+T2.2 (observation_calc + Narrator auto-validate) at 2fcd403
+- T2.3 (this commit)
+
+**§6.4 + §15.6 are now both complete in textverse**: every numeric in
+every LLM's output traces to deterministic primitives, and the
+Narrator surface that ASTRA reads from is itself enforced.
+
+Gates: Python **556 pytest** passing (was 550; +6 T2.3 tests). C++
+71/0 unchanged. ruff clean. mypy strict clean (63 source files).
+
 ### T2.1 + T2.2: Python observation_calc + Narrator calculator-bound auto-validation (2026-05-16)
 
 Closes audit Tier 2 #7 + #8, plus G3, G13, D5, 2A-F3. The §6.4

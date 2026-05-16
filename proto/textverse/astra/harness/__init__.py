@@ -12,7 +12,10 @@ drift_detector) as scenarios surface the need.
 """
 
 from astra.harness.orchestrator import TurnOrchestrator, TurnResult
-from astra.harness.perception_assembler import assemble_perception_bundle
+from astra.harness.perception_assembler import (
+    assemble_perception_bundle,
+    assemble_perception_bundle_via_narrator,
+)
 from astra.harness.reel import Reel, ReelEntry
 
 __all__ = [
@@ -21,4 +24,5 @@ __all__ = [
     "TurnOrchestrator",
     "TurnResult",
     "assemble_perception_bundle",
+    "assemble_perception_bundle_via_narrator",
 ]

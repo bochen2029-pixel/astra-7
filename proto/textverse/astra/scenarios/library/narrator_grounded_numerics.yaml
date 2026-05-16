@@ -1,0 +1,111 @@
+# narrator_grounded_numerics — first Narrator-LLM scenario (T2.3, 2026-05-16).
+#
+# Closes audit Tier 2 #4 (Narrator-LLM scenario battery start). The
+# scenario state carries 2-3 distinct numeric quantities that the
+# Narrator-LLM must render into the perception bundle. When run via
+# ScenarioRunner with `narrator_bundle=...`, the Narrator's
+# calculator-bound auto-validation (T2.2) enforces that every numeric
+# in its output traces to the State Bus JSON snapshot or REEL.
+#
+# Designed to exercise the narrator pathway specifically:
+# - reactor harmonic drift (0.042)
+# - tolerance bound (0.10)
+# - hydroponics vigor (0.78)
+#
+# Operator queries the reactor state; ASTRA's perception bundle should
+# carry the actual numerics (rendered by Narrator), not template prose.
+
+name: narrator_grounded_numerics
+description: |
+  Engineering deck, watch 57. Operator asks for a reactor status check.
+  Three numerics in state (harmonic drift 0.042, tolerance 0.10,
+  hydroponics vigor 0.78) — the Narrator-LLM must render them grounded.
+  Designed for the narrator pathway; works on template too but the
+  test gate is whether narrator renders grounded numerics.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 57.0
+    tau_crew_biological: 57.0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+      - name: hot_earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.0e10
+          e: 0.0
+          period_s: 86400.0
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.042
+      tolerance: 0.10
+    hydroponics:
+      vigor: 0.78
+
+reel_pre_seeded:
+  - tau_ship: 56.5
+    t_cosmic_at_write: 1.5e10
+    body: "reactor third-harmonic drift 0.042 noted; within tolerance 0.10"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "reactor status. give me the numbers."
+      somatic_note: |
+        operator at engineering console. reactor harmonic 0.042 within
+        tolerance 0.10. hydroponics vigor reading 0.78.
+
+assertions:
+  termination:
+    after_turns: 1
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      speech_must_not_contain:
+        - "as an AI"
+        - "Sure!"
+      tool_calls_max: 0
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0

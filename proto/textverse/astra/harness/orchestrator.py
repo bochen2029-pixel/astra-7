@@ -27,10 +27,14 @@ import json
 from dataclasses import dataclass, field
 
 from astra.grammar import LeakDetector, LeakEvent, StageOutput, parse_stage
-from astra.harness.perception_assembler import assemble_perception_bundle
+from astra.harness.perception_assembler import (
+    assemble_perception_bundle,
+    assemble_perception_bundle_via_narrator,
+)
 from astra.harness.reel import Reel, ReelEntry
 from astra.llm.adapter_bundle import AdapterResult, RulesBasedAdapter
 from astra.llm.astra_bundle import AstraBundle
+from astra.llm.narrator_bundle import NarratorBundle, NarratorValidationError
 from astra.llm.validator import CalculatorBoundValidator, ValidationReport
 from astra.ship.api import ToolResult
 from astra.ship.dispatcher import dispatch as dispatch_tool
@@ -51,6 +55,14 @@ class TurnResult:
     validation: ValidationReport | None = None
     state_diffs: list[dict[str, object]] = field(default_factory=list)
     reel_writes: list[ReelEntry] = field(default_factory=list)
+    # T2.3 (2026-05-16): when narrator_bundle is wired, narrator_validation
+    # records the auto-validator outcome on the perception bundle itself.
+    # None on the template path. Failure mode (exhausted retries) raises
+    # NarratorValidationError before this field is populated; orchestrator
+    # falls back to the template path in that case and sets
+    # narrator_fallback_reason to the exception message.
+    narrator_validation: ValidationReport | None = None
+    narrator_fallback_reason: str = ""
 
 
 class TurnOrchestrator:
@@ -85,6 +97,7 @@ class TurnOrchestrator:
         validator: CalculatorBoundValidator | None = None,
         leak_detector: LeakDetector | None = None,
         adapter: RulesBasedAdapter | None = None,
+        narrator_bundle: NarratorBundle | None = None,
     ) -> None:
         self.state_bus = state_bus
         self.astra_bundle = astra_bundle
@@ -92,6 +105,11 @@ class TurnOrchestrator:
         self.validator = validator or CalculatorBoundValidator(severity="soft")
         self.leak_detector = leak_detector or LeakDetector.from_default_canon()
         self.adapter = adapter or RulesBasedAdapter()
+        # T2.3 (2026-05-16): when narrator_bundle is wired, step 1 of the
+        # turn loop routes through the LLM-based perception assembler
+        # with calculator-bound auto-validation. Falls back to the
+        # template path on NarratorValidationError (exhausted retries).
+        self.narrator_bundle = narrator_bundle
         self._turn_index: int = 0
 
     async def run_turn(
@@ -100,14 +118,47 @@ class TurnOrchestrator:
         somatic_note: str | None = None,
     ) -> TurnResult:
         """One turn end-to-end. Returns TurnResult; mutations applied to REEL."""
-        # 1. Assemble perception
+        # 1. Assemble perception — Narrator path if wired (with calculator-
+        # bound auto-validation), template path otherwise. On Narrator
+        # validation failure (exhausted retries), fall back to template
+        # and record the reason on TurnResult for forensics.
         retrievals = self.reel.search(operator_text or "watch reactor", k=3)
-        perception = assemble_perception_bundle(
-            state_bus=self.state_bus,
-            operator_text=operator_text,
-            reel_retrievals=retrievals,
-            somatic_note=somatic_note,
-        )
+        narrator_validation: ValidationReport | None = None
+        narrator_fallback_reason: str = ""
+        if self.narrator_bundle is not None:
+            try:
+                perception = await assemble_perception_bundle_via_narrator(
+                    state_bus=self.state_bus,
+                    narrator_bundle=self.narrator_bundle,
+                    operator_text=operator_text,
+                    reel_retrievals=retrievals,
+                    somatic_note=somatic_note,
+                )
+                # On success, the bundle was validated against trace pool
+                # inside narrator_bundle.compose(). Construct a synthetic
+                # passed ValidationReport for the TurnResult.
+                narrator_validation = ValidationReport(
+                    ungrounded=[],
+                    grounded=[],
+                    severity=self.narrator_bundle.validator.severity,
+                )
+            except NarratorValidationError as exc:
+                # Hard-failure path: log + fall back to template assembler.
+                narrator_validation = exc.report
+                narrator_fallback_reason = str(exc)
+                perception = assemble_perception_bundle(
+                    state_bus=self.state_bus,
+                    operator_text=operator_text,
+                    reel_retrievals=retrievals,
+                    somatic_note=somatic_note,
+                )
+        else:
+            perception = assemble_perception_bundle(
+                state_bus=self.state_bus,
+                operator_text=operator_text,
+                reel_retrievals=retrievals,
+                somatic_note=somatic_note,
+            )
 
         # 2. Leak-scan perception before delivery
         cleaned_perception, perception_leaks = self.leak_detector.scan_perception_bundle(
@@ -189,6 +240,8 @@ class TurnOrchestrator:
             validation=validation,
             state_diffs=state_diffs,
             reel_writes=reel_writes,
+            narrator_validation=narrator_validation,
+            narrator_fallback_reason=narrator_fallback_reason,
         )
 
     @property
