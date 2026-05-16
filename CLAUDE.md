@@ -23,6 +23,153 @@ For fresh-session bootstrap procedure (cwd choice, reading order, what to do fir
 
 ---
 
+## Language Discipline (hard directive, 2026-05-15 — strengthened)
+
+**Zero Python in this project going forward. No new Python code, direct or indirect or inadvertent. The shipped game contains no Python interpreter. The production toolchain contains no Python interpreter. Build scripts and dev tooling contain no Python interpreter.**
+
+This is the hardest project-level lock in the canon. New files compile, not interpret. **llama.cpp is the operative example**: local LLM inference has Python heritage, the high-performance production version is C/C++. whisper.cpp likewise. Piper-TTS likewise. sherpa-onnx likewise. The local-AI ecosystem has converged on compiled languages for the same reasons ASTRA-7 needs. ASTRA-7 follows the same shape.
+
+### Mandatory for all new code
+
+- **C++17 or newer** for everything compileable: physics math, warp sampler, hull SDF, chaos PDE, audio synthesis, asset bake pipelines, scenario runners, persona harness, dev tooling, CI helpers, build scripts where C/C++ is appropriate
+- **C** for low-level interop (CUDA kernels, OS syscalls, library wrappers)
+- **HLSL / USF** for shaders (already canon per spec §6, §8)
+- **MetaSound + Niagara** for UE5 audio + particles (already canon)
+- **Blueprint** for UE5 gameplay glue (compiled at runtime)
+- **C#** acceptable for UnrealSharp gameplay or Windows-side CLI utilities where C/C++ adds friction. Use sparingly.
+- **CMake** is the only acceptable build system that has Python adjacency, treated as data, not as a Python runtime dependency
+
+### Forbidden — zero tolerance, direct or indirect
+
+- **Python source files** anywhere new
+- **Python interpreters as dependencies** — no `libpython` linkage, no embedded interpreters
+- **Python build systems** — no scons, meson, setuptools, conda
+- **Python wrappers around C/C++ libraries** — if the C++ library exists (whisper.cpp, libcurl, Eigen, VTK, libtorch), use it directly. No `faster-whisper`, no `pyvista`, no PyTorch-where-libtorch-exists.
+- **Python in tooling that produces shipped artifacts** — no Python in CFD bake, no Python in mesh prep, no Python in persona-bundle build, no Python in book production
+- **Python in CI helpers** — replace with C++/C# binaries or plain shell
+- **Python as a transitive dependency** — vet libraries by installed footprint, not advertised interface. If a chosen library drags in Python, choose a different library.
+- **Other interpreted languages** (Lua, JavaScript, Ruby, etc.) without explicit per-use operator approval
+
+If a need can only be met by Python today, that need is deferred until a C/C++ replacement exists. Python is not a fallback.
+
+### Existing Python (frozen; replacement-only path forward)
+
+These artifacts run as-is. **No new features. No extensions.** Bug fixes only when they block other work, with explicit operator approval per fix.
+
+- `proto/textverse/` — Phase 1 closed-loop bench + Sculptor v1. The measurement instrument. Frozen.
+- `proto/verify_nexus.py` — 45-assertion Python mirror of `astra_nexus.cpp`. Frozen; C++ test harness replaces when written.
+
+The `book/production/` Python toolchain has done its job (volume 1 submitted to KDP). It is shipped and dormant. **No further development.** Future book volume production happens in C/C++/C# tooling, not by extending the Python scripts.
+
+### Rationale
+
+- **The ecosystem proves it.** llama.cpp / whisper.cpp / Piper-TTS / sherpa-onnx all converged on C/C++ for the same reason: high-performance local AI deployment is incompatible with a Python runtime. ASTRA-7's stack is in the same convergence basin.
+- **The spec already locks C++ contracts.** `WarpFieldSample` (§6 line 1139), `ObservableState` (§6.3 line 1202), `cudaTextureObject_t` dual binding (§1.3), `AudioPayloadRingBuffer` (§8.2). Python on the deterministic side is a structural mismatch.
+- **`proto/astra_nexus.cpp` is 1009 lines of C++** — the operator's native engineering substrate, the existing reference for the math layer.
+- **No interpreter footprint in shipped game.** §4.8 privacy contract forbids outbound network calls after install; by extension, no Python interpreter at runtime.
+- **No interpreter footprint in production tooling either.** A Python build-step is still a Python dependency that audit must trust. DF-41 shipped on UE4 in 2020 without Python; ASTRA-7 will too.
+- **§15.6 calculator-bound LLM agency presumes deterministic compiled tools.**
+- **Build-time audit (§5.10) is bottom-to-top verifiable in C++.** Python pulls in pip wheels with their own native code that audit must trust transitively.
+- **Real types, real performance, real determinism, no GIL.**
+
+### Common replacements
+
+| Need | Python (forbidden) | C/C++/C# (mandatory) |
+|---|---|---|
+| Mesh manipulation | trimesh | CGAL · openMesh · OpenVDB |
+| SDF generation | mesh_to_sdf | OpenVDB · custom |
+| RBF / linear algebra | scipy · numpy | Eigen (header-only) |
+| CFD output reading | pyvista | VTK C++ API |
+| JSON | stdlib | nlohmann/json (single-header) |
+| Test harness | pytest | Catch2 · doctest · GoogleTest |
+| HTTP / LLM client | requests | libcurl + nlohmann/json |
+| ASR | faster-whisper | **whisper.cpp** |
+| TTS | Coqui · Bark | **Piper-TTS · sherpa-onnx · MetaSound neural audio** |
+| ML inference (general) | PyTorch | **libtorch (C++) · ONNX runtime · TensorRT · GGML** |
+| Document generation | python-docx · reportlab | **libharu · cmark · LaTeX · DOCX C++ libs** |
+| Image / cover bake | Pillow · PyMuPDF | **stb_image · Cairo · libpng/libjpeg · CImg** |
+| CLI scaffolding | typer · argparse | CLI11 · cxxopts · C# .NET CLI |
+| Build system glue | scons · meson · setuptools | **CMake** · MSBuild · Makefiles |
+
+### Enforcement
+
+- Any new `.py` file anywhere: rejected at review. **No exceptions.**
+- Any new dependency dragging in Python as transitive dep: rejected. Vet libraries by installed footprint, not advertised interface.
+- Build-time audit (per §5.10) extended to flag any new `.py` and any new dependency requiring `python` / `libpython` / pip-installed packages.
+- `proto/textverse/` and `proto/verify_nexus.py` get `LEGACY.md` markers noting frozen status.
+- `book/production/` is dormant; the directory is closed to new work; volume 2 + 3 production goes through fresh C/C++/C# tooling when authored.
+- Canon document updates citing Python as canonical for new work: flagged for correction.
+
+### Effective immediately
+
+2026-05-15. All new contributions across every track must conform.
+
+---
+
+## Platform Discipline (hard directive, 2026-05-15)
+
+**Zero Apple, zero Mac, zero macOS, zero iOS, zero Apple Silicon, zero Metal, anywhere, ever. Primary platform is Windows 11 + DirectX 12 + Unreal Engine 5. Linux x86_64 is the acceptable second platform for any and all parts. No third platform.**
+
+This is operator design choice and is not negotiable. ASTRA-7 ships on Windows. Linux is permitted across all tracks (development, future game port, server-side tooling, asset bake pipelines). Apple is never a target — not for the game, not for tooling, not for testing, not for cross-compile, not for anything.
+
+### Mandatory
+
+- **Windows 11** — primary development and release platform
+- **DirectX 12** — graphics API on Windows; spec §8.1 DX12-CUDA shared resource ownership names DX12 specifically
+- **CUDA (NVIDIA)** — GPU compute on Windows + Linux; chaos PDE, hull SDF, Reflex stabilizer all CUDA-bound
+- **Unreal Engine 5** — game engine on Windows; Linux acceptable for dev workstations and future port
+- **Vulkan** — acceptable graphics API for Linux build path (UE5 supports it natively)
+- **OpenCL** — acceptable for cross-vendor GPU compute (NVIDIA + AMD + Intel) where CUDA isn't appropriate
+- **Linux (x86_64)** — acceptable secondary platform across every track and every tool
+
+### Forbidden — zero tolerance
+
+- **macOS** — never a build target, never a test target, never a release target
+- **iOS** — never anywhere
+- **Apple Silicon (M1/M2/M3/M4/...)** — never a compile target
+- **Metal** — Apple's graphics API; not used anywhere
+- **Apple frameworks** — AVFoundation, Core Audio, Core ML, Core Bluetooth, AppKit, UIKit, SwiftUI, Foundation-specific APIs, all of it
+- **Swift** — not a project language
+- **Objective-C / Objective-C++** — not a project language
+- **Xcode and Apple developer tooling** — not installed, not used, not referenced in build configs
+- **Apple-only dependencies** — any library that requires Apple frameworks to build
+- **Apple-specific cross-compile** — no osxcross, no clang-targeting-darwin, no macOS deployment from any machine
+
+### Cross-platform libraries are fine; their Apple paths are not
+
+Many open-source C++ libraries support Apple as an additional platform. **Using such libraries is fine; we don't enable their Apple paths and we don't ship for Apple.** Examples:
+
+- llama.cpp / whisper.cpp / Piper-TTS / sherpa-onnx — all support Mac; we build for Windows + Linux only
+- FluidX3D / OpenCL — runs on Apple; we use Windows + Linux builds
+- Eigen, nlohmann/json, CLI11, Catch2 — header-only or fully cross-platform; we compile for Windows + Linux
+- OpenFOAM — Linux native; would run on Mac via Docker but we don't care
+
+The discipline is: **we don't build for Apple, we don't test on Apple, we don't ship for Apple, we don't carry Apple-specific code paths.** If a dependency has `#ifdef __APPLE__` branches, that code is dead from this project's perspective.
+
+### Rationale
+
+- **Operator design choice (load-bearing).** Bo has chosen never to touch Apple with a thousand-foot pole. This is not a technical compromise to be relitigated.
+- **Spec §8.1 locks DirectX 12.** DX12-CUDA shared resource ownership semantics name DX12 specifically. Metal interop with CUDA is a different code path that doesn't exist in canon and never will.
+- **CUDA is NVIDIA-only.** Apple Silicon doesn't run CUDA. Mac systems with NVIDIA GPUs are vanishingly rare in 2026. The CUDA-bound subsystems (chaos PDE per §7.1, hull SDF per §1.3, Reflex stabilizer per §1.5) presume Windows or Linux.
+- **No Apple users in the audience.** Hardware target is RTX 5090 (Windows or Linux) or RTX 4090 minimum. Apple Silicon users aren't the audience for a free open-source local-LLM AI starship simulator that requires NVIDIA inference + DX12 ray-march.
+- **Reduced audit surface.** Every platform we don't target is one less cross-compile path that build-time audit (§5.10) has to verify. Two platforms (Windows + Linux) is the right number for this project's scope.
+- **Operator-native development environment.** DF-41 shipped on Windows UE4 in 2020. The pattern holds.
+
+### Enforcement
+
+- Build scripts target Windows + optionally Linux only. Never macOS.
+- CI runs on Windows + Linux runners only.
+- No `#ifdef __APPLE__` branches added to project code. Such branches in dependencies are tolerated (we don't fork the dep), but the dependency must compile cleanly on Windows + Linux without those branches.
+- Dependencies vetted for "builds-without-Apple-toolchain" status.
+- No Xcode project files, no `.xcconfig`, no Info.plist, no Apple bundle identifiers anywhere in the repo.
+- Canon document updates citing Apple / Mac / Metal / iOS / Swift as targets: flagged for correction.
+
+### Effective immediately
+
+2026-05-15. All new development across every track must conform. Windows 11 + DirectX 12 + Unreal Engine 5 is the primary stack. Linux x86_64 is the permitted second platform. There is no third.
+
+---
+
 ## Project Identity
 
 - **Name:** ASTRA-7
@@ -34,6 +181,7 @@ For fresh-session bootstrap procedure (cwd choice, reading order, what to do fir
 - **Weights:** Hugging Face (base model license respected)
 - **Status:** Pre-development / design canon phase
 - **Hardware target:** RTX 5090 recommended, RTX 4090 minimum, 24-32GB VRAM
+- **Platform:** Windows 11 primary, Linux x86_64 acceptable second; no Apple/Mac (see Platform Discipline)
 
 ---
 
@@ -163,8 +311,8 @@ Reference register: Aurora (KSR), Solaris (Lem), 2001 (Clarke), Passengers (2016
 - LLM: Qwen 3.6 27B (or future equivalent)
 - Inference: llama.cpp local
 - Vision: Qwen native multimodal early fusion
-- ASR: whisper.cpp local
-- TTS: Coqui or Bark local
+- ASR: whisper.cpp local (C/C++)
+- TTS: Piper-TTS or sherpa-onnx local (C/C++; replaces prior Coqui/Bark mention per Language Discipline 2026-05-15)
 - All inference local, no cloud dependency
 
 ### Engine Integration
@@ -385,8 +533,8 @@ The deeper claim being made about the form should be left for players to discove
 - **Engine:** Unreal Engine 5.5+
 - **LLM:** Qwen 3.6 27B GGUF (Q5_K_M for 5090, Q4_K_M for 4090)
 - **Inference:** llama.cpp with multimodal support
-- **ASR:** whisper.cpp (faster-whisper or similar)
-- **TTS:** Coqui TTS or Bark (offline)
+- **ASR:** whisper.cpp (C/C++, no Python wrappers)
+- **TTS:** Piper-TTS or sherpa-onnx (C/C++, offline; replaces prior Coqui/Bark mention per Language Discipline)
 - **Game-AI bridge:** REST or gRPC over localhost
 - **Game state:** Real-time simulation in UE
 - **Persistence:** Save files JSON-serialized with AI state
