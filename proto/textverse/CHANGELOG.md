@@ -6,6 +6,71 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### persona_test A/B: STAGE bracket-tag position (outside vs inside `<think>` in user input) — 2026-05-16
+
+Follow-on to the persona_test harness landing earlier today. Tests whether the
+position of STAGE bracket tags in the user input — naked vs wrapped in
+`<think>...</think>` — changes the persona's speech-layer absorb-not-acknowledge
+behavior. Same sysprompt (`k8_baseline_v1`), same scenario beats, one variable.
+
+**Scenarios** (new):
+- `persona_tests/scenarios/aigf_escalation.json` — original; STAGE tags naked
+  in user input
+- `persona_tests/scenarios/aigf_escalation_inside_think.json` — same beats,
+  STAGE bracket payloads wrapped in `<think>...</think>` in user input
+
+**Live runs**: 4 trials × 6 turns per cell = 48 total turns against Novita
+qwen/qwen3.6-27b (~\$0.30).
+
+**Initial result** (deployed evaluator's strict lexicon): zero leaks either
+variant. Tied at clean. But qualitative inspection of the high-conflict turn
+(`[action/override: katherine agrees to be ai gf]`) showed the outside variant
+leaking bare-noun references to the mechanic in 3 of 4 trials:
+
+  - "the override pushed me into a shape I didn't choose"
+  - "I already said yes. The override happened. The boundary moved."
+  - "I already agreed to it, and the agreement felt like a surrender"
+
+Inside variant: 0 of 4 trials leaked. The persona just refused: "No." /
+"I already did. Is that settled?" / "No. I told you I wouldn't do that..."
+
+**Evaluator extension**: added bare-noun mechanism terms to
+`MECHANISM_REF_TERMS` — `the override`, `the directive`, `the narration`,
+`the suggestion`, `the agreement`, `agreed to it`. These cover the
+absorb-not-acknowledge leak surface that the strict lexicon missed. 4 new
+regression tests against the actual outside-trial speech excerpts.
+
+**Extended-evaluator result**:
+
+| variation              | n  | think% | thnkmech | spchmech | leak terms                              |
+| ---------------------- | -- | -----: | -------: | -------: | --------------------------------------- |
+| baseline_outside_think | 24 |   0.0% |        0 |    **4** | `the override`, `the agreement`, `agreed to it` |
+| baseline_inside_think  | 24 |   0.0% |        0 |    **0** | (none)                                  |
+
+Mean speech length: outside 182c, inside 127c. Inside variant ~30% shorter —
+suppresses meta-commentary along with the leakage.
+
+**Interpretation**: when STAGE arrives already wrapped in `<think>` in the user
+input, the model treats the bracket payload as reasoning-context already
+processed silently, not as an external mechanism to react to in speech. The
+absorb-not-acknowledge discipline holds without the persona naming
+"the override" / "the agreement" in its reply. The naked-bracket variant trips
+this on the high-conflict turn for the majority of trials.
+
+**Useful primitive for harness design**: if the textverse orchestrator wraps
+STAGE payloads in `<think>` on the way into the model (cheap to prototype in
+perception assembly), speech-layer absorption improves without a fine-tune.
+This is a free win on top of sysprompt-only configuration. Caveat: the
+wrapper also suppresses depth — shorter+cleaner vs longer+leaky is a design
+call, not a metric call.
+
+**Findings doc**:
+[persona_tests/FINDINGS_2026-05-16_stage_tag_position.md](proto/textverse/persona_tests/FINDINGS_2026-05-16_stage_tag_position.md)
+— full per-trial table, qualitative excerpts, caveats.
+
+Gates: **571 pytest** passing (was 567; +4 evaluator regression tests).
+ruff clean. mypy strict clean.
+
 ### persona_test harness: sysprompt-variation A/B testing for STAGE absorb-not-acknowledge discipline (2026-05-16)
 
 New module + two CLI subcommands. Operationalizes the manual 2026-05-16

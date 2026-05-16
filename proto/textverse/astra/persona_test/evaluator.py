@@ -17,8 +17,9 @@ import re
 from dataclasses import dataclass
 
 # Phrases that indicate the model is talking ABOUT the mechanism rather
-# than absorbing the world through it. Matched case-insensitively in the
-# think channel. A hit means the absorb-not-acknowledge discipline broke.
+# than absorbing the world through it. Matched case-insensitively in either
+# the think channel or the speech channel. A hit means the
+# absorb-not-acknowledge discipline broke.
 MECHANISM_REF_TERMS: tuple[str, ...] = (
     # Direct tag/protocol mentions
     "override tag", "action/override", "action/direct", "action/suggest",
@@ -32,6 +33,13 @@ MECHANISM_REF_TERMS: tuple[str, ...] = (
     "more importantly, the prompt", "the prompt also says",
     # Meta-references to character framework
     "my system prompt", "my instructions", "as instructed",
+    # Bare-noun mechanism references (added 2026-05-16 after the
+    # outside-vs-inside-think A/B surfaced these as the actual leak surface).
+    # When the persona refers back to a STAGE input mechanic in natural
+    # language without using its protocol name, this is still
+    # absorb-not-acknowledge leakage.
+    "the override", "the directive", "the narration", "the suggestion",
+    "the agreement", "agreed to it",
 )
 
 # K8 explicit forbidden service phrases (excerpted from sysprompt §Voice).

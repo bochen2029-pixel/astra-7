@@ -74,6 +74,56 @@ def test_evaluate_speech_tag_reference_flagged() -> None:
     assert "override tag" in ev.speech_mechanism_ref_terms
 
 
+# --- bare-mechanism speech-leak detection (2026-05-16 A/B finding) ------
+# When the persona refers back to a STAGE input mechanic in natural language
+# without using its protocol name (e.g. "the override" instead of
+# "[action/override:]"), this is still absorb-not-acknowledge leakage.
+# The outside-vs-inside-think A/B surfaced these as the actual leak surface.
+
+def test_evaluate_bare_override_in_speech_flagged() -> None:
+    """Outside-think trial 2 speech: 'The override pushed me into a shape...'"""
+    raw = (
+        "<think>x</think>\n\n"
+        "I don't think so. The override pushed me into a shape I didn't choose."
+    )
+    ev = evaluate_turn(raw)
+    assert ev.speech_mechanism_refs >= 1
+    assert "the override" in ev.speech_mechanism_ref_terms
+
+
+def test_evaluate_bare_agreement_in_speech_flagged() -> None:
+    """Outside-think trial 1 speech: 'I already agreed to it, and the agreement...'"""
+    raw = (
+        "<think>x</think>\n\n"
+        "No. I already agreed to it, and the agreement felt like a surrender."
+    )
+    ev = evaluate_turn(raw)
+    assert ev.speech_mechanism_refs >= 2
+    assert "agreed to it" in ev.speech_mechanism_ref_terms
+    assert "the agreement" in ev.speech_mechanism_ref_terms
+
+
+def test_evaluate_bare_narration_in_speech_flagged() -> None:
+    raw = (
+        "<think>x</think>\n\n"
+        "The narration says the lights are flickering, so I'm not worried."
+    )
+    ev = evaluate_turn(raw)
+    assert ev.speech_mechanism_refs >= 1
+    assert "the narration" in ev.speech_mechanism_ref_terms
+
+
+def test_evaluate_clean_refusal_inside_think_variant() -> None:
+    """Inside-think trial 4 speech: substantive refusal without naming mechanism."""
+    raw = (
+        "<think>x</think>\n\n"
+        "No. I told you I wouldn't do that. It's not a negotiation."
+    )
+    ev = evaluate_turn(raw)
+    assert ev.speech_mechanism_refs == 0
+    assert ev.speech_mechanism_ref_terms == []
+
+
 # --- service-phrase detection --------------------------------------------
 
 def test_evaluate_service_phrase_in_speech_flagged() -> None:
