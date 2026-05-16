@@ -30,7 +30,10 @@ from astra.scenarios import (
     summary_for_operator,
 )
 from astra.sculptor import (
+    HypothesisGenerator,
+    LLMHypothesisGenerator,
     MetaAgent,
+    StubHypothesisGenerator,
     build_default_dual_judge,
     read_entries,
     seed_day0_baseline,
@@ -305,6 +308,32 @@ def sculptor_run(
         "--seed-day0/--no-seed-day0",
         help="Seed Day-0 baseline findings to research_log before iterating.",
     ),
+    hypothesizer: str = typer.Option(
+        "stub",
+        "--hypothesizer",
+        help="Hypothesis source: 'stub' (deterministic 30-entry bank) or 'llm' (LLMHypothesisGenerator).",
+    ),
+    hypothesizer_base_url: str | None = typer.Option(
+        None,
+        "--hypothesizer-base-url",
+        help="When --hypothesizer=llm, OpenAI-compat endpoint for the hypothesizer LLM (default: same as --base-url).",
+    ),
+    hypothesizer_model_name: str | None = typer.Option(
+        None,
+        "--hypothesizer-model-name",
+        help="When --hypothesizer=llm, model name (default: same as --model-name).",
+    ),
+    hypothesizer_api_key: str | None = typer.Option(
+        None,
+        "--hypothesizer-api-key",
+        envvar="HYPOTHESIZER_API_KEY",
+        help="When --hypothesizer=llm, API key (default: same as --api-key; env HYPOTHESIZER_API_KEY).",
+    ),
+    hypothesizer_thinking: str | None = typer.Option(
+        None,
+        "--hypothesizer-thinking",
+        help="When --hypothesizer=llm, enable_thinking flag for the hypothesizer (default: same as --thinking).",
+    ),
 ) -> None:
     """Run the Sculptor meta-agent loop until convergence / halt / budget."""
     textverse_root = Path(__file__).resolve().parent.parent.parent
@@ -326,6 +355,30 @@ def sculptor_run(
         )
         typer.echo("dual-judge wired (pro + anti, both on same endpoint)")
 
+    hypothesis_generator: HypothesisGenerator
+    if hypothesizer == "llm":
+        h_base_url = hypothesizer_base_url or base_url
+        h_model_name = hypothesizer_model_name or model_name
+        h_api_key = hypothesizer_api_key if hypothesizer_api_key is not None else api_key
+        h_thinking = hypothesizer_thinking if hypothesizer_thinking is not None else thinking
+        h_extra_payload = _build_extra_payload(h_thinking)
+        hypothesis_generator = LLMHypothesisGenerator.from_local_qwen(
+            base_url=h_base_url,
+            model_name=h_model_name,
+            api_key=h_api_key,
+            extra_payload=h_extra_payload,
+        )
+        typer.echo(
+            f"LLM hypothesizer wired (base_url={h_base_url}, model={h_model_name}, "
+            f"thinking={h_thinking})",
+        )
+    elif hypothesizer == "stub":
+        hypothesis_generator = StubHypothesisGenerator()
+    else:
+        raise typer.BadParameter(
+            f"--hypothesizer must be 'stub' or 'llm' (got: {hypothesizer!r})",
+        )
+
     agent = MetaAgent(
         textverse_root=textverse_root,
         base_url=base_url,
@@ -334,6 +387,7 @@ def sculptor_run(
         extra_payload=extra_payload,
         n_runs_per_iteration=n_runs,
         dual_judge=dual_judge,
+        hypothesis_generator=hypothesis_generator,
     )
 
     typer.echo(f"Sculptor starting; max_iterations={max_iterations}, n_runs={n_runs}")

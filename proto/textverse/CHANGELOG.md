@@ -6,6 +6,99 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### LLMHypothesisGenerator (Stage A) + raw_output forensics (post run-5) (2026-05-15)
+
+Run-5 confirmed bank-exhaustion (outcome ii per operator framing): 0
+new promotes against the 11-scenario library, composite range collapsed
+to 1.36-1.46 (vs 1.49-1.60 on the 5-scenario library — Decision 3's
+peak of 1.6001 was substantially a 5-scenario artifact). Two operator-
+approved forward fixes land here.
+
+**Decision 1 — LLMHypothesisGenerator (SCULPTOR_STARTUP §6.1, Stage A)**
+
+New module [astra/sculptor/llm_hypothesizer.py](proto/textverse/astra/sculptor/llm_hypothesizer.py):
+
+- `LLMHypothesisGenerator` class wraps an `LLMClient` to propose
+  hypotheses via real LLM (vs deterministic 30-entry stub bank).
+  Implements the `HypothesisGenerator` Protocol — drop-in compatible
+  with the meta-agent.
+- `DECORRELATION_SYSPROMPT` is the operator-locked sysprompt: "You are
+  a senior researcher analyzing transcripts. You are NOT speaking as
+  ASTRA. Your output is meta-analysis, not in-character speech."
+  Decorrelation matters because the LLM might otherwise drift into the
+  same register as the SUT, producing stylistic variants instead of
+  structural improvements. The anti-judge (Sculptor-D) is the layered
+  second defense.
+- LLM output contract: a single JSON object with `name` / `rationale`
+  / `lesson_class` / `relpath` / `operation` / `args` fields. Operations
+  are bounded to the four bank-helper transforms: `append_paragraph`,
+  `replace_substring`, `set_json_key`, `append_pattern_line`. The LLM
+  cannot rewrite arbitrary file contents — only nudge them via known
+  ops. `relpath` must be in scope.yaml's auto or register_load_bearing
+  allowlist.
+- `_extract_json` tolerates models that wrap the JSON in prose or
+  markdown code fences despite instructions to the contrary.
+- `from_local_qwen` factory builds a Stage A hypothesizer pointed at
+  a local llama-server.
+
+**CLI flags** on `astra sculptor-run`:
+- `--hypothesizer stub|llm` (default: `stub` for backward compat)
+- `--hypothesizer-base-url` (default: same as `--base-url`)
+- `--hypothesizer-model-name` (default: same as `--model-name`)
+- `--hypothesizer-api-key` (envvar `HYPOTHESIZER_API_KEY`; default: same as `--api-key`)
+- `--hypothesizer-thinking auto|on|off` (default: same as `--thinking`)
+
+Stage A operator workflow:
+
+```
+python -m astra sculptor-run \
+  --base-url https://api.novita.ai/openai \
+  --model-name qwen/qwen3.6-27b \
+  --thinking off \
+  --with-judge \
+  --hypothesizer llm \
+  --hypothesizer-base-url http://127.0.0.1:8080 \
+  --hypothesizer-model-name qwen-9b \
+  --max-iterations 20
+```
+
+SUT + judges on Novita 27B (production target); hypothesizer on local
+9B (free, decorrelated by being a different model + decorrelation
+sysprompt). Stage B (Claude API, ~$150/converged run) is the escalation
+if Stage A's hypothesis quality is insufficient.
+
+**Decision 2 — raw_output capture in bench_regression**
+
+`ResearchEntry.pytest_raw_output_tail` (≤2KB) added to capture the last
+chunk of pytest stdout+stderr when bench_regression fires. The
+diagnostic-capture-rationale path landed in the prior commit told us
+WHICH category of failure (timeout / unparseable / real-fail); this now
+gives us the actual diagnostic text. Future "collection error or
+environmental flake" entries can be root-caused without re-running.
+
+**Tests** (14 new):
+- `tests/test_sculptor_llm_hypothesizer.py` (12 tests): JSON extraction
+  tolerance (plain / fenced / prose-wrapped / no-object), schema
+  validation (out-of-scope path / unknown op / missing fields), all 4
+  operation→transform mappings, end-to-end via stub LLMClient,
+  recent_log context inclusion in prompt, max-parse-retries failure mode.
+- `tests/test_sculptor_meta_agent.py::test_bench_regression_captures_pytest_raw_output_tail`:
+  verifies the tail is captured (≤2048 chars) and contains the
+  diagnostic ModuleNotFoundError text from a stubbed pytest result.
+
+**Research log** (2 new operator_signal entries appended to
+research_log.jsonl):
+- `composite_scenario_dependence` lesson_class — composite scores are
+  not comparable across library expansions; absolute floor (0.80) is
+  the only transitive threshold.
+- `bank_exhaustion` lesson_class (truly-exhausted) — confirmed across
+  both library scopes; LLM hypothesizer swap justified.
+
+Gates: 491 pytest passing (476 → 491 = +15), ruff clean, mypy strict
+clean (62 source files; +1 new module).
+
+Rollback anchor: tag `pre-sculptor-novita-run-6`.
+
 ### Post run-4: scenario library expansion (5→11) + diagnostic-capture fix (2026-05-15)
 
 Run-4 (20-iter `--with-judge` against 5-scenario library, post-fixes)

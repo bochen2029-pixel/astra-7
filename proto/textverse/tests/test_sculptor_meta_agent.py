@@ -309,6 +309,63 @@ async def test_bench_regression_rationale_distinguishes_timeout(
         narrator_path.write_text(original_narrator, encoding="utf-8")
 
 
+@pytest.mark.asyncio
+async def test_bench_regression_captures_pytest_raw_output_tail(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Decision-2 forward fix: bench_regression entries must capture the
+    last ~2KB of pytest output as forensic signal, so future operators
+    can root-cause the failure (collection error, plugin crash, etc.)
+    without re-running.
+    """
+    from astra.sculptor.pytest_gate import PytestResult
+
+    class _BumpNarrator:
+        def propose(self, **kwargs):
+            return Hypothesis(
+                name="bump",
+                relpath="prompts/narrator_sysprompt.md",
+                transform_fn=lambda x: x + "\nbump.",
+                rationale="any",
+                lesson_class="state_coherent",
+            )
+
+    narrator_path = TEXTVERSE_ROOT / "prompts" / "narrator_sysprompt.md"
+    original = narrator_path.read_text(encoding="utf-8")
+    diagnostic_output = "ERROR: ImportError: no module 'fake_dep'\nE   ModuleNotFoundError: No module named 'fake_dep'\n" * 50
+    try:
+        agent = MetaAgent(
+            textverse_root=TEXTVERSE_ROOT,
+            base_url="http://stub",
+            hypothesis_generator=_BumpNarrator(),
+            n_runs_per_iteration=1,
+        )
+        agent.cadence.cadence = 1
+        monkeypatch.setattr(
+            agent, "_run_pytest_or_fallback",
+            lambda: PytestResult(
+                passed=False, exit_code=1, failed_tests=[],
+                raw_output=diagnostic_output,
+            ),
+        )
+        monkeypatch.setattr(
+            agent, "_research_log_path", lambda: tmp_path / "research_log.jsonl",
+        )
+        monkeypatch.setattr(agent, "_findings_path", lambda: tmp_path / "findings.md")
+        monkeypatch.setattr(agent, "_daily_report_path", lambda: tmp_path / "daily_report.md")
+
+        decision = await agent.run_one_iteration()
+        assert decision.entry.decision == "bench_regression"
+        # Tail captured (≤2048 chars), and contains the diagnostic signal.
+        assert len(decision.entry.pytest_raw_output_tail) <= 2048
+        assert "ModuleNotFoundError" in decision.entry.pytest_raw_output_tail
+        # Rationale identifies it as a collection / env error path.
+        assert "no FAILED markers" in decision.entry.rationale
+    finally:
+        narrator_path.write_text(original, encoding="utf-8")
+
+
 # --- MetaAgent: revert path (anchor fails) --------------------------------
 
 @pytest.mark.asyncio

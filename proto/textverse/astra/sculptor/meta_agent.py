@@ -250,10 +250,15 @@ class MetaAgent:
                         f"{len(pytest_result.failed_tests)} test(s) failed; "
                         f"change reverted."
                     )
+                # Capture last ~2KB of pytest output as forensic signal
+                # so future operators can root-cause the flake / timeout /
+                # collection error without re-running.
+                tail = pytest_result.raw_output[-2048:] if pytest_result.raw_output else ""
                 entry = build_bench_regression_entry(
                     iteration=self.iteration_count,
                     failed_tests=pytest_result.failed_tests,
                     rationale=rationale,
+                    pytest_raw_output_tail=tail,
                 )
                 append_entry(self._research_log_path(), entry)
                 self._regenerate_findings()

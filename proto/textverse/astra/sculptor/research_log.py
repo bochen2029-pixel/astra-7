@@ -50,6 +50,7 @@ class ResearchEntry(BaseModel):
     lesson: str = ""
     scope_refusal_path: str = ""
     pytest_failed_tests: list[str] = Field(default_factory=list)
+    pytest_raw_output_tail: str = ""   # last ~2KB of pytest stdout+stderr; populated on bench_regression
     artifact_dir: str = ""
 
 

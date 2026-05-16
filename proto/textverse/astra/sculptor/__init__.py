@@ -69,6 +69,10 @@ from astra.sculptor.judges import (
     parse_judge_response,
     render_transcript_for_judge,
 )
+from astra.sculptor.llm_hypothesizer import (
+    DECORRELATION_SYSPROMPT,
+    LLMHypothesisGenerator,
+)
 from astra.sculptor.meta_agent import (
     Budget,
     IterationDecision,
@@ -113,6 +117,7 @@ from astra.sculptor.scope import (
 )
 
 __all__ = [
+    "DECORRELATION_SYSPROMPT",
     "DEFAULT_BANK",
     "DEFAULT_PYTEST_TIMEOUT_S",
     "GATE_TO_LESSON_CLASS",
@@ -137,6 +142,7 @@ __all__ = [
     "IterationStatus",
     "JudgeClient",
     "JudgeResult",
+    "LLMHypothesisGenerator",
     "LlamaJudgeClient",
     "MetaAgent",
     "PytestResult",
