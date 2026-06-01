@@ -229,31 +229,66 @@ class MetaAgent:
         if self.cadence.should_run():
             pytest_result = self._run_pytest_or_fallback()
             if not pytest_result.passed:
-                # Revert and log. Distinguish timeout / unparseable-fail / real-fail
-                # in the rationale so future operator forensics have signal.
+                # ALWAYS revert the unverified change first (conservative:
+                # we cannot confirm it is bench-safe).
                 target_path.write_text(baseline_contents, encoding="utf-8")
-                if pytest_result.timed_out:
-                    rationale = (
-                        f"pytest timed out at iter {self.iteration_count} "
-                        f"(>{int(DEFAULT_PYTEST_TIMEOUT_S)}s); change reverted. "
-                        f"Likely substrate-setup overhead, not a real bench break."
+                # Capture last ~2KB of pytest output as forensic signal.
+                tail = pytest_result.raw_output[-2048:] if pytest_result.raw_output else ""
+
+                if pytest_result.runner_failed:
+                    # The pytest RUNNER never executed the suite (uv/interpreter
+                    # missing, broken venv, or timeout before pytest started).
+                    # This is an INFRASTRUCTURE failure, NOT a bench regression:
+                    # the hypothesis is innocent and simply unverified. Logging
+                    # it as `bench_regression` is the exact false-negative that
+                    # polluted the early Novita runs (cadence entries with empty
+                    # failed_tests). The infra problem won't self-heal, so every
+                    # subsequent gate would fail identically and accumulate
+                    # unverifiable iterations — mirror the SERVER_UNHEALTHY
+                    # graceful halt: surface as operator_signal, touch
+                    # pause.flag, and stop. Re-queue the hypothesis after the
+                    # runner is fixed.
+                    detail = (
+                        f"timed out (>{int(DEFAULT_PYTEST_TIMEOUT_S)}s)"
+                        if pytest_result.timed_out
+                        else f"exited {pytest_result.exit_code} before pytest ran"
                     )
-                elif not pytest_result.failed_tests:
-                    rationale = (
-                        f"pytest exited {pytest_result.exit_code} with no FAILED "
-                        f"markers (collection error or environmental flake); "
-                        f"change reverted."
+                    entry = ResearchEntry(
+                        iteration=self.iteration_count,
+                        decision="operator_signal",
+                        rationale=(
+                            f"pytest gate could not execute at iter "
+                            f"{self.iteration_count} ({detail}); pytest never "
+                            f"ran the suite, so this is an INFRASTRUCTURE "
+                            f"failure, not a bench regression. Change reverted "
+                            f"(unverified, not falsified). Halting and touching "
+                            f"pause.flag — fix the runner (verify `uv run "
+                            f"pytest` is healthy) and resume with "
+                            f"`astra sculptor-resume`."
+                        ),
+                        lesson_class="infrastructure",
+                        pytest_raw_output_tail=tail,
                     )
-                else:
+                    append_entry(self._research_log_path(), entry)
+                    self._regenerate_findings()
+                    self._touch_pause_flag()
+                    return IterationDecision(entry=entry, applied_to_disk=False)
+
+                # Genuine bench regression: pytest ran (summary line present)
+                # and either reported FAILED tests or errored during collection
+                # — both attributable to the change itself.
+                if pytest_result.failed_tests:
                     rationale = (
                         f"pytest suite broke at iter {self.iteration_count}; "
                         f"{len(pytest_result.failed_tests)} test(s) failed; "
                         f"change reverted."
                     )
-                # Capture last ~2KB of pytest output as forensic signal
-                # so future operators can root-cause the flake / timeout /
-                # collection error without re-running.
-                tail = pytest_result.raw_output[-2048:] if pytest_result.raw_output else ""
+                else:
+                    rationale = (
+                        f"pytest ran at iter {self.iteration_count} but errored "
+                        f"during collection with no FAILED markers; the change "
+                        f"likely broke an import. Reverted."
+                    )
                 entry = build_bench_regression_entry(
                     iteration=self.iteration_count,
                     failed_tests=pytest_result.failed_tests,

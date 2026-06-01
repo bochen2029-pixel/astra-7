@@ -27,6 +27,31 @@ from pathlib import Path
 # Cap on pytest runtime so a hang doesn't stall Sculptor.
 DEFAULT_PYTEST_TIMEOUT_S: float = 600.0
 
+# A real pytest run always closes with a summary rule line wrapped in `===`,
+# e.g. `===== 578 passed in 7.24s =====` or `=== 2 failed, 5 errors in … ===`.
+# A runner that dies before pytest executes (uv/interpreter missing, broken
+# venv) prints a bare interpreter error with no such rule line. This is the
+# discriminator between "pytest ran and reported failures" (a genuine bench
+# regression attributable to the change) and "pytest never ran" (an
+# infrastructure failure for which the hypothesis is innocent).
+_PYTEST_SUMMARY_RE = re.compile(
+    r"={3,}.*\b(passed|failed|error|errors|skipped|no tests ran)\b",
+    re.IGNORECASE,
+)
+
+
+def _pytest_session_ran(output: str) -> bool:
+    """True iff the output shows pytest actually started a test session.
+
+    Keys off pytest's own session header / summary-rule line, neither of
+    which appears when the *runner* (e.g. `python -m uv run pytest`) fails
+    to launch pytest at all. Deliberately strict: a generic ``error:`` line
+    from a non-pytest tool is not wrapped in ``===`` and will not match.
+    """
+    if "test session starts" in output.lower():
+        return True
+    return bool(_PYTEST_SUMMARY_RE.search(output))
+
 
 @dataclass(slots=True)
 class PytestResult:
@@ -37,6 +62,26 @@ class PytestResult:
     failed_tests: list[str] = field(default_factory=list)
     timed_out: bool = False
     raw_output: str = ""
+
+    @property
+    def runner_failed(self) -> bool:
+        """True iff pytest never executed (infrastructure failure) rather
+        than the suite running and reporting genuine test failures.
+
+        A genuine bench regression always produces a pytest summary line
+        (FAILED markers, an error count, or a collection error). A runner
+        failure — `uv`/interpreter missing, a broken venv, or a timeout
+        before pytest started — produces a non-zero exit with no evidence
+        that pytest ran. Classifying the latter as a bench regression
+        falsely blames an innocent hypothesis and corrupts the research
+        log; the meta-agent treats `runner_failed` as an infrastructure
+        halt instead.
+        """
+        if self.passed:
+            return False
+        if self.timed_out or self.exit_code < 0:
+            return True
+        return not _pytest_session_ran(self.raw_output)
 
 
 _FAILED_LINE_RE = re.compile(r"FAILED (\S+::\S+)")

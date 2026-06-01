@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from astra.sculptor import CadenceState, PytestResult, run_pytest_subprocess
-from astra.sculptor.pytest_gate import _parse_failed_tests
+from astra.sculptor.pytest_gate import _parse_failed_tests, _pytest_session_ran
 
 # --- CadenceState ------------------------------------------------------------
 
@@ -122,3 +122,85 @@ def test_pytest_result_carries_failed_list() -> None:
         failed_tests=["tests/foo.py::test_x"],
     )
     assert r.failed_tests == ["tests/foo.py::test_x"]
+
+
+# --- _pytest_session_ran: did pytest actually execute? -----------------------
+
+def test_session_ran_recognizes_summary_rule_line() -> None:
+    assert _pytest_session_ran("===== 578 passed in 7.24s =====") is True
+    assert _pytest_session_ran("=== 2 failed, 576 passed in 8.1s ===") is True
+    assert _pytest_session_ran("==== 1 error in 0.50s ====") is True
+    assert _pytest_session_ran("===== no tests ran in 0.01s =====") is True
+
+
+def test_session_ran_recognizes_header() -> None:
+    assert _pytest_session_ran("==== test session starts ====\ncollected 5 items") is True
+
+
+def test_session_ran_rejects_bare_interpreter_error() -> None:
+    # `python -m uv` when uv is absent, or `.venv/python -m pytest` with no
+    # pytest installed — neither emits a pytest summary rule line.
+    assert _pytest_session_ran("C:\\py.exe: No module named uv") is False
+    assert _pytest_session_ran("C:\\py.exe: No module named pytest") is False
+
+
+def test_session_ran_rejects_unwrapped_tool_error() -> None:
+    # A non-pytest tool's `error:` line is not wrapped in `===` and must not
+    # be mistaken for a pytest session.
+    assert _pytest_session_ran("error: failed to resolve environment") is False
+
+
+# --- PytestResult.runner_failed: infra-failure vs genuine-regression ---------
+
+def test_runner_failed_false_when_passed() -> None:
+    assert PytestResult(passed=True, exit_code=0).runner_failed is False
+
+
+def test_runner_failed_true_on_timeout() -> None:
+    r = PytestResult(passed=False, exit_code=-1, timed_out=True)
+    assert r.runner_failed is True
+
+
+def test_runner_failed_true_on_negative_exit_code() -> None:
+    # Sentinel exit codes (-1 timeout, -2 FileNotFoundError) are runner deaths.
+    assert PytestResult(passed=False, exit_code=-2).runner_failed is True
+
+
+def test_runner_failed_true_when_pytest_never_ran() -> None:
+    # `python -m uv run pytest` died before pytest started: non-zero exit,
+    # no pytest summary line. This is the false-`bench_regression` case the
+    # fix eliminates — it must classify as a runner failure.
+    r = PytestResult(
+        passed=False, exit_code=1, failed_tests=[],
+        raw_output="C:\\Program Files\\Python313\\python.exe: No module named uv\n",
+    )
+    assert r.runner_failed is True
+
+
+def test_runner_failed_false_on_genuine_test_failure() -> None:
+    # pytest ran, reported FAILED tests → genuine bench regression, not infra.
+    r = PytestResult(
+        passed=False, exit_code=1,
+        failed_tests=["tests/foo.py::test_x"],
+        raw_output=(
+            "FAILED tests/foo.py::test_x - AssertionError\n"
+            "===== 1 failed, 577 passed in 7.9s =====\n"
+        ),
+    )
+    assert r.runner_failed is False
+
+
+def test_runner_failed_false_on_hypothesis_collection_error() -> None:
+    # A hypothesis that breaks an import makes pytest error during collection:
+    # pytest DID run (summary line present), failed_tests is empty, but the
+    # change is at fault → genuine bench regression, NOT an infra failure.
+    r = PytestResult(
+        passed=False, exit_code=2, failed_tests=[],
+        raw_output=(
+            "==== ERRORS ====\n"
+            "errors during collection\n"
+            "SyntaxError: invalid syntax\n"
+            "===== 1 error in 0.30s =====\n"
+        ),
+    )
+    assert r.runner_failed is False
