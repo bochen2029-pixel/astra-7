@@ -123,6 +123,12 @@ class LeakDetector:
     def substrate_count(self) -> int:
         return len(self._substrate)
 
+    def is_wall_clock_pattern(self, raw_pattern: str) -> bool:
+        """True iff `raw_pattern` (a LeakEvent.pattern source string) came
+        from the wall-clock list rather than the substrate list. Lets
+        consumers (drift detector) classify events by canon source."""
+        return any(raw_pattern == raw for _, _, raw in self._wall_clock)
+
     def scan_perception_bundle(self, text: str) -> tuple[str, list[LeakEvent]]:
         """Scan perception bundle before delivery to ASTRA-LLM.
 

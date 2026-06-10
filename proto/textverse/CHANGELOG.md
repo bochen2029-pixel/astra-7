@@ -6,6 +6,32 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Drift detector ephemeral — §4.9 Tier 3 COMPLETE — 2026-06-10
+
+Third and final §4.9 ephemeral. New `astra/harness/ephemeral/drift_detector.py`:
+
+- `detect_drift(recent_turns) → CorrectionArtifact | None` (spec-literal
+  return). Scans ASTRA speech turns only (operator text never audited)
+  against the voice canon by COMPOSING existing sources, not duplicating:
+  em-dash / markdown / service phrases from `astra.judge.gates`
+  (PERSONA_STABLE vocabulary) + wall-clock / substrate leakage via
+  `LeakDetector.scan_speech` (§5.7 canon files), classified per source list
+  via new `LeakDetector.is_wall_clock_pattern`.
+- CorrectionArtifact carries findings (turn_index / category / clipped
+  evidence) + an audit-register REEL entry
+  (`author_instance_id="drift_detector"`, kind=drift_correction) whose body
+  itself passes the rules it enforces (tested).
+- §4.9 isolation invariant enforced by test: no ephemeral module imports a
+  sibling ephemeral.
+
+With journal_generator + consolidator + drift_detector landed, the §4.9
+ephemeral-instance audit item (Phase 0.x Tier 3) is code-complete as pure
+functions; orchestrator maintenance-window wiring follows when scenarios
+exercise it.
+
+Tests: `tests/test_ephemeral_drift.py` — 12 tests. Gates after: 645 passed /
+ruff clean / mypy clean (72 files).
+
 ### Consolidator ephemeral + QC3 canonical event classes — 2026-06-10
 
 Second §4.9 ephemeral lands. New `astra/harness/ephemeral/consolidator.py` +
