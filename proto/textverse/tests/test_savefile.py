@@ -238,6 +238,20 @@ def test_no_tmp_residue_after_save(tmp_path: Path) -> None:
     assert residue == []
 
 
+# --- Reflex identity (§4.6 + §2.3.1, v0.129) ---------------------------------
+
+
+def test_reflex_identity_carries_training_corpus_version(tmp_path: Path) -> None:
+    """v0.129 adoption: save-load Reflex compatibility is explicit
+    (model_id + checksum + corpus version), not checksum-only."""
+    path = tmp_path / "save.json"
+    save_game(path, make_state_bus())
+    loaded = load_single(path)
+    assert loaded.ai.reflex.model_id == "reflex-v0-stub"
+    assert loaded.ai.reflex.weights_checksum == "00000000"
+    assert loaded.ai.reflex.training_corpus_version == "untrained-v0"
+
+
 # --- Property: roundtrip across the kinematic envelope ----------------------
 
 

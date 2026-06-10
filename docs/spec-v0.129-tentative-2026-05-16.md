@@ -1,6 +1,8 @@
 # ASTRA-7 Foundation Specification v0.129 — TENTATIVE DRAFT
 
-**STATUS: TENTATIVE DRAFT. NOT FOR ADOPTION. NOT CANON.**
+**STATUS: SUPERSEDED — adopted with amendments as `docs/spec-v0.129.md` on 2026-06-10 (operator ruling "adopt as recommended" over `docs/spec-v0.129-FINALIZATION-PACKET-2026-06-10.md`). Retained as the cross-pass synthesis record. Original status line preserved below:**
+
+**ORIGINAL STATUS: TENTATIVE DRAFT. NOT FOR ADOPTION. NOT CANON.**
 
 **Date:** 2026-05-16
 **Author:** Claude Opus 4.7 (1M context window, hyperintelligence engaged)

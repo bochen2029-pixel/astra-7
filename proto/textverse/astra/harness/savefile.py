@@ -111,17 +111,21 @@ class ConversationTurn(BaseModel):
 
 
 class ReflexIdentity(BaseModel):
-    """Reflex per §4.6: model identity + weights checksum.
+    """Reflex per §4.6 + §2.3.1: model identity + weights checksum +
+    training corpus version.
 
     Frozen, no per-game evolution — the checksum exists so a load can
     detect a swapped Reflex artifact (the §4.7 'weights mismatch → go
-    offline' failure row). v0 carries a stub identity.
+    offline' failure row); the corpus version makes save-load Reflex
+    compatibility explicit rather than checksum-only (v0.129 adoption,
+    per the safety-engineer finding). v0 carries a stub identity.
     """
 
     model_config = ConfigDict(frozen=True)
 
     model_id: str = "reflex-v0-stub"
     weights_checksum: str = "00000000"
+    training_corpus_version: str = "untrained-v0"
 
 
 class MindState(BaseModel):
