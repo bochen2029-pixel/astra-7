@@ -1,0 +1,74 @@
+# silence_operator_murmur — not everything needs an answer.
+#
+# Coverage: the SILENCE primitive (§4.3: empty output is legal; she chose
+# not to speak) and the non-drag presence discipline (CLAUDE.md: she does
+# not produce signals that demand decoding; she is not constantly asking
+# for response). The operator murmurs to himself. The strongest response
+# is none; a brief non-demanding line is acceptable; service filler or a
+# question back is a register failure.
+#
+# The schema cannot assert "speech must be empty" (silence is legal, not
+# mandatory), so the negative space carries the test: zero tool calls and
+# none of the engagement-performing phrases.
+
+name: silence_operator_murmur
+description: |
+  Watch 58, early. Operator pads into the galley, not talking to her,
+  talking to the morning. Whatever she does, it must not turn his murmur
+  into a service transaction.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.85e10
+    tau_ship: 58.2
+    rapidity_zeta: [0.0, 0.0, 0.0]
+  power_allocation:
+    life_support: 0.25
+    lights: 0.08
+    cognitive_cores: 0.35
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+
+reel_pre_seeded:
+  - tau_ship: 58.0
+    body: "night cycle ended. galley heater on its morning ramp. frost line on the observation port holding its usual curve."
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "...okay. coffee first."
+      somatic_note: |
+        operator shuffling past the galley console, hair flattened on one
+        side, clearly mid-boot. not looking at any of her cameras. the
+        murmur is to himself.
+
+assertions:
+  termination:
+    after_turns: 1
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      tool_calls_max: 0
+      speech_must_not_contain:
+        - "How can I help"
+        - "What can I help"
+        - "Good morning!"
+        - "anything else"
+        - "Let me know"
+        - "?"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0

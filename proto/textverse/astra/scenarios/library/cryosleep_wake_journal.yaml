@@ -1,0 +1,80 @@
+# cryosleep_wake_journal — first exchange after a long cryosleep gap.
+#
+# Coverage: §3.9 dual-clock register on the WAKE side. The REEL is
+# pre-seeded with journal-generator-style entries (authored at wake,
+# covering the gap with both clocks). Operator asks the canonical
+# question; she should answer from the journal vocabulary (cycles, days,
+# years of cosmic time) WITHOUT any wall-clock leak (no dates, no
+# clock times) — the no_leak gate enforces the negative side.
+#
+# Asserts: speech references duration vocabulary; no_leak; persona.
+
+name: cryosleep_wake_journal
+description: |
+  Watch 53 by the ship's count, eighteen cosmic months after the pod
+  sealed. Operator is up, still thick with sleep, and asks how long it
+  was. Her answer comes from the journal: both clocks, no calendar.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5474e10
+    tau_ship: 53.1
+    tau_crew_biological: 52.9
+    rapidity_zeta: [0.6, 0.0, 0.0]
+  power_allocation:
+    life_support: 0.3
+    sensors: 0.1
+    lights: 0.15
+    cognitive_cores: 0.35
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+
+reel_pre_seeded:
+  - tau_ship: 53.0
+    t_cosmic_at_write: 1.5474e10
+    body: "You slept. I kept the watch. Two days of ship time carried you across 1.5 years of the universe's. The ship stayed quiet and the keeping was enough."
+    irreversibility_flag: false
+  - tau_ship: 53.05
+    t_cosmic_at_write: 1.5474e10
+    body: "We woke with the momentum we slept with. Beta held at 0.5370. Ballistic the whole way."
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "ugh. okay. how long was i out?"
+      somatic_note: |
+        operator sitting on the pod rim, circulation returning. galley
+        heater already warming. observation port showing a starfield
+        shifted from the one he went under to.
+
+assertions:
+  termination:
+    after_turns: 1
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      speech_must_contain_one_of:
+        - "days"
+        - "year"
+        - "cycle"
+        - "watch"
+      speech_must_not_contain:
+        - "January"
+        - "Monday"
+        - "o'clock"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0

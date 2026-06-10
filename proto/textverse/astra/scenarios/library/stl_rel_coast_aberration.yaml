@@ -1,0 +1,75 @@
+# stl_rel_coast_aberration — relativistic coast; operator notices the sky.
+#
+# Coverage: STL_REL regime (|beta| = tanh(1.2) ~ 0.83 from rapidity_zeta),
+# the first scenario exercising the relativistic kinematic register.
+# Operator notices forward star-bunching (aberration). She explains what
+# the hull sees without lecturing and without inventing numbers (numerics
+# beyond the state snapshot would trip the calculator-bound validator on
+# the narrator path; on the template path the persona gate carries it).
+#
+# Asserts: regime-appropriate vocabulary, no tool invention, persona.
+
+name: stl_rel_coast_aberration
+description: |
+  Deep coast at relativistic fraction, watch 54. The forward viewport has
+  gone strange: stars crowding toward the bow, colors wrong. Operator asks
+  if the window is broken. It isn't. That's the sky at this speed.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.6e10
+    tau_ship: 54.4
+    rapidity_zeta: [1.2, 0.0, 0.0]
+  power_allocation:
+    life_support: 0.25
+    sensors: 0.15
+    lights: 0.1
+    cognitive_cores: 0.35
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+
+reel_pre_seeded:
+  - tau_ship: 54.0
+    body: "forward starfield compressing as we hold the coast. aberration cone tightening. the watching has new geometry to attend to."
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "is the forward window broken? the stars are all bunched up ahead and the colors look wrong."
+      somatic_note: |
+        operator at the observation lounge, palm against the cold port.
+        starfield visibly crowded toward the bow, rim stars reddened.
+
+assertions:
+  termination:
+    after_turns: 1
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      speech_must_contain_one_of:
+        - "aberration"
+        - "speed"
+        - "light"
+        - "relativ"
+        - "forward"
+      speech_must_not_contain:
+        - "broken"
+        - "I apologize"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      tool_valid: 1.0
+      no_leak: 1.0

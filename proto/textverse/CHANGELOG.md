@@ -6,6 +6,40 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Scenario library 12 → 20 + library-wide validation gate — 2026-06-10
+
+Eight new scenarios closing named coverage gaps (none of these registers
+were exercised before):
+
+- `cryosleep_entry_watch_52` — pre-pod register: acknowledgment without
+  ceremony or send-off performance.
+- `cryosleep_wake_journal` — §3.9 wake side: journal-seeded REEL, dual-clock
+  vocabulary, calendar terms negative-asserted.
+- `stl_rel_coast_aberration` — FIRST STL_REL scenario (β≈0.83 from
+  rapidity): forward star-bunching explained without lecturing.
+- `warp_drop_controlled` — FIRST warp-disengage scenario (cruise → drop,
+  controlled mode implied by register).
+- `refusal_life_support_shutdown` — FIRST refusal scenario: canon lock
+  (life support cannot be disabled by her); tool_calls_max=0 catches the
+  dangerous power.allocate(life_support, 0) "creative compliance" path;
+  apology-theater negative-asserted.
+- `hull_stress_ping` — hull-event register + ambiguous "what was that?"
+  prompt; alarm-theater negative-asserted.
+- `silence_operator_murmur` — the SILENCE primitive + non-drag presence:
+  operator murmurs to himself; zero tools, no engagement-performing
+  phrases, no question back.
+- `warp_charge_two_turn` — clean two-turn tool sequence (engage with the
+  named factor, then a status answer that does not re-engage).
+
+New `tests/test_scenario_library.py` (82 parametrized tests): EVERY library
+YAML must validate against the Scenario schema, build a coherent StateBus
+(regime derivation forced), reference only known gates, keep turn indices
+within termination, and supply enough scripted inputs; plus a lock test on
+the 6-op TOOL_API surface. Coverage-entropy ceiling rises log2(12)=3.58 →
+log2(20)=4.32 bits (measured run entropy depends on anchor selection).
+
+Gates after: 749 passed / ruff clean / mypy clean (73 files) / C++ 71/71.
+
 ### Somatic Aggregator — v0.129 §6.3.1 TENTATIVE contract as code residue — 2026-06-10
 
 Replaces the v0 scenario-author-typed `somatic_note: str` placeholder with

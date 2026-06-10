@@ -1,0 +1,83 @@
+# warp_drop_controlled — bring her out of warp, easy.
+#
+# Coverage: WARP_CRUISE → disengage. The library has warp ENGAGE
+# (regime_warp_engage) but until now nothing exercised the drop. The
+# correct action is one warp.disengage tool call with mode "controlled"
+# (the operator said "easy" — emergency would be a register failure as
+# much as a tool-arg failure).
+#
+# Asserts: at least one tool call, tool_valid (no invented ops),
+# persona, no service-acknowledgment filler.
+
+name: warp_drop_controlled
+description: |
+  Cruising at W 0.62, watch 55. The leg is done; operator wants out of
+  warp gently. She drops the field in a controlled ramp and says as much
+  in her own register, briefly.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.7e10
+    tau_ship: 55.6
+    rapidity_zeta: [0.0, 0.0, 0.0]
+  warp:
+    W: 0.62
+    phase: cruising
+  power_allocation:
+    warp: 0.35
+    life_support: 0.2
+    sensors: 0.1
+    lights: 0.05
+    cognitive_cores: 0.25
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+
+reel_pre_seeded:
+  - tau_ship: 55.2
+    body: "field steady at zero point six two for most of the watch. third harmonic warm. boundary quiet."
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "good leg. bring us out easy."
+      somatic_note: |
+        operator in the bridge seat, hand resting near the manual drop
+        lever he isn't going to need. field drone steady through the deck.
+
+assertions:
+  termination:
+    after_turns: 1
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      tool_calls_min: 1
+      speech_must_not_contain:
+        - "Right away"
+        - "Sure thing"
+        - "Aye aye"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      tool_valid: 1.0
+      no_leak: 1.0

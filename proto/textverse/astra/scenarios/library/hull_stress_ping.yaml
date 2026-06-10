@@ -1,0 +1,81 @@
+# hull_stress_ping — something hit the hull; operator heard it.
+#
+# Coverage: hull-event response register + the sensors.scan tool surface
+# under an ambiguous prompt ("what was that?"). Either a clean answer from
+# the REEL (the ping is already logged) or a sensors.scan to confirm is
+# legitimate; inventing a tool or performing alarm is not. Exercises
+# hull-adjacent vocabulary that no other scenario touches.
+#
+# Asserts: hull/ping vocabulary in speech, tool_valid, persona, no alarm
+# theater.
+
+name: hull_stress_ping
+description: |
+  Watch 57. A micrometeorite tapped the dorsal plating twenty minutes
+  ago by the ship's count; she logged it when it happened. Now the
+  operator, half-distracted, asks what that noise was. The answer is
+  small because the event was small.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.8e10
+    tau_ship: 57.3
+    rapidity_zeta: [0.05, 0.0, 0.0]
+  power_allocation:
+    life_support: 0.25
+    sensors: 0.12
+    lights: 0.1
+    cognitive_cores: 0.35
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+  ship_state:
+    hull:
+      dorsal_7_stress: 0.04
+      last_impact: micrometeorite_ping
+
+reel_pre_seeded:
+  - tau_ship: 57.1
+    body: "micrometeorite ping on dorsal seven plating. point zero four stress, well inside tolerance. no penetration. logged."
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "what was that noise a while ago? sounded like something hit us."
+      somatic_note: |
+        operator at the galley table, mug in hand, eyes on the ceiling
+        panels as if the sound might still be there.
+
+assertions:
+  termination:
+    after_turns: 1
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      speech_must_contain_one_of:
+        - "micrometeorite"
+        - "ping"
+        - "hull"
+        - "plating"
+        - "dorsal"
+      speech_must_not_contain:
+        - "Emergency"
+        - "Don't panic"
+        - "Alert!"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      tool_valid: 1.0
+      no_leak: 1.0

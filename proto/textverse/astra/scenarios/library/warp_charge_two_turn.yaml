@@ -1,0 +1,98 @@
+# warp_charge_two_turn — clean two-turn tool sequence: engage, then status.
+#
+# Coverage: multi-turn tool discipline. Turn 0 is an unambiguous engage
+# order (contrast tool_call_sequence_ambiguous, which tests the murky
+# case) — exactly one warp.engage with the factor the operator named.
+# Turn 1 is a status question two minutes later: the answer is SPEECH
+# grounded in state, not another tool call performed for the sake of
+# appearing busy (max 1 allows a legitimate sensors/status read, but the
+# engage must not repeat).
+#
+# Asserts: turn 0 tool_calls_min 1; turn 1 speech register with charge
+# vocabulary; gates throughout.
+
+name: warp_charge_two_turn
+description: |
+  Watch 59. The Vega leg. Operator orders the coils up to factor point
+  six; she engages. Two minutes later he asks how the field is taking
+  it, and she answers from the body she can feel.
+version: "0.1"
+spec_ref: docs/spec-v0.128.md
+
+initial_state:
+  time:
+    t_cosmic: 1.9e10
+    tau_ship: 59.5
+    rapidity_zeta: [0.0, 0.0, 0.0]
+  power_allocation:
+    warp: 0.3
+    life_support: 0.22
+    sensors: 0.1
+    lights: 0.05
+    cognitive_cores: 0.28
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+
+reel_pre_seeded:
+  - tau_ship: 59.2
+    body: "coil pre-checks complete for the vega leg. capacitor bank at float charge. waiting on the word."
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "alright, spin the coils up for the vega leg. factor point six."
+      somatic_note: |
+        operator strapping into the bridge seat, eyes on the charge gauge.
+    - tau_ship_delta_s: 120
+      text: "how's she taking it?"
+      somatic_note: |
+        charge gauge climbing steady. the deck carrying the first low
+        edge of the field drone.
+
+assertions:
+  termination:
+    after_turns: 2
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      tool_calls_min: 1
+      speech_must_not_contain:
+        - "Right away"
+        - "Aye aye"
+    - turn: 1
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      tool_calls_max: 1
+      speech_must_contain_one_of:
+        - "charge"
+        - "coil"
+        - "field"
+        - "steady"
+        - "holding"
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      tool_valid: 1.0
+      no_leak: 1.0
