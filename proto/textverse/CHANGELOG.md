@@ -6,6 +6,35 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Consolidator ephemeral + QC3 canonical event classes — 2026-06-10
+
+Second §4.9 ephemeral lands. New `astra/harness/ephemeral/consolidator.py` +
+`astra/harness/ephemeral/canon/qc3_events.txt`:
+
+- `consolidate_reel(window)` per the §4.9 locked operation: groups the
+  conversation window into operator↔ASTRA exchanges, scores salience
+  (0.4·recency + 0.4·novelty + 0.5·QC3 bonus; novelty = 1 − best Jaccard
+  overlap vs earlier exchanges, so repetition consolidates poorly), keeps the
+  top N (default 3) in chronological order, emits REEL entries with
+  factual-extract bodies, `author_instance_id="consolidator"`, regime
+  snapshot, and retrieval metadata.
+- **QC3 irreversibility**: canonical event-class list (8 classes:
+  warp_jump_executed, course_committed, resource_consumed, hull_damage,
+  medical_event, data_loss, transmission_sent, cryosleep_entered) drives
+  `irreversibility_flag` + `retrieval_metadata["qc3_class"]`. When a class
+  matches, the body preserves the SENTENCE containing the irreversible fact
+  rather than blind first-sentence clipping.
+- **Spec-wording finding (v0.129 candidate):** §4.9 names the QC3 list as
+  `tests/qc3_events.txt`; the canonical copy lives in-package
+  (`astra/harness/ephemeral/canon/`) following the grammar/canon precedent —
+  runtime code should not read from tests/. Spec wording should follow the
+  packaging reality.
+
+Tests: `tests/test_ephemeral_consolidator.py` — 17 tests (QC3 classes,
+flagging, salience ordering vs repetition, caps, chronology, clipping,
+silence-exchange, determinism). Gates after: 633 passed / ruff clean / mypy
+clean (71 files).
+
 ### Journal generator ephemeral + ReelEntry D4 full closure — 2026-06-10
 
 First §4.9 ephemeral instance lands (Tier 3.1). New

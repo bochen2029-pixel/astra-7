@@ -1,0 +1,20 @@
+# QC3 irreversible-event classes per spec v0.128 §4.9 + §11 (QC3
+# monotonicity: some things cannot be undone, and the REEL must mark them).
+#
+# Format: <class_label> | <regex>   (case-insensitive at match time)
+# Lines starting with '#' and blank lines are ignored. First match wins;
+# order in this file is the canonical precedence.
+#
+# Packaging note: spec §4.9 names this list as `tests/qc3_events.txt`; the
+# canonical copy lives in-package (astra/harness/ephemeral/canon/) following
+# the grammar/canon precedent so runtime code never reads from tests/.
+# Flagged in CHANGELOG as a v0.129 wording candidate.
+
+warp_jump_executed | \b(jump (held|executed|completed?)|entered warp|bubble (formed|held)|went to warp)\b
+course_committed | \b(course (locked|committed)|burn (executed|completed?)|delta.?v (spent|committed))\b
+resource_consumed | \b(fuel (spent|burned)|jettisoned|vented|discarded|consumed the last)\b
+hull_damage | \b(hull (breach|damaged?|fractured?)|micrometeorite (strike|impact)|punctured?)\b
+medical_event | \b(administered|sedated|surgery|sutured|dosed)\b
+data_loss | \b(deleted|purged|wiped|overwrote|overwritten)\b
+transmission_sent | \b(transmission (sent|away)|message (sent|transmitted)|comms burst)\b
+cryosleep_entered | \b(cryosleep (entered|began|initiated)|went under|pod sealed)\b
