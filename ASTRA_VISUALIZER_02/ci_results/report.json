@@ -1,0 +1,224 @@
+{
+  "version": "0.1.0",
+  "libastra_assertion_count": 0,
+  "summary": {
+    "scenes_passed":    12,
+    "scenes_failed":    0,
+    "total_assertions": 44,
+    "assertions_passed": 44
+  },
+  "scenes": [
+    {
+      "id": "S01",
+      "label": "S01  RestBaseline",
+      "screenshot": "ci_results/S01.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S01.gamma_at_rest_equals_one", "passed": true, "expected": 1, "measured": 1, "diff": 0},
+        {"name": "S01.beta_at_rest_equals_zero", "passed": true, "expected": 0, "measured": 0, "diff": 0},
+        {"name": "S01.dtau_dt_at_rest_equals_one", "passed": true, "expected": 1, "measured": 1, "diff": 0},
+        {"name": "S01.sun_pixel_R_high", "passed": true, "expected": 0.85, "measured": 1, "diff": 0.15},
+        {"name": "S01.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S02",
+      "label": "S02  STL Recede 0.5c",
+      "screenshot": "ci_results/S02.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S02.apparent_rate_matches_SR_Doppler", "passed": true, "expected": 0.57735, "measured": 0.57735, "diff": 0},
+        {"name": "S02.gamma_at_beta_05_equals_cosh_atanh_05", "passed": true, "expected": 1.1547, "measured": 1.1547, "diff": 0},
+        {"name": "S02.regime_dispatch_STL_differs_from_WARP", "passed": true, "expected": 0.5, "measured": 0.5, "diff": 0},
+        {"name": "S02.planet_pixel_R_high", "passed": true, "expected": 0.85, "measured": 1, "diff": 0.15},
+        {"name": "S02.planet_pixel_B_below_055", "passed": true, "expected": 0.3, "measured": 0.376471, "diff": 0.0764706},
+        {"name": "S02.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S03",
+      "label": "S03  STL Recede 0.9c",
+      "screenshot": "ci_results/S03.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S03.apparent_rate_matches_SR_Doppler_at_09", "passed": true, "expected": 0.229416, "measured": 0.229416, "diff": 0},
+        {"name": "S03.gamma_at_beta_09_equals_cosh_atanh_09", "passed": true, "expected": 2.29416, "measured": 2.29416, "diff": 2.59091e-07},
+        {"name": "S03.planet_pixel_R_high", "passed": true, "expected": 0.85, "measured": 1, "diff": 0.15},
+        {"name": "S03.planet_pixel_B_near_zero", "passed": true, "expected": 0.08, "measured": 0.0196078, "diff": 0.0603922},
+        {"name": "S03.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S04",
+      "label": "S04  Warp Charge",
+      "screenshot": "ci_results/S04.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S04.dtau_dt_at_W1_equals_half", "passed": true, "expected": 0.5, "measured": 0.5, "diff": 0},
+        {"name": "S04.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S05",
+      "label": "S05  Warp Cruise 2c",
+      "screenshot": "ci_results/S05.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S05.apparent_rate_at_v2c_equals_minus_one", "passed": true, "expected": -1, "measured": -1, "diff": 0},
+        {"name": "S05.apparent_rate_at_slider_matches_compute_apparent_rate", "passed": true, "expected": -1, "measured": -1, "diff": 0},
+        {"name": "S05.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S06",
+      "label": "S06  Warp Cruise 10c + Cherenkov",
+      "screenshot": "ci_results/S06.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S06.apparent_rate_at_v10c_equals_minus_nine", "passed": true, "expected": -9, "measured": -9, "diff": 0},
+        {"name": "S06.cherenkov_angle_canon_matches_acos_inv_nbeta", "passed": true, "expected": 1.52078, "measured": 1.52078, "diff": 0},
+        {"name": "S06.cherenkov_inactive_at_low_beta_returns_minus_one", "passed": true, "expected": -1, "measured": -1, "diff": 0},
+        {"name": "S06.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S07",
+      "label": "S07  PhotonSourceHistory",
+      "screenshot": "ci_results/S07.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S07.beyond_photon_history_true_at_observing_before_source_on", "passed": true, "expected": 1, "measured": 1, "diff": 0},
+        {"name": "S07.beyond_photon_history_false_at_observing_after_source_on", "passed": true, "expected": 0, "measured": 0, "diff": 0},
+        {"name": "S07.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S08",
+      "label": "S08  Warp + GravityWell",
+      "screenshot": "ci_results/S08.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S08.grav_factor_at_r_100rs_M10Msun_equals_sqrt_099", "passed": true, "expected": 0.994987, "measured": 0.994987, "diff": 2.29805e-11},
+        {"name": "S08.regime_composite_warp_or_gravwell_equals_0x28", "passed": true, "expected": 40, "measured": 40, "diff": 0},
+        {"name": "S08.dtau_dt_at_W1_grav099_warp_active_equals_f_warp_times_grav", "passed": true, "expected": 0.497494, "measured": 0.497494, "diff": 0},
+        {"name": "S08.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S09",
+      "label": "S09  Chaos + Reflex",
+      "screenshot": "ci_results/S09.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S09.regime_WARP_CRUISE_bit_unchanged", "passed": true, "expected": 8, "measured": 8, "diff": 0},
+        {"name": "S09.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S10",
+      "label": "S10  Hubble Horizon",
+      "screenshot": "ci_results/S10.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S10.beyond_hubble_horizon_true_at_100Gly", "passed": true, "expected": 1, "measured": 1, "diff": 0},
+        {"name": "S10.beyond_hubble_horizon_false_at_1Gly", "passed": true, "expected": 0, "measured": 0, "diff": 0},
+        {"name": "S10.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S11",
+      "label": "S11  STL vs WARP split",
+      "screenshot": "ci_results/S11.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S11.STL_REL_apparent_rate_at_05c_equals_sqrt_one_third", "passed": true, "expected": 0.57735, "measured": 0.57735, "diff": 0},
+        {"name": "S11.WARP_CRUISE_apparent_rate_at_05c_equals_half", "passed": true, "expected": 0.5, "measured": 0.5, "diff": 0},
+        {"name": "S11.regime_dispatch_difference_at_05c_above_005", "passed": true, "expected": 1, "measured": 1, "diff": 0},
+        {"name": "S11.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    },
+    {
+      "id": "S12",
+      "label": "S12  Eye-Ear Decoupling",
+      "screenshot": "ci_results/S12.png",
+      "golden": {
+        "present": true,
+        "mean_diff": 0,
+        "max_diff": 0,
+        "passed": true,
+        "note": "mean_diff=0.0000 (<= 0.0100) max_diff=0.0000 (<= 0.1000) over 2073600 px"
+      },
+      "assertions": [
+        {"name": "S12.t_emit_lags_t_cosmic_by_lookback", "passed": true, "expected": 3.15576e+07, "measured": 3.15576e+07, "diff": 0},
+        {"name": "S12.apparent_rate_reversed_during_warp_v2c", "passed": true, "expected": -1, "measured": -1, "diff": 0},
+        {"name": "S12.golden_diff", "passed": true, "expected": 0, "measured": 0, "diff": 0}
+      ]
+    }
+  ]
+}

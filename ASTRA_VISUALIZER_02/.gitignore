@@ -1,0 +1,11 @@
+build/
+out/
+.cache/
+*.user
+*.suo
+*.sln
+*.vcxproj*
+.vs/
+.vscode/
+CMakeUserPresets.json
+.checkpoint_v*/
