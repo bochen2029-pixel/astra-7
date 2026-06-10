@@ -40,6 +40,7 @@ import json
 from typing import TYPE_CHECKING
 
 from astra.harness.reel import ReelEntry
+from astra.harness.somatic import SomaticSignal, aggregate
 from astra.ship.api import regime_label
 from astra.state_bus import StateBus
 
@@ -101,18 +102,28 @@ def assemble_perception_bundle(
     operator_text: str = "",
     reel_retrievals: list[ReelEntry] | None = None,
     somatic_note: str | None = None,
+    somatic_signals: list[SomaticSignal] | None = None,
 ) -> str:
     """Compose the four-section perception bundle for ASTRA-LLM input.
 
     Template path: deterministic, no LLM cost. The §6.4 Narrator-LLM
     path lives in `assemble_perception_bundle_via_narrator()`.
 
+    Somatic channel (v0.129 §6.3.1 residue): when `somatic_signals` is
+    provided it takes precedence and the banner is composed by the Somatic
+    Aggregator (an explicitly empty list means "quiet body", empty banner).
+    The legacy scenario-author-typed `somatic_note` remains the fallback
+    path and is unchanged.
+
     Returns the assembled string ready to send to ASTRA-LLM as user-message
     content (the canonical sysprompt + STAGE addendum are loaded by the
     AstraBundle at construction time).
     """
     state_body = _render_state(state_bus)
-    somatic_body = _render_somatic(somatic_note)
+    if somatic_signals is not None:
+        somatic_body = aggregate(somatic_signals)
+    else:
+        somatic_body = _render_somatic(somatic_note)
     recent_body = _render_recent(reel_retrievals or [])
     operator_body = _render_operator(operator_text)
 

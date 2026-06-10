@@ -6,6 +6,33 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Somatic Aggregator — v0.129 §6.3.1 TENTATIVE contract as code residue — 2026-06-10
+
+Replaces the v0 scenario-author-typed `somatic_note: str` placeholder with
+the structured contract from the v0.129 TENTATIVE draft (implementation
+residue only; spec adoption stays an operator decision per §15.4). New
+`astra/harness/somatic.py`:
+
+- `SomaticSignal{source, label, magnitude∈[0,1], salient}` frozen model;
+  source vocabulary documented (power/warp/cryosleep/hull/chaos/atmosphere/
+  thermal/hardware/audio) but not Literal-locked while TENTATIVE.
+- `aggregate(signals) → banner`: deterministic, salient-only, magnitude-
+  ordered, top-3 across at most two short lines; quiet body → empty banner.
+  **Sensor-grounded, not phenomenal claim** (per STAGE addendum): labels name
+  what sensors read; a no-phenomenal-vocabulary property test runs the
+  emitters across a ship-state grid.
+- `emit_somatic_signals(StateBus)`: stateless per-frame endogenous emitters —
+  power-allocation pressure, warp coil phases (charging/cruising/ramping
+  down), cryosleep hold, worst-section hull stress, chaos-field
+  unquiet/murmur, quiet baseline.
+- `assemble_perception_bundle` gains `somatic_signals` (precedence over the
+  legacy note; explicit empty list = deliberately quiet body). The
+  `somatic_note` path is unchanged — all existing scenarios and orchestrator
+  call sites untouched.
+
+Tests: `tests/test_somatic.py` — 22 tests. Gates after: 667 passed / ruff
+clean / mypy clean (73 files).
+
 ### Drift detector ephemeral — §4.9 Tier 3 COMPLETE — 2026-06-10
 
 Third and final §4.9 ephemeral. New `astra/harness/ephemeral/drift_detector.py`:
