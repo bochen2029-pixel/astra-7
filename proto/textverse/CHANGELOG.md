@@ -6,6 +6,32 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### SaveFile v3 — §4.6 Persistence Contract serialization — 2026-06-10
+
+Closes the audit Phase 0.x forward-work item "SaveFile v3 serialization".
+New `astra/harness/savefile.py`:
+
+- `SaveFileV3` frozen wire schema: serialized StateBus snapshot (which embeds
+  the §4.6-named scalars per the Frozen-Snapshot framing) + regime_at_save
+  bitmask (canonical §3.3 hex, locked wire format) + regime_history +
+  HullMutation events (stored, not applied — SDF application is
+  Implementation B) + AI{Mind: conversation + REEL entries, Reflex: frozen
+  identity+checksum stub} + PlayerChoices.
+- `save_game`: atomic write (tmp + replace) with rolling backup rotation
+  N=3 (`.1`/`.2`) per the §4.6 failure row.
+- `load_game`: auto-recovery primary → `.1` → `.2`, per-candidate forensics;
+  `load_single` gates: JSON validity, schema_version==3
+  (SaveFileVersionError), shape validation, and the **regime coherence
+  gate** — reconstructed StateBus re-derives regime via computed_field and
+  must match regime_at_save (SaveFileCoherenceError). The serialized inner
+  `regime` echo is dropped on input (extra-ignore) and recomputed from
+  truth — regression-tested against the root-tuning-log observation.
+- `reel_from_save` (§4.6 load step 7, Mind restore).
+
+Tests: `tests/test_savefile.py` — 11 tests incl. Hypothesis property over the
+kinematic envelope (rapidity within §3.7 clamp × warp phases × cryosleep).
+Gates after: 599 passed / ruff clean / mypy clean (68 files).
+
 ### persona_test A/B: ship-system input position (outside vs inside `<think>`) — ASTRA-baseline — 2026-05-16
 
 Follow-on to today's STAGE-position A/B. Same wrapping question, applied to
