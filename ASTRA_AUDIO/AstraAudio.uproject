@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.7",
+	"Category": "ASTRA-7",
+	"Description": "ASTRA-7 warp hull audio PoC: five-layer field-driven synthesis (spec synthesis.md + v0.128 8.2/8.3) as a single custom MetaSound node, graph built procedurally at runtime. Zero binary assets.",
+	"Modules": [
+		{
+			"Name": "AstraAudio",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "Metasound",
+			"Enabled": true
+		}
+	]
+}
