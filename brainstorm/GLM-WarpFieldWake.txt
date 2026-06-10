@@ -1,0 +1,1876 @@
+# Warp Field & Wake Turbulence System
+## Real-Time Hollywood-Quality Rendering — RTX 4000/5000 Series
+
+---
+
+## Phase 1: Mathematical Foundation
+
+The visual system is built on an **Alcubierre-inspired metric scalar field** $W(\mathbf{x}, t)$ describing local spacetime expansion/compression. The field is **analytically defined** (no grid) with procedural turbulence layered on top, and a **simulated wake** of shed vortices behind the bubble.
+
+### The Metric Field
+
+$$W(\mathbf{x}) = \underbrace{A \cdot \text{shell}(d) \cdot \text{asym}(z_s)}_{\text{bubble boundary}} + \underbrace{W_{\text{wake}}(\mathbf{x})}_{\text{trailing wake}} + \underbrace{W_{\text{vortex}}(\mathbf{x})}_{\text{shed vortices}}$$
+
+Where:
+
+- **shell(d)** = Gaussian peak at the boundary: $\exp\!\left(-\frac{d^2}{2\sigma^2}\right)$, with $d$ = signed distance to the bubble surface
+- **asym(zₛ)** = $\tanh(\kappa \, z_s)$ giving compression (−1) ahead, expansion (+1) behind
+- **$z_s$** = axial coordinate in the ship's local frame (positive = forward)
+- **$W_{\text{wake}}$** = damped oscillatory corridor behind the bubble
+- **$W_{\text{vortex}}$** = sum of advecting Lamb-Oseen vortex contributions
+
+### Gravitational Lensing
+
+Light deflection through the field:
+
+$$\Delta\theta = \frac{4G}{c^2} \int \nabla_\perp W \, dl$$
+
+In the renderer, this becomes **incremental ray bending** at each march step:
+
+$$\hat{\mathbf{r}}_{n+1} = \text{normalize}\!\left(\hat{\mathbf{r}}_n + \alpha \, \nabla W \, \Delta s\right)$$
+
+### Doppler/Gravitational Color Shift
+
+$$\frac{\lambda_{\text{obs}}}{\lambda_{\text{emit}}} = 1 + z_{\text{grav}} = 1 + W(\mathbf{x})$$
+
+- $W < 0$ (compression) → blueshift → **blue-white** emission
+- $W > 0$ (expansion) → redshift → **amber-crimson** emission
+
+### Cherenkov Radiation
+
+The warp field moving through the quantum vacuum emits Cherenkov-like radiation at the leading edge when $v_{\text{warp}} > c_{\text{eff}}$:
+
+$$I_{\text{Cherenkov}} \propto \sin^2(\theta_c) \cdot \delta\!\left(\hat{\mathbf{r}} \cdot \hat{\mathbf{v}} - \cos\theta_c\right)$$
+
+### Wake Vortex Shedding (Von Kármán Street)
+
+Vortices shed periodically from the bubble boundary with circulation $\Gamma$ and advected at the local flow velocity. Each vortex is a **Lamb-Oseen** profile:
+
+$$v_\theta(r) = \frac{\Gamma}{2\pi r}\left(1 - e^{-r^2/r_c^2}\right)$$
+
+---
+
+## Phase 2: Core Header — Structures, Constants, Math
+
+```cpp
+// ================================================================
+// warp_field_core.h
+// All shared data structures, physical constants, and GPU math
+// ================================================================
+#ifndef WARP_FIELD_CORE_H
+#define WARP_FIELD_CORE_H
+
+#include <cuda_runtime.h>
+#include <cmath>
+
+// ----------------------------------------------------------------
+// Physical & Rendering Constants (uploaded to __constant__ memory)
+// ----------------------------------------------------------------
+struct WarpConstants {
+    // Bubble geometry
+    float bubble_radius;         // Lateral half-extent (metres, game scale)
+    float bubble_length_fwd;     // Forward extent
+    float bubble_length_aft;     // Aft extent
+    float shell_width;           // Gaussian shell thickness
+    float asymmetry_sharpness;   // tanh sharpness for compression/expansion
+
+    // Turbulence
+    float turb_amplitude;        // Boundary perturbation amplitude
+    float turb_scale;            // Noise spatial frequency
+    float turb_speed;            // Noise advection speed
+    int   turb_octaves;          // FBM octave count
+
+    // Wake
+    float wake_decay;            // Exponential decay rate
+    float wake_osc_freq;         // Spatial oscillation frequency
+    float wake_osc_speed;        // Temporal oscillation speed
+    float wake_width;            // Lateral width of wake corridor
+    float wake_amplitude;        // Peak wake metric intensity
+
+    // Rendering
+    float step_size;             // Base ray-march step
+    float step_size_min;         // Minimum step (near boundary)
+    float emission_scale;        // Emission intensity multiplier
+    float absorption_scale;      // Absorption coefficient
+    float hg_g;                  // Henyey-Greenstein anisotropy (0.8-0.95)
+    float lensing_strength;      // Ray-bending multiplier
+    float cherenkov_intensity;   // Cherenkov glow multiplier
+
+    // Ship state (updated every frame)
+    float3 ship_position;
+    float3 ship_forward;
+    float3 ship_up;
+    float3 ship_right;
+    float  warp_factor;          // [0..1], 0 = sublight, 1 = max warp
+    float  sim_time;
+
+    // Camera
+    float3 cam_pos;
+    float3 cam_fwd;
+    float3 cam_up;
+    float3 cam_right;
+    float  cam_fov;
+    float  cam_aspect;
+    uint2  resolution;
+
+    float  pad[2];               // Align to 256 bytes
+};
+
+// ----------------------------------------------------------------
+// WarpFieldSample — result of sampling the metric at one point
+// ----------------------------------------------------------------
+struct WarpFieldSample {
+    float  metric;              // W(x): [-1,+1] compression/expansion
+    float3 metric_gradient;     // ∇W: for lensing, forces
+    float  boundary_sdf;        // Signed distance to bubble surface
+    float  shell_intensity;     // Gaussian shell peak value [0,1]
+    float  turbulence;          // Local turbulence amplitude
+    float  cherenkov;           // Cherenkov intensity
+    float  doppler_shift;       // Frequency shift ratio
+    float  wake_intensity;      // Wake metric magnitude
+    float3 wake_flow;           // Wake velocity field (for particle advection)
+    float  vorticity;           // |curl v| at this point
+    float  density;             // Effective medium density (for emission)
+};
+
+// ----------------------------------------------------------------
+// WakeVortex — a single shed vortex in the wake
+// ----------------------------------------------------------------
+struct alignas(32) WakeVortex {
+    float3 position;
+    float3 velocity;
+    float  circulation;         // Γ: positive = CCW, negative = CW
+    float  core_radius;         // r_c: Lamb-Oseen core size
+    float  age;
+    float  max_age;
+    float  pad[2];
+};
+
+// ----------------------------------------------------------------
+// ISMParticle — interstellar medium particle
+// ----------------------------------------------------------------
+struct alignas(32) ISMParticle {
+    float3 position;
+    float3 velocity;
+    float  energy;              // Kinetic energy → brightness
+    float  age;
+    float  lifetime;
+    int    active;
+    float  pad;
+};
+
+// ----------------------------------------------------------------
+// GPU Vector Math
+// ----------------------------------------------------------------
+__device__ __forceinline__ float3 f3add(const float3& a, const float3& b) {
+    return make_float3(a.x+b.x, a.y+b.y, a.z+b.z);
+}
+__device__ __forceinline__ float3 f3sub(const float3& a, const float3& b) {
+    return make_float3(a.x-b.x, a.y-b.y, a.z-b.z);
+}
+__device__ __forceinline__ float3 f3mul(const float3& a, float s) {
+    return make_float3(a.x*s, a.y*s, a.z*s);
+}
+__device__ __forceinline__ float3 f3mul3(const float3& a, const float3& b) {
+    return make_float3(a.x*b.x, a.y*b.y, a.z*b.z);
+}
+__device__ __forceinline__ float f3dot(const float3& a, const float3& b) {
+    return a.x*b.x + a.y*b.y + a.z*b.z;
+}
+__device__ __forceinline__ float f3len(const float3& a) {
+    return sqrtf(f3dot(a, a));
+}
+__device__ __forceinline__ float3 f3norm(const float3& a) {
+    float l = f3len(a); return l > 1e-8f ? f3mul(a, 1.0f/l) : make_float3(0,0,0);
+}
+__device__ __forceinline__ float3 f3cross(const float3& a, const float3& b) {
+    return make_float3(
+        a.y*b.z - a.z*b.y,
+        a.z*b.x - a.x*b.z,
+        a.x*b.y - a.y*b.x
+    );
+}
+__device__ __forceinline__ float smoothstep_gpu(float e0, float e1, float x) {
+    float t = fmaxf(0.0f, fminf(1.0f, (x - e0) / (e1 - e0 + 1e-10f)));
+    return t * t * (3.0f - 2.0f * t);
+}
+__device__ __forceinline__ float smootherstep(float e0, float e1, float x) {
+    float t = fmaxf(0.0f, fminf(1.0f, (x - e0) / (e1 - e0 + 1e-10f)));
+    return t*t*t*(t*(t*6.0f - 15.0f) + 10.0f);
+}
+
+// Transform world position to ship-local frame
+__device__ __forceinline__ float3 world_to_local(
+    const float3& wp, const float3& ship_pos,
+    const float3& ship_right, const float3& ship_up, const float3& ship_fwd)
+{
+    float3 d = f3sub(wp, ship_pos);
+    return make_float3(f3dot(d, ship_right), f3dot(d, ship_up), f3dot(d, ship_fwd));
+}
+
+// Transform local direction to world frame
+__device__ __forceinline__ float3 local_to_world_dir(
+    const float3& ld, const float3& ship_right, const float3& ship_up, const float3& ship_fwd)
+{
+    return f3add(f3add(f3mul(ship_right, ld.x), f3mul(ship_up, ld.y)), f3mul(ship_fwd, ld.z));
+}
+
+#endif // WARP_FIELD_CORE_H
+```
+
+---
+
+## Phase 3: GPU Noise & Procedural Turbulence
+
+This is the **visual backbone** — multi-octave curl noise with domain warping creates the organic, turbulent filamentary structure that separates this from a "simple bubble."
+
+```cpp
+// ================================================================
+// warp_noise.cuh
+// GPU-optimized 3D noise, FBM, curl noise, domain warping
+// ================================================================
+#ifndef WARP_NOISE_CUH
+#define WARP_NOISE_CUH
+
+// ----------------------------------------------------------------
+// Hash functions for GPU noise (no texture lookups needed)
+// ----------------------------------------------------------------
+__device__ __forceinline__ uint3 hash33(uint3 x) {
+    x = ((x >> 16) ^ x) * 0x45d9f3bu;
+    x = ((x >> 16) ^ x) * 0x45d9f3bu;
+    x = (x >> 16) ^ x;
+    return x;
+}
+
+__device__ __forceinline__ float hash_to_float(uint h) {
+    return (h & 0x00FFFFFF) / 16777216.0f;  // [0, 1)
+}
+
+// ----------------------------------------------------------------
+// 3D Value Noise (fast, smooth, tileable if needed)
+// ----------------------------------------------------------------
+__device__ float value_noise_3d(float3 p) {
+    int3 i = make_int3(floorf(p.x), floorf(p.y), floorf(p.z));
+    float3 f = make_float3(p.x - floorf(p.x), p.y - floorf(p.y), p.z - floorf(p.z));
+
+    // Quintic Hermite interpolation (C2 continuous)
+    float3 u;
+    u.x = f.x*f.x*f.x*(f.x*(f.x*6.0f - 15.0f) + 10.0f);
+    u.y = f.y*f.y*f.y*(f.y*(f.y*6.0f - 15.0f) + 10.0f);
+    u.z = f.z*f.z*f.z*(f.z*(f.z*6.0f - 15.0f) + 10.0f);
+
+    // Hash corners
+    uint3 seed = make_uint3(i.x, i.y, i.z);
+    float n000 = hash_to_float(hash33(seed).x);
+    float n100 = hash_to_float(hash33(make_uint3(seed.x+1, seed.y, seed.z)).x);
+    float n010 = hash_to_float(hash33(make_uint3(seed.x, seed.y+1, seed.z)).x);
+    float n110 = hash_to_float(hash33(make_uint3(seed.x+1, seed.y+1, seed.z)).x);
+    float n001 = hash_to_float(hash33(make_uint3(seed.x, seed.y, seed.z+1)).x);
+    float n101 = hash_to_float(hash33(make_uint3(seed.x+1, seed.y, seed.z+1)).x);
+    float n011 = hash_to_float(hash33(make_uint3(seed.x, seed.y+1, seed.z+1)).x);
+    float n111 = hash_to_float(hash33(make_uint3(seed.x+1, seed.y+1, seed.z+1)).x);
+
+    // Trilinear interpolation
+    float nx00 = n000 + u.x * (n100 - n000);
+    float nx10 = n010 + u.x * (n110 - n010);
+    float nx01 = n001 + u.x * (n101 - n001);
+    float nx11 = n011 + u.x * (n111 - n011);
+    float nxy0 = nx00 + u.y * (nx10 - nx00);
+    float nxy1 = nx01 + u.y * (nx11 - nx01);
+    return nxy0 + u.z * (nxy1 - nxy0);  // [0, 1]
+}
+
+// ----------------------------------------------------------------
+// 3D Gradient Noise (Perlin-style, better directional character)
+// ----------------------------------------------------------------
+__device__ __forceinline__ float3 grad3(int hash) {
+    // 12 gradient directions for 3D Perlin noise
+    const int h = hash & 15;
+    const float u = h < 8 ? 1.0f : -1.0f;
+    const float v = h < 4 ? 1.0f : (h == 12 || h == 14 ? 1.0f : -1.0f);
+    switch(h & 3) {
+        case 0: return make_float3(u, v, 0);
+        case 1: return make_float3(v, u, 0);
+        case 2: return make_float3(u, 0, v);
+        default: return make_float3(0, u, v);
+    }
+}
+
+__device__ float perlin_noise_3d(float3 p) {
+    int3 i0 = make_int3(floorf(p.x), floorf(p.y), floorf(p.z));
+    float3 f = make_float3(p.x - i0.x, p.y - i0.y, p.z - i0.z);
+
+    // Quintic interpolation
+    float3 u;
+    u.x = f.x*f.x*f.x*(f.x*(f.x*6.0f - 15.0f) + 10.0f);
+    u.y = f.y*f.y*f.y*(f.y*(f.y*6.0f - 15.0f) + 10.0f);
+    u.z = f.z*f.z*f.z*(f.z*(f.z*6.0f - 15.0f) + 10.0f);
+
+    float n000 = f3dot(grad3(hash33(make_uint3(i0.x,   i0.y,   i0.z  )).x & 15),
+                       f3sub(f, make_float3(0,0,0)));
+    float n100 = f3dot(grad3(hash33(make_uint3(i0.x+1, i0.y,   i0.z  )).x & 15),
+                       f3sub(f, make_float3(1,0,0)));
+    float n010 = f3dot(grad3(hash33(make_uint3(i0.x,   i0.y+1, i0.z  )).x & 15),
+                       f3sub(f, make_float3(0,1,0)));
+    float n110 = f3dot(grad3(hash33(make_uint3(i0.x+1, i0.y+1, i0.z  )).x & 15),
+                       f3sub(f, make_float3(1,1,0)));
+    float n001 = f3dot(grad3(hash33(make_uint3(i0.x,   i0.y,   i0.z+1)).x & 15),
+                       f3sub(f, make_float3(0,0,1)));
+    float n101 = f3dot(grad3(hash33(make_uint3(i0.x+1, i0.y,   i0.z+1)).x & 15),
+                       f3sub(f, make_float3(1,0,1)));
+    float n011 = f3dot(grad3(hash33(make_uint3(i0.x,   i0.y+1, i0.z+1)).x & 15),
+                       f3sub(f, make_float3(0,1,1)));
+    float n111 = f3dot(grad3(hash33(make_uint3(i0.x+1, i0.y+1, i0.z+1)).x & 15),
+                       f3sub(f, make_float3(1,1,1)));
+
+    float nx00 = n000 + u.x * (n100 - n000);
+    float nx10 = n010 + u.x * (n110 - n010);
+    float nx01 = n001 + u.x * (n101 - n001);
+    float nx11 = n011 + u.x * (n111 - n011);
+    float nxy0 = nx00 + u.y * (nx10 - nx00);
+    float nxy1 = nx01 + u.y * (nx11 - nx01);
+    return nxy0 + u.z * (nxy1 - nxy0);  // ~[-1, 1]
+}
+
+// ----------------------------------------------------------------
+// Worley/Voronoi Noise (cellular — for filamentary structure)
+// ----------------------------------------------------------------
+__device__ float worley_noise_3d(float3 p, float jitter) {
+    int3 ci = make_int3(floorf(p.x), floorf(p.y), floorf(p.z));
+    float min_dist = 1e10f;
+
+    #pragma unroll
+    for(int dz = -1; dz <= 1; dz++) {
+        for(int dy = -1; dy <= 1; dy++) {
+            for(int dx = -1; dx <= 1; dx++) {
+                int3 nc = make_int3(ci.x+dx, ci.y+dy, ci.z+dz);
+                uint3 h = hash33(make_uint3(nc.x, nc.y, nc.z));
+                float3 fp = make_float3(
+                    nc.x + jitter * hash_to_float(h.x),
+                    nc.y + jitter * hash_to_float(h.y),
+                    nc.z + jitter * hash_to_float(h.z)
+                );
+                float d = f3len(f3sub(p, fp));
+                min_dist = fminf(min_dist, d);
+            }
+        }
+    }
+    return min_dist;
+}
+
+// ----------------------------------------------------------------
+// FBM (Fractional Brownian Motion) — multi-octave turbulence
+// ----------------------------------------------------------------
+__device__ float fbm_perlin(float3 p, int octaves, float lacunarity, float gain) {
+    float sum = 0.0f;
+    float amp = 1.0f;
+    float freq = 1.0f;
+    float max_amp = 0.0f;
+
+    #pragma unroll 8
+    for(int i = 0; i < octaves; i++) {
+        sum += amp * perlin_noise_3d(f3mul(p, freq));
+        max_amp += amp;
+        amp *= gain;
+        freq *= lacunarity;
+    }
+    return sum / max_amp;  // Normalized to ~[-1, 1]
+}
+
+__device__ float fbm_worley(float3 p, int octaves, float lacunarity, float gain) {
+    float sum = 0.0f;
+    float amp = 1.0f;
+    float freq = 1.0f;
+    float max_amp = 0.0f;
+
+    #pragma unroll 6
+    for(int i = 0; i < octaves; i++) {
+        sum += amp * worley_noise_3d(f3mul(p, freq), 0.8f);
+        max_amp += amp;
+        amp *= gain;
+        freq *= lacunarity;
+    }
+    return sum / max_amp;
+}
+
+// ----------------------------------------------------------------
+// Domain Warping — creates organic, fluid-like patterns
+// Inigo Quilez's technique: f(p) = fbm(p + fbm(p + fbm(p)))
+// ----------------------------------------------------------------
+__device__ float domain_warped_fbm(float3 p, int octaves, float time) {
+    float3 q = make_float3(
+        fbm_perlin(f3add(p, make_float3(0.0f, 0.0f, time * 0.3f)), octaves, 2.0f, 0.5f),
+        fbm_perlin(f3add(p, make_float3(5.2f, 1.3f, time * 0.2f)), octaves, 2.0f, 0.5f),
+        fbm_perlin(f3add(p, make_float3(2.7f, 4.1f, time * 0.25f)), octaves, 2.0f, 0.5f)
+    );
+
+    float3 r = make_float3(
+        fbm_perlin(f3add(p, f3mul(q, make_float3(4.0f, 4.0f, 4.0f))), octaves, 2.0f, 0.5f),
+        fbm_perlin(f3add(p, f3mul(q, make_float3(4.0f, 4.0f, 4.0f)) + make_float3(1.7f,9.2f,0)), octaves, 2.0f, 0.5f),
+        fbm_perlin(f3add(p, f3mul(q, make_float3(4.0f, 4.0f, 4.0f)) + make_float3(8.3f,2.8f,0)), octaves, 2.0f, 0.5f)
+    );
+
+    return fbm_perlin(f3add(p, f3mul(r, make_float3(4.0f, 4.0f, 4.0f))), octaves, 2.0f, 0.5f);
+}
+
+// ----------------------------------------------------------------
+// Curl Noise (divergence-free velocity field)
+// curl = ∇ × Ψ, computed via finite differences on a scalar potential
+// This produces swirling, incompressible-flow-like patterns
+// ----------------------------------------------------------------
+__device__ float3 curl_noise(float3 p, float scale, float time, int octaves) {
+    float eps = 0.01f;
+    float3 ps = f3mul(p, scale);
+
+    // Potential field using domain-warped FBM for maximum organic look
+    auto potential = [&](float3 q) -> float {
+        return domain_warped_fbm(q, octaves, time);
+    };
+
+    // Partial derivatives via central differences
+    float dPdx_plus  = potential(f3add(ps, make_float3( eps, 0, 0)));
+    float dPdx_minus = potential(f3add(ps, make_float3(-eps, 0, 0)));
+    float dPdy_plus  = potential(f3add(ps, make_float3(0,  eps, 0)));
+    float dPdy_minus = potential(f3add(ps, make_float3(0, -eps, 0)));
+    float dPdz_plus  = potential(f3add(ps, make_float3(0, 0,  eps)));
+    float dPdz_minus = potential(f3add(ps, make_float3(0, 0, -eps)));
+
+    float dPdy = (dPdy_plus - dPdy_minus) / (2.0f * eps);
+    float dPdz = (dPdz_plus - dPdz_minus) / (2.0f * eps);
+    float dPdx = (dPdx_plus - dPdx_minus) / (2.0f * eps);
+
+    // Curl of a scalar potential extended: use two offset potentials for true 3D curl
+    float3 ps2 = f3add(ps, make_float3(100.0f, 200.0f, 300.0f));  // Offset for second potential
+    auto potential2 = [&](float3 q) -> float {
+        return domain_warped_fbm(q, octaves, time * 1.1f);
+    };
+
+    float dQdx_plus  = potential2(f3add(ps2, make_float3( eps, 0, 0)));
+    float dQdx_minus = potential2(f3add(ps2, make_float3(-eps, 0, 0)));
+    float dQdy_plus  = potential2(f3add(ps2, make_float3(0,  eps, 0)));
+    float dQdy_minus = potential2(f3add(ps2, make_float3(0, -eps, 0)));
+    float dQdz_plus  = potential2(f3add(ps2, make_float3(0, 0,  eps)));
+    float dQdz_minus = potential2(f3add(ps2, make_float3(0, 0, -eps)));
+
+    float dQdy = (dQdy_plus - dQdy_minus) / (2.0f * eps);
+    float dQdz = (dQdz_plus - dQdz_minus) / (2.0f * eps);
+    float dQdx = (dQdx_plus - dQdx_minus) / (2.0f * eps);
+
+    // curl(Psi1, Psi2, 0) ≈ (dPsi2/dy, -dPsi1/dy, dPsi1/dx - dPsi2/dy)
+    // For full 3D, use three potentials:
+    // Simplified but effective: use the two-potential formulation with z-derivative
+    return make_float3(
+        dPdz - dQdy,
+        dQdx - dPdz,  // Note: simplified; full version uses 3 potentials
+        dPdy - dQdx
+    );
+}
+
+#endif // WARP_NOISE_CUH
+```
+
+---
+
+## Phase 4: The Warp Metric Field — Core Computation
+
+This is the **heart of the system**. Given any point in space, it returns the complete `WarpFieldSample` with all derived quantities.
+
+```cpp
+// ================================================================
+// warp_metric_field.cuh
+// The Alcubierre-inspired metric field with turbulent boundary
+// and wake dynamics
+// ================================================================
+#ifndef WARP_METRIC_FIELD_CUH
+#define WARP_METRIC_FIELD_CUH
+
+#include "warp_field_core.h"
+#include "warp_noise.cuh"
+
+// ----------------------------------------------------------------
+// Bubble Geometry: SDF of the warp bubble in ship-local coords
+//
+// The bubble is a smooth elongated shape:
+//   - Wider at midship
+//   - Tapers to a point at the nose
+//   - Elongated tail at the rear
+//   - Turbulent boundary perturbation
+// ----------------------------------------------------------------
+__device__ float bubble_sdf(
+    float3 local_pos,      // Ship-local coordinates
+    float  turb_val,       // Pre-computed turbulence at this point
+    const WarpConstants& C)
+{
+    float r_perp = sqrtf(f3dot(
+        make_float3(local_pos.x, local_pos.y, 0),
+        make_float3(local_pos.x, local_pos.y, 0)
+    ));
+
+    float z = local_pos.z;
+
+    // Asymmetric profile: bubble radius varies along z-axis
+    float profile;
+    if (z >= 0.0f) {
+        // Forward: smooth taper from max radius to zero at nose
+        float t = z / C.bubble_length_fwd;
+        profile = 1.0f - smootherstep(0.0f, 1.0f, t);
+    } else {
+        // Aft: slower taper, creating elongated tail
+        float t = -z / C.bubble_length_aft;
+        profile = 1.0f - smootherstep(0.0f, 1.0f, t);
+        // Slight flare near the tail opening
+        profile *= 1.0f + 0.15f * smoothstep_gpu(0.5f, 1.0f, t);
+    }
+
+    // Apply warp factor scaling (at sublight, the field is weak/small)
+    profile *= C.warp_factor;
+
+    // The nominal boundary radius at this z-position
+    float R_nominal = C.bubble_radius * profile;
+
+    // Turbulent perturbation: stronger at the equator, weaker at poles
+    float turb_mask = profile * (1.0f - 0.5f * fabsf(z) / 
+                     fmaxf(C.bubble_length_fwd, C.bubble_length_aft));
+    float R_perturbed = R_nominal + turb_val * C.turb_amplitude * turb_mask * C.bubble_radius;
+
+    // SDF: positive outside, negative inside
+    return r_perp - R_perturbed;
+}
+
+// ----------------------------------------------------------------
+// Wake Field: Trailing metric oscillations and corridor
+//
+// Behind the bubble, spacetime rings like a struck bell.
+// The wake is modeled as:
+//   1. A damped sinusoidal metric oscillation (ring-down)
+//   2. A lateral Gaussian envelope (confined corridor)
+//   3. Von Kármán vortex shedding pattern
+//   4. Turbulent cascade (energy transfers to smaller scales)
+// ----------------------------------------------------------------
+__device__ void compute_wake(
+    float3 local_pos,
+    float  time,
+    const WarpConstants& C,
+    float& out_wake_metric,
+    float3& out_wake_flow,
+    float& out_vorticity)
+{
+    float z = local_pos.z;
+    float r_perp = sqrtf(local_pos.x * local_pos.x + local_pos.y * local_pos.y);
+
+    // Wake only exists behind the bubble
+    float wake_start = -C.bubble_length_aft;
+    if (z > wake_start * 0.8f) {
+        out_wake_metric = 0.0f;
+        out_wake_flow = make_float3(0,0,0);
+        out_vorticity = 0.0f;
+        return;
+    }
+
+    float dist_behind = wake_start - z;  // Distance behind bubble exit
+
+    // 1. Radial envelope: Gaussian corridor that slowly widens
+    float wake_width_local = C.wake_width * (1.0f + 0.3f * dist_behind / C.bubble_radius);
+    float radial_envelope = expf(-r_perp * r_perp / (2.0f * wake_width_local * wake_width_local));
+
+    // 2. Axial decay: exponential ring-down
+    float axial_decay = expf(-C.wake_decay * dist_behind);
+
+    // 3. Primary oscillation: standing wave pattern
+    float omega1 = C.wake_osc_freq;
+    float primary_osc = cosf(omega1 * dist_behind - C.wake_osc_speed * time);
+
+    // 4. Secondary harmonic: higher frequency, faster decay
+    float secondary_osc = 0.3f * cosf(2.7f * omega1 * dist_behind - 1.3f * C.wake_osc_speed * time)
+                        * expf(-C.wake_decay * 1.5f * dist_behind);
+
+    // 5. Tertiary micro-oscillation (Kolmogorov cascade)
+    float micro_osc = 0.1f * cosf(7.1f * omega1 * dist_behind - 3.7f * C.wake_osc_speed * time)
+                    * expf(-C.wake_decay * 3.0f * dist_behind);
+
+    // Combined wake metric
+    out_wake_metric = C.wake_amplitude * C.warp_factor * axial_decay * radial_envelope *
+                      (primary_osc + secondary_osc + micro_osc);
+
+    // 6. Wake flow field: curl noise for vortex structure
+    // The flow is primarily axial (backward) with lateral vortex components
+    float3 flow_pos = f3mul(local_pos, 0.02f);  // Scale for noise sampling
+    float3 curl = curl_noise(flow_pos, C.turb_scale, time * 0.5f, 4);
+
+    // Axial backflow (decelerating)
+    float backflow = -C.warp_factor * axial_decay * radial_envelope * 0.5f;
+
+    // Vortex shedding: alternating sign creates von Kármán street
+    float shed_phase = omega1 * dist_behind * 0.5f;
+    float vortex_lateral = sinf(shed_phase - time * 0.3f) * axial_decay * 0.3f;
+
+    out_wake_flow = make_float3(
+        curl.x * C.turb_amplitude + vortex_lateral * radial_envelope,
+        curl.y * C.turb_amplitude + cosf(shed_phase - time * 0.3f) * axial_decay * 0.3f * radial_envelope,
+        backflow + curl.z * C.turb_amplitude * 0.5f
+    );
+
+    // 7. Vorticity: |curl v| — high at vortex cores
+    // Approximate via the magnitude of the curl noise
+    out_vorticity = f3len(curl) * axial_decay * radial_envelope * C.warp_factor;
+}
+
+// ----------------------------------------------------------------
+// Vortex Contribution: Sum of shed Lamb-Oseen vortices
+//
+// Each vortex has a Lamb-Oseen velocity profile:
+//   v_θ(r) = Γ/(2πr) * (1 - exp(-r²/r_c²))
+// ----------------------------------------------------------------
+__device__ void compute_vortex_field(
+    float3 local_pos,
+    const WakeVortex* vortices,
+    int    num_vortices,
+    float3& out_velocity,
+    float& out_metric_perturbation)
+{
+    out_velocity = make_float3(0,0,0);
+    out_metric_perturbation = 0.0f;
+
+    for(int i = 0; i < num_vortices; i++) {
+        float3 dv = f3sub(local_pos, vortices[i].position);
+        float r2 = f3dot(dv, dv);
+        float rc2 = vortices[i].core_radius * vortices[i].core_radius;
+        float r = sqrtf(r2 + 1e-6f);
+
+        // Age-based decay
+        float age_factor = 1.0f - smoothstep_gpu(0.0f, vortices[i].max_age, vortices[i].age);
+
+        // Lamb-Oseen tangential velocity
+        float Gamma = vortices[i].circulation * age_factor;
+        float v_theta = Gamma / (2.0f * 3.14159265f * r) * (1.0f - expf(-r2 / rc2));
+
+        // Convert to Cartesian: v_θ is perpendicular to the radial direction in the x-y plane
+        float3 r_hat = f3mul(dv, 1.0f / r);
+        float3 tangent = make_float3(-r_hat.y, r_hat.x, r_hat.z * 0.1f);  // Mostly lateral swirl
+        out_velocity = f3add(out_velocity, f3mul(tangent, v_theta));
+
+        // Metric perturbation: vortex cores have local metric distortion
+        float core_intensity = Gamma * expf(-r2 / (2.0f * rc2)) / (2.0f * 3.14159265f * rc2);
+        out_metric_perturbation += core_intensity * 0.1f;
+    }
+}
+
+// ----------------------------------------------------------------
+// Cherenkov Radiation: Conical emission at the leading edge
+// ----------------------------------------------------------------
+__device__ float compute_cherenkov(
+    float3 local_pos,
+    float3 view_dir,
+    const WarpConstants& C)
+{
+    // Cherenkov cone: angle θ_c from the forward axis
+    float cos_theta_c = cosf(0.3f);  // Cherenkov angle ~17 degrees
+    float cos_angle = local_pos.z / (f3len(local_pos) + 1e-8f);
+
+    // Intensity peaks on the cone surface, only in the forward hemisphere
+    float cone_proximity = 1.0f - fabsf(cos_angle - cos_theta_c) / 0.15f;
+    cone_proximity = fmaxf(0.0f, cone_proximity);
+
+    // Only in the forward region and near the boundary
+    float forward_mask = smoothstep_gpu(0.0f, C.bubble_length_fwd * 0.5f, local_pos.z);
+
+    // View-dependent: brighter when looking along the cone
+    float view_alignment = fmaxf(0.0f, f3dot(f3norm(view_dir), f3norm(local_pos)));
+
+    return C.cherenkov_intensity * cone_proximity * forward_mask * 
+           (0.5f + 0.5f * view_alignment) * C.warp_factor;
+}
+
+// ----------------------------------------------------------------
+// THE MASTER SAMPLER: Complete warp field evaluation at one point
+// ----------------------------------------------------------------
+__device__ WarpFieldSample sample_warp_field(
+    float3 world_pos,
+    float3 view_dir,            // For view-dependent effects
+    const WakeVortex* vortices,
+    int    num_vortices,
+    const WarpConstants& C)
+{
+    WarpFieldSample s;
+    
+    // Transform to ship-local coordinates
+    float3 lp = world_to_local(world_pos, C.ship_position, C.ship_right, C.ship_up, C.ship_forward);
+    
+    // ----------------------------------------------------------
+    // 1. Compute turbulence at this point
+    // ----------------------------------------------------------
+    float3 noise_coord = f3mul(lp, make_float3(C.turb_scale, C.turb_scale, C.turb_scale * 0.5f));
+    float3 time_offset = f3mul(make_float3(1,1,1), C.sim_time * C.turb_speed);
+    float turb_val = domain_warped_fbm(f3add(noise_coord, time_offset), C.turb_octaves, C.sim_time);
+    
+    // Fine-scale Worley noise for filamentary micro-structure
+    float worley_val = fbm_worley(f3add(f3mul(lp, make_float3(C.turb_scale*3.0f, C.turb_scale*3.0f, C.turb_scale*2.0f)),
+                                         time_offset), 3, 2.0f, 0.5f);
+    
+    // ----------------------------------------------------------
+    // 2. Bubble boundary SDF
+    // ----------------------------------------------------------
+    float sdf = bubble_sdf(lp, turb_val, C);
+    s.boundary_sdf = sdf;
+    
+    // ----------------------------------------------------------
+    // 3. Gaussian shell intensity (peaks at boundary)
+    // ----------------------------------------------------------
+    float shell_width = C.shell_width * (1.0f + 0.3f * fabsf(turb_val));  // Turbulent thickness variation
+    s.shell_intensity = expf(-sdf * sdf / (2.0f * shell_width * shell_width));
+    
+    // Worley modulation: dark filaments within the shell
+    float worley_mod = 1.0f - 0.4f * smoothstep_gpu(0.0f, 0.5f, worley_val);
+    s.shell_intensity *= worley_mod;
+    
+    // ----------------------------------------------------------
+    // 4. Asymmetry: compression (fwd) vs expansion (aft)
+    // ----------------------------------------------------------
+    float asym = tanhf(C.asymmetry_sharpness * lp.z / C.bubble_length_fwd);
+    s.metric = C.warp_factor * C.emission_scale * s.shell_intensity * asym;
+    
+    // ----------------------------------------------------------
+    // 5. Wake contribution
+    // ----------------------------------------------------------
+    float wake_metric;
+    float3 wake_flow;
+    float wake_vorticity;
+    compute_wake(lp, C.sim_time, C, wake_metric, wake_flow, wake_vorticity);
+    s.metric += wake_metric;
+    s.wake_intensity = fabsf(wake_metric);
+    s.wake_flow = wake_flow;
+    s.vorticity = wake_vorticity;
+    
+    // ----------------------------------------------------------
+    // 6. Vortex contributions
+    // ----------------------------------------------------------
+    float3 vortex_vel;
+    float vortex_metric;
+    compute_vortex_field(lp, vortices, num_vortices, vortex_vel, vortex_metric);
+    s.metric += vortex_metric;
+    s.wake_flow = f3add(s.wake_flow, vortex_vel);
+    
+    // ----------------------------------------------------------
+    // 7. Metric gradient (for lensing) — central differences
+    // ----------------------------------------------------------
+    float eps = 0.5f;
+    // This is an approximation; a more accurate version would re-evaluate the full field
+    float mx_plus  = /* re-evaluate at world_pos + right*eps */ 0;
+    float mx_minus = /* re-evaluate at world_pos - right*eps */ 0;
+    float my_plus  = /* re-evaluate at world_pos + up*eps */    0;
+    float my_minus = /* re-evaluate at world_pos - up*eps */    0;
+    float mz_plus  = /* re-evaluate at world_pos + fwd*eps */   0;
+    float mz_minus = /* re-evaluate at world_pos - fwd*eps */   0;
+    
+    // Efficient gradient via directional derivatives
+    // Instead of full re-evaluation, we compute gradient analytically from the dominant terms:
+    // ∂W/∂r_perp ≈ -sdf/σ² * W  (radial derivative of Gaussian shell)
+    // ∂W/∂z ≈ κ * sech²(κz) * shell  (derivative of tanh asymmetry)
+    float r_perp = sqrtf(lp.x*lp.x + lp.y*lp.y) + 1e-8f;
+    float dW_dr = -sdf / (shell_width * shell_width) * s.metric;
+    float dW_dz = C.asymmetry_sharpness / C.bubble_length_fwd * 
+                  (1.0f - asym * asym) * C.warp_factor * s.shell_intensity * C.emission_scale;
+    
+    // Convert to Cartesian
+    s.metric_gradient = f3add(
+        f3add(
+            f3mul(C.ship_right, dW_dr * lp.x / r_perp),
+            f3mul(C.ship_up, dW_dr * lp.y / r_perp)
+        ),
+        f3mul(C.ship_forward, dW_dz)
+    );
+    
+    // ----------------------------------------------------------
+    // 8. Derived quantities
+    // ----------------------------------------------------------
+    s.turbulence = fabsf(turb_val) * s.shell_intensity;
+    s.cherenkov = compute_cherenkov(lp, view_dir, C);
+    s.doppler_shift = s.metric;  // W < 0 → blueshift, W > 0 → redshift
+    
+    // Effective medium density: higher at compression front and vortex cores
+    s.density = s.shell_intensity * (1.0f + 0.5f * fmaxf(0.0f, -asym))  // Denser at front
+              + s.wake_intensity * 0.3f
+              + fabsf(vortex_metric) * 2.0f;
+    
+    return s;
+}
+
+// ----------------------------------------------------------------
+// Optimized version for ray marching (avoids full re-computation)
+// Computes gradient incrementally during the march
+// ----------------------------------------------------------------
+__device__ WarpFieldSample sample_warp_field_fast(
+    float3 world_pos,
+    float3 view_dir,
+    const WakeVortex* vortices,
+    int    num_vortices,
+    const WarpConstants& C)
+{
+    WarpFieldSample s = {};  // Zero-initialize
+    
+    float3 lp = world_to_local(world_pos, C.ship_position, C.ship_right, C.ship_up, C.ship_forward);
+    float z = lp.z;
+    float r_perp = sqrtf(lp.x*lp.x + lp.y*lp.y);
+    
+    // ---- Quick rejection: if too far from the field, return zero ----
+    float max_extent = fmaxf(C.bubble_length_fwd, C.bubble_length_aft + 
+                    5.0f / (C.wake_decay + 1e-6f));  // Include visible wake
+    if (fabsf(z) > max_extent * 1.5f || r_perp > C.bubble_radius * 4.0f) {
+        return s;
+    }
+    
+    // ---- Turbulence (only compute if we're close enough) ----
+    float3 noise_coord = f3mul(lp, C.turb_scale);
+    float turb_val = domain_warped_fbm(noise_coord, min(C.turb_octaves, 4), C.sim_time);
+    
+    float worley_val = fbm_worley(
+        f3add(f3mul(lp, C.turb_scale * 3.0f), f3mul(make_float3(1,1,1), C.sim_time * C.turb_speed * 0.5f)),
+        2, 2.0f, 0.5f
+    );
+    
+    // ---- Bubble SDF and shell ----
+    float sdf = bubble_sdf(lp, turb_val, C);
+    s.boundary_sdf = sdf;
+    
+    float shell_width = C.shell_width * (1.0f + 0.3f * fabsf(turb_val));
+    float worley_mod = 1.0f - 0.4f * smoothstep_gpu(0.0f, 0.5f, worley_val);
+    s.shell_intensity = expf(-sdf*sdf / (2.0f * shell_width * shell_width)) * worley_mod;
+    
+    // ---- Asymmetry ----
+    float asym = tanhf(C.asymmetry_sharpness * z / (C.bubble_length_fwd + 1e-8f));
+    
+    // ---- Core metric ----
+    s.metric = C.warp_factor * s.shell_intensity * asym;
+    
+    // ---- Wake (only if behind bubble) ----
+    if (z < -C.bubble_length_aft * 0.5f) {
+        float wake_m; float3 wake_f; float wake_v;
+        compute_wake(lp, C.sim_time, C, wake_m, wake_f, wake_v);
+        s.metric += wake_m;
+        s.wake_intensity = fabsf(wake_m);
+        s.wake_flow = wake_f;
+        s.vorticity = wake_v;
+    }
+    
+    // ---- Vortices ----
+    if (num_vortices > 0 && z < 0) {
+        float3 vv; float vm;
+        compute_vortex_field(lp, vortices, num_vortices, vv, vm);
+        s.metric += vm;
+        s.wake_flow = f3add(s.wake_flow, vv);
+    }
+    
+    // ---- Gradient (analytical approximation) ----
+    float rp = r_perp + 1e-8f;
+    float dW_dr = -sdf / (shell_width * shell_width) * s.metric;
+    float dW_dz = C.asymmetry_sharpness / (C.bubble_length_fwd + 1e-8f) *
+                  (1.0f - asym * asym) * C.warp_factor * s.shell_intensity;
+    
+    s.metric_gradient = f3add(
+        f3add(f3mul(C.ship_right, dW_dr * lp.x / rp), f3mul(C.ship_up, dW_dr * lp.y / rp)),
+        f3mul(C.ship_forward, dW_dz)
+    );
+    
+    // ---- Derived ----
+    s.turbulence = fabsf(turb_val) * s.shell_intensity;
+    s.cherenkov = compute_cherenkov(lp, view_dir, C);
+    s.doppler_shift = s.metric;
+    s.density = s.shell_intensity * (1.0f + 0.5f * fmaxf(0.0f, -asym))
+              + s.wake_intensity * 0.3f;
+    
+    return s;
+}
+
+#endif // WARP_METRIC_FIELD_CUH
+```
+
+---
+
+## Phase 5: Wake Vortex Simulation Kernel
+
+Shed vortices are simulated on the GPU each frame. New vortices are spawned at the bubble's trailing edge; existing vortices are advected, aged, and decayed.
+
+```cpp
+// ================================================================
+// warp_wake_simulation.cu
+// GPU simulation of wake vortex shedding and advection
+// ================================================================
+
+// ----------------------------------------------------------------
+// Spawn new vortices at the bubble trailing edge
+// Called once per frame with a small thread count
+// ----------------------------------------------------------------
+__global__ void spawn_wake_vortices(
+    WakeVortex* vortices,
+    int*        vortex_count,
+    int         max_vortices,
+    const WarpConstants C,
+    float       spawn_rate)     // Vortices per second
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    // Each thread tries to spawn one vortex
+    if (idx >= (int)(spawn_rate * C.dt)) return;
+    
+    // Alternating circulation (von Kármán street pattern)
+    float circulation_sign = (idx % 2 == 0) ? 1.0f : -1.0f;
+    
+    // Spawn position: at the trailing edge of the bubble, offset laterally
+    float angle = C.sim_time * 2.0f + idx * 3.14159265f;
+    float lateral_offset = C.bubble_radius * 0.8f;
+    
+    float3 spawn_local = make_float3(
+        lateral_offset * cosf(angle) * circulation_sign,
+        lateral_offset * sinf(angle) * circulation_sign,
+        -C.bubble_length_aft * 0.9f  // Just inside the trailing edge
+    );
+    
+    float3 spawn_world = f3add(C.ship_position,
+        f3add(f3mul(C.ship_right, spawn_local.x),
+        f3add(f3mul(C.ship_up, spawn_local.y),
+              f3mul(C.ship_forward, spawn_local.z))));
+    
+    // Atomic allocation of a slot
+    int slot = atomicAdd(vortex_count, 1) % max_vortices;
+    
+    vortices[slot].position = spawn_world;
+    vortices[slot].velocity = f3mul(C.ship_forward, -0.1f);  // Slight backflow
+    vortices[slot].circulation = circulation_sign * 50.0f * C.warp_factor;
+    vortices[slot].core_radius = C.bubble_radius * 0.15f;
+    vortices[slot].age = 0.0f;
+    vortices[slot].max_age = 8.0f + idx * 0.5f;  // Staggered lifetimes
+}
+
+// ----------------------------------------------------------------
+// Advect and decay existing vortices
+// ----------------------------------------------------------------
+__global__ void update_wake_vortices(
+    WakeVortex* vortices,
+    int         num_vortices,
+    const WarpConstants C)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_vortices) return;
+    
+    WakeVortex& v = vortices[idx];
+    
+    // Age
+    v.age += C.dt;
+    
+    // Advect: vortices drift backward and laterally
+    float3 local_pos = world_to_local(v.position, C.ship_position, C.ship_right, C.ship_up, C.ship_forward);
+    
+    // Backflow advection
+    float backflow_speed = C.warp_factor * 2.0f * expf(-0.05f * fabsf(local_pos.z));
+    float3 drift = f3mul(C.ship_forward, -backflow_speed);
+    
+    // Lateral spreading
+    float3 lateral_drift = f3mul(f3norm(make_float3(local_pos.x, local_pos.y, 0)),
+                                  0.3f * v.age);
+    
+    // Curl noise perturbation for organic motion
+    float3 noise_pos = f3mul(local_pos, 0.01f);
+    float3 curl = curl_noise(noise_pos, 0.5f, C.sim_time, 3);
+    
+    v.velocity = f3add(f3add(drift, lateral_drift), f3mul(curl, 5.0f));
+    v.position = f3add(v.position, f3mul(v.velocity, C.dt));
+    
+    // Core radius grows with age (diffusion)
+    v.core_radius *= (1.0f + 0.1f * C.dt);
+    
+    // Circulation decays
+    float decay_factor = expf(-0.15f * C.dt);
+    v.circulation *= decay_factor;
+}
+
+// ----------------------------------------------------------------
+// ISM Particle Simulation
+// ~500K particles representing interstellar medium
+// Swept up by the warp field, forming visible streams
+// ----------------------------------------------------------------
+__global__ void update_ism_particles(
+    ISMParticle* particles,
+    int          num_particles,
+    const WakeVortex* vortices,
+    int          num_vortices,
+    const WarpConstants C,
+    float3*      particle_render_buffer)   // Output for rendering
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_particles) return;
+    
+    ISMParticle& p = particles[idx];
+    
+    if (!p.active) {
+        // Respawn: place particle randomly in front of the ship
+        float3 offset = make_float3(
+            (hash_to_float(hash33(make_uint3(idx, C.sim_time * 1000, 0)).x) - 0.5f) * C.bubble_radius * 6.0f,
+            (hash_to_float(hash33(make_uint3(idx, C.sim_time * 1000, 1)).x) - 0.5f) * C.bubble_radius * 6.0f,
+            hash_to_float(hash33(make_uint3(idx, C.sim_time * 1000, 2)).x) * C.bubble_length_fwd * 4.0f
+        );
+        p.position = f3add(C.ship_position, local_to_world_dir(offset, C.ship_right, C.ship_up, C.ship_forward));
+        p.velocity = make_float3(0, 0, 0);
+        p.energy = 0.1f;
+        p.age = 0.0f;
+        p.lifetime = 5.0f + hash_to_float(hash33(make_uint3(idx, 0, 3)).x) * 10.0f;
+        p.active = 1;
+    }
+    
+    // Sample the warp field at the particle position
+    WarpFieldSample fs = sample_warp_field_fast(p.position, make_float3(0,0,1), vortices, num_vortices, C);
+    
+    // Force on particle: pushed by metric gradient (like geodesic deviation)
+    float3 force = f3mul(fs.metric_gradient, -50.0f * C.warp_factor);
+    
+    // Drag toward the flow field in the wake
+    if (fs.wake_intensity > 0.01f) {
+        float3 flow_delta = f3sub(fs.wake_flow, p.velocity);
+        force = f3add(force, f3mul(flow_delta, 2.0f));
+    }
+    
+    // Update velocity and position
+    p.velocity = f3add(p.velocity, f3mul(force, C.dt));
+    p.velocity = f3mul(p.velocity, 0.98f);  // Damping
+    p.position = f3add(p.position, f3mul(p.velocity, C.dt));
+    
+    // Energy: gained near the compression front
+    p.energy = fmaxf(0.01f, fs.density * 10.0f + fs.shell_intensity * 5.0f);
+    
+    // Color: blueshift in compression, redshift in expansion
+    float shift = fs.doppler_shift;
+    p.color = make_float3(
+        fmaxf(0.0f, 0.3f + shift * 2.0f),      // R: stronger in expansion
+        fmaxf(0.0f, 0.5f - fabsf(shift)),        // G: peaks at neutral
+        fmaxf(0.0f, 0.8f - shift * 2.0f)         // B: stronger in compression
+    );
+    
+    // Age and deactivate
+    p.age += C.dt;
+    if (p.age > p.lifetime || f3len(f3sub(p.position, C.ship_position)) > C.bubble_radius * 10.0f) {
+        p.active = 0;
+    }
+    
+    // Write to render buffer
+    particle_render_buffer[idx * 2]     = p.position;
+    particle_render_buffer[idx * 2 + 1] = make_float3(p.color.x, p.color.y, p.energy);
+}
+```
+
+---
+
+## Phase 6: The Volumetric Renderer — Ray Marching with Gravitational Lensing
+
+This is the visual core. Each pixel casts a ray that **bends through the warped spacetime**, accumulating volumetric emission, absorption, and scattering at each step.
+
+```cpp
+// ================================================================
+// warp_volumetric_renderer.cu
+// Full ray-marching volumetric renderer with gravitational lensing,
+// anisotropic scattering, Doppler color shift, and Cherenkov glow
+// ================================================================
+
+// ----------------------------------------------------------------
+// Color Science: Map metric value to emission color
+// ----------------------------------------------------------------
+__device__ float3 metric_to_emission_color(
+    float  metric_val,      // W(x): negative=blueshift, positive=redshift
+    float  shell_intensity, // Boundary proximity
+    float  turbulence,      // Local turbulence
+    float  cherenkov,       // Cherenkov intensity
+    float  wake_intensity,  // Wake glow
+    float  vorticity,       // Vortex core glow
+    float  density)         // Medium density
+{
+    // Base color palette based on Doppler/gravitational shift
+    float shift = fmaxf(-1.0f, fminf(1.0f, metric_val * 3.0f));
+    
+    // Compression zone (ahead): blue-white (Cherenkov-like)
+    float3 compress_color = make_float3(0.6f, 0.8f, 1.0f);   // Cool blue-white
+    // Neutral zone (flanks): cyan-teal
+    float3 neutral_color  = make_float3(0.2f, 0.9f, 0.8f);   // Teal
+    // Expansion zone (behind): amber-crimson
+    float3 expand_color   = make_float3(1.0f, 0.4f, 0.1f);   // Warm amber
+    
+    // Smooth color interpolation based on shift
+    float3 base_color;
+    if (shift < 0.0f) {
+        float t = fminf(1.0f, -shift);
+        base_color = f3add(f3mul(neutral_color, 1.0f - t), f3mul(compress_color, t));
+    } else {
+        float t = fminf(1.0f, shift);
+        base_color = f3add(f3mul(neutral_color, 1.0f - t), f3mul(expand_color, t));
+    }
+    
+    // Cherenkov: intense blue-violet at the leading edge
+    float3 cherenkov_color = make_float3(0.4f, 0.5f, 1.0f);
+    base_color = f3add(base_color, f3mul(cherenkov_color, cherenkov * 2.0f));
+    
+    // Wake: subtle blue-violet glow
+    float3 wake_color = make_float3(0.3f, 0.2f, 0.8f);
+    base_color = f3add(base_color, f3mul(wake_color, wake_intensity * 0.5f));
+    
+    // Vortex cores: bright white-cyan filaments
+    float3 vortex_color = make_float3(0.8f, 0.95f, 1.0f);
+    base_color = f3add(base_color, f3mul(vortex_color, vorticity * 1.5f));
+    
+    // Turbulence modulation: brighter in turbulent regions
+    float turb_bright = 1.0f + turbulence * 2.0f;
+    base_color = f3mul(base_color, turb_bright);
+    
+    // Emission intensity: stronger at boundary and in dense regions
+    float intensity = (shell_intensity * 3.0f + wake_intensity * 0.8f + density * 0.5f + cherenkov * 1.5f)
+                    * (1.0f + turbulence);
+    
+    return f3mul(base_color, intensity);
+}
+
+// ----------------------------------------------------------------
+// Henyey-Greenstein Phase Function
+// Models anisotropic scattering (forward-peaked for plasma)
+// ----------------------------------------------------------------
+__device__ float hg_phase(float cos_theta, float g) {
+    float g2 = g * g;
+    float denom = 1.0f + g2 - 2.0f * g * cos_theta;
+    return (1.0f - g2) / (4.0f * 3.14159265f * denom * sqrtf(denom + 1e-10f));
+}
+
+// Multi-lobe phase function (forward + backward scattering)
+__device__ float dual_lobe_phase(float cos_theta, float g_fwd, float g_bwd, float fwd_weight) {
+    return fwd_weight * hg_phase(cos_theta, g_fwd) + (1.0f - fwd_weight) * hg_phase(cos_theta, -g_bwd);
+}
+
+// ----------------------------------------------------------------
+// Main Volumetric Ray March Kernel
+// ----------------------------------------------------------------
+__global__ void render_warp_field(
+    float4* output_image,          // RGBA output buffer
+    float2* lensing_buffer,        // Screen-space distortion vectors
+    const WakeVortex* vortices,
+    int    num_vortices,
+    const WarpConstants C)
+{
+    int px = blockIdx.x * blockDim.x + threadIdx.x;
+    int py = blockIdx.y * blockDim.y + threadIdx.y;
+    
+    if (px >= C.resolution.x || py >= C.resolution.y) return;
+    
+    float2 uv = make_float2(
+        (2.0f * px - C.resolution.x) / C.resolution.y,
+        (2.0f * py - C.resolution.y) / C.resolution.y
+    );
+    
+    // ----------------------------------------------------------
+    // Ray Setup
+    // ----------------------------------------------------------
+    float half_fov_tan = tanf(C.cam_fov * 0.5f);
+    float3 ray_dir = f3norm(f3add(f3add(
+        C.cam_fwd,
+        f3mul(C.cam_right, uv.x * half_fov_tan)),
+        f3mul(C.cam_up, uv.y * half_fov_tan)));
+    
+    float3 ray_pos = C.cam_pos;
+    
+    // ----------------------------------------------------------
+    // Bounding Volume Intersection
+    // Skip pixels that can't possibly hit the field
+    // ----------------------------------------------------------
+    // Approximate bounding sphere (generous)
+    float3 center_offset = f3sub(C.ship_position, ray_pos);
+    float bounding_r = fmaxf(C.bubble_length_fwd, C.bubble_length_aft + 
+                     5.0f / (C.wake_decay + 0.01f)) + C.bubble_radius;
+    
+    float b = f3dot(ray_dir, center_offset);
+    float c = f3dot(center_offset, center_offset) - bounding_r * bounding_r;
+    float disc = b*b - c;
+    
+    float t_near, t_far;
+    if (disc < 0.0f) {
+        // Ray misses bounding volume entirely
+        output_image[py * C.resolution.x + px] = make_float4(0, 0, 0, 0);
+        lensing_buffer[py * C.resolution.x + px] = make_float2(0, 0);
+        return;
+    }
+    
+    t_near = fmaxf(0.0f, -b - sqrtf(disc));
+    t_far = -b + sqrtf(disc);
+    
+    // Advance ray to near intersection
+    ray_pos = f3add(ray_pos, f3mul(ray_dir, t_near));
+    float remaining_dist = t_far - t_near;
+    
+    // ----------------------------------------------------------
+    // Ray March with Gravitational Lensing
+    // ----------------------------------------------------------
+    float3 accumulated_color = make_float3(0, 0, 0);
+    float  accumulated_opacity = 0.0f;
+    float2 total_lens_offset = make_float2(0, 0);
+    
+    float3 light_dir = f3norm(f3sub(C.ship_position, C.cam_pos));  // Ship as "light"
+    
+    float march_dist = 0.0f;
+    int max_steps = 256;
+    
+    for(int step = 0; step < max_steps && march_dist < remaining_dist && accumulated_opacity < 0.98f; step++) {
+        
+        // Adaptive step size: smaller near the boundary for detail
+        WarpFieldSample fs = sample_warp_field_fast(ray_pos, ray_dir, vortices, num_vortices, C);
+        
+        // Dynamic step sizing
+        float field_proximity = fs.shell_intensity + fs.wake_intensity;
+        float step_size = C.step_size * (1.0f - 0.7f * fminf(1.0f, field_proximity * 3.0f));
+        step_size = fmaxf(C.step_size_min, step_size);
+        
+        // ------------------------------------------------------
+        // Gravitational Lensing: Bend the ray
+        // ------------------------------------------------------
+        if (f3len(fs.metric_gradient) > 1e-6f) {
+            float3 bend = f3mul(fs.metric_gradient, C.lensing_strength * step_size);
+            ray_dir = f3norm(f3add(ray_dir, bend));
+            
+            // Accumulate lens offset for background distortion
+            float2 screen_bend = make_float2(
+                f3dot(bend, C.cam_right),
+                f3dot(bend, C.cam_up)
+            );
+            total_lens_offset = make_float2(
+                total_lens_offset.x + screen_bend.x * 50.0f,
+                total_lens_offset.y + screen_bend.y * 50.0f
+            );
+        }
+        
+        // ------------------------------------------------------
+        // Skip if field contribution is negligible
+        // ------------------------------------------------------
+        if (field_proximity < 0.001f) {
+            ray_pos = f3add(ray_pos, f3mul(ray_dir, step_size));
+            march_dist += step_size;
+            continue;
+        }
+        
+        // ------------------------------------------------------
+        // Emission Color
+        // ------------------------------------------------------
+        float3 emission = metric_to_emission_color(
+            fs.metric, fs.shell_intensity, fs.turbulence,
+            fs.cherenkov, fs.wake_intensity, fs.vorticity, fs.density
+        );
+        
+        // ------------------------------------------------------
+        // Absorption (optical depth)
+        // ------------------------------------------------------
+        float absorption = C.absorption_scale * fs.density * step_size;
+        
+        // ------------------------------------------------------
+        // In-Scattering (anisotropic)
+        // ------------------------------------------------------
+        float cos_theta = f3dot(ray_dir, light_dir);
+        float phase = dual_lobe_phase(cos_theta, C.hg_g, 0.3f, 0.7f);
+        float3 scatter = f3mul(emission, phase * 0.3f);
+        
+        // ------------------------------------------------------
+        // Volumetric Integration (front-to-back compositing)
+        // ------------------------------------------------------
+        float transmittance = expf(-absorption);
+        float alpha = 1.0f - transmittance;
+        
+        // Add emission and scattering
+        float3 source = f3add(emission, scatter);
+        
+        accumulated_color = f3add(accumulated_color, f3mul(source, alpha * (1.0f - accumulated_opacity)));
+        accumulated_opacity += alpha * (1.0f - accumulated_opacity);
+        
+        // ------------------------------------------------------
+        // Advance ray (bent direction)
+        // ------------------------------------------------------
+        ray_pos = f3add(ray_pos, f3mul(ray_dir, step_size));
+        march_dist += step_size;
+    }
+    
+    // ----------------------------------------------------------
+    // Write Output
+    // ----------------------------------------------------------
+    int pixel_idx = py * C.resolution.x + px;
+    output_image[pixel_idx] = make_float4(
+        accumulated_color.x, accumulated_color.y, accumulated_color.z,
+        accumulated_opacity
+    );
+    lensing_buffer[pixel_idx] = total_lens_offset;
+}
+
+// ----------------------------------------------------------------
+// Interior View Enhancement Kernel
+// When camera is inside the bubble, add star-streak effect
+// and boundary glow ring
+// ----------------------------------------------------------------
+__global__ void render_interior_effects(
+    float4* output_image,
+    float4* background_image,     // Pre-rendered star field
+    float2* lensing_buffer,
+    const WarpConstants C)
+{
+    int px = blockIdx.x * blockDim.x + threadIdx.x;
+    int py = blockIdx.y * blockDim.y + threadIdx.y;
+    
+    if (px >= C.resolution.x || py >= C.resolution.y) return;
+    int pixel_idx = py * C.resolution.x + px;
+    
+    // Check if camera is inside the bubble
+    float3 cam_local = world_to_local(C.cam_pos, C.ship_position, C.ship_right, C.ship_up, C.ship_forward);
+    float cam_r = sqrtf(cam_local.x*cam_local.x + cam_local.y*cam_local.y);
+    // Simple interior check (more precise version would use the SDF)
+    bool is_interior = (cam_r < C.bubble_radius * 0.8f && 
+                        cam_local.z > -C.bubble_length_aft * 0.8f &&
+                        cam_local.z < C.bubble_length_fwd * 0.8f);
+    
+    if (!is_interior) return;
+    
+    // ---- Star Streak Effect ----
+    // Stars ahead are streaked into lines due to warp motion
+    float2 uv = make_float2(
+        (2.0f * px - C.resolution.x) / (float)C.resolution.y,
+        (2.0f * py - C.resolution.y) / (float)C.resolution.y
+    );
+    
+    // Compute view direction relative to ship forward
+    float3 view_local = f3norm(make_float3(uv.x, uv.y, 1.0f / tanf(C.cam_fov * 0.5f)));
+    float forward_alignment = f3dot(view_local, make_float3(0, 0, 1));
+    
+    // Streak length increases near the forward axis
+    float streak_factor = fmaxf(0.0f, forward_alignment) * C.warp_factor;
+    float streak_length = streak_factor * 20.0f;  // pixels
+    
+    // Apply directional blur to background (simplified: sample along streak direction)
+    float3 streak_color = make_float3(0, 0, 0);
+    int num_samples = (int)(streak_length * 0.5f) + 1;
+    
+    for(int s = 0; s < num_samples; s++) {
+        float t = (float)s / (float)num_samples;
+        // Offset UV along the radial direction from screen center
+        float2 dir = f3norm(make_float3(uv.x, uv.y, 0.01f));  // Radial direction
+        float2 offset_uv = make_float2(uv.x + dir.x * t * streak_length * 0.001f,
+                                        uv.y + dir.y * t * streak_length * 0.001f);
+        // Sample background at offset position (simplified)
+        int ox = (int)(px + dir.x * t * streak_length);
+        int oy = (int)(py + dir.y * t * streak_length);
+        if (ox >= 0 && ox < C.resolution.x && oy >= 0 && oy < C.resolution.y) {
+            float4 bg = background_image[oy * C.resolution.x + ox];
+            streak_color = f3add(streak_color, make_float3(bg.x, bg.y, bg.z));
+        }
+    }
+    streak_color = f3mul(streak_color, 1.0f / (float)num_samples);
+    
+    // Blueshift: shift the streak color toward blue
+    streak_color = f3mul(streak_color, make_float3(0.7f, 0.85f, 1.2f));
+    
+    // Blend with existing output
+    float4 existing = output_image[pixel_idx];
+    float blend = streak_factor * 0.8f;
+    output_image[pixel_idx] = make_float4(
+        existing.x + streak_color.x * blend,
+        existing.y + streak_color.y * blend,
+        existing.z + streak_color.z * blend,
+        fminf(1.0f, existing.w + blend)
+    );
+    
+    // ---- Boundary Glow Ring ----
+    // Looking toward the boundary, see a bright ring of distorted light
+    float boundary_angle = acosf(fmaxf(-1.0f, fminf(1.0f, forward_alignment)));
+    float ring_radius = asinf(cam_r / C.bubble_radius);  // Approximate angular radius of boundary
+    float ring_proximity = expf(-20.0f * (boundary_angle - ring_radius) * (boundary_angle - ring_radius));
+    
+    float3 ring_color = make_float3(0.3f, 0.7f, 1.0f) * ring_proximity * C.warp_factor * 3.0f;
+    output_image[pixel_idx] = make_float4(
+        existing.x + ring_color.x,
+        existing.y + ring_color.y,
+        existing.z + ring_color.z,
+        fminf(1.0f, existing.w + ring_proximity * 0.5f)
+    );
+}
+
+// ----------------------------------------------------------------
+// Lensing Composite Kernel
+// Apply the lensing distortion to the background image
+// Uses the lensing_buffer to warp UV coordinates
+// ----------------------------------------------------------------
+__global__ void composite_lensing(
+    float4* composited,           // Output: background + warp field
+    const float4* warp_field,     // Volumetric warp field render
+    const float4* background,     // Star field / environment
+    const float2* lensing_buffer, // Screen-space distortion
+    const WarpConstants C)
+{
+    int px = blockIdx.x * blockDim.x + threadIdx.x;
+    int py = blockIdx.y * blockDim.y + threadIdx.y;
+    
+    if (px >= C.resolution.x || py >= C.resolution.y) return;
+    int idx = py * C.resolution.x + px;
+    
+    float2 lens_offset = lensing_buffer[idx];
+    
+    // Sample background at distorted position
+    int sx = (int)(px + lens_offset.x);
+    int sy = (int)(py + lens_offset.y);
+    sx = fmaxf(0, fminf(C.resolution.x - 1, sx));
+    sy = fmaxf(0, fminf(C.resolution.y - 1, sy));
+    
+    float4 bg = background[sy * C.resolution.x + sx];
+    float4 wf = warp_field[idx];
+    
+    // Chromatic aberration in the lensed region (R/B shift based on lens magnitude)
+    float lens_mag = sqrtf(lens_offset.x * lens_offset.x + lens_offset.y * lens_offset.y);
+    if (lens_mag > 0.5f) {
+        int rx = (int)(px + lens_offset.x * 1.02f);
+        int bx = (int)(px + lens_offset.x * 0.98f);
+        rx = fmaxf(0, fminf(C.resolution.x - 1, rx));
+        bx = fmaxf(0, fminf(C.resolution.x - 1, bx));
+        float4 bg_r = background[sy * C.resolution.x + rx];
+        float4 bg_b = background[sy * C.resolution.x + bx];
+        bg.x = bg_r.x;  // Red channel shifted more
+        bg.z = bg_b.z;  // Blue channel shifted less
+    }
+    
+    // Composite: warp field over lensed background (premultiplied alpha)
+    composited[idx] = make_float4(
+        bg.x * (1.0f - wf.w) + wf.x,
+        bg.y * (1.0f - wf.w) + wf.y,
+        bg.z * (1.0f - wf.w) + wf.z,
+        1.0f
+    );
+}
+```
+
+---
+
+## Phase 7: Pipeline Integration — Host-Side Orchestration
+
+```cpp
+// ================================================================
+// warp_pipeline.h / warp_pipeline.cpp
+// Host-side: memory management, kernel launches, frame loop
+// ================================================================
+#pragma once
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
+#include "warp_field_core.h"
+
+class WarpFieldPipeline {
+public:
+    static const int MAX_VORTICES = 4096;
+    static const int NUM_ISM_PARTICLES = 524288;  // 512K
+
+    void init(int width, int height);
+    void update(float dt);
+    void render();
+    void resize(int new_width, int new_height);
+    void shutdown();
+
+    // Configuration (call from game engine)
+    WarpConstants& config() { return h_constants_; }
+
+    // Get the final composited image (for blit to swap chain)
+    cudaArray_t get_output_array() const;
+
+private:
+    void upload_constants();
+
+    // GPU Buffers
+    float4*  d_output_image_     = nullptr;
+    float4*  d_background_       = nullptr;  // Star field from engine
+    float2*  d_lensing_buffer_   = nullptr;
+    float4*  d_composited_       = nullptr;
+    WakeVortex* d_vortices_      = nullptr;
+    int*     d_vortex_count_     = nullptr;
+    ISMParticle* d_particles_    = nullptr;
+    float3*  d_particle_render_  = nullptr;
+    float4*  d_temp_warp_        = nullptr;  // Half-res intermediate
+
+    // Constant buffer
+    WarpConstants h_constants_;
+    WarpConstants* d_constants_  = nullptr;
+
+    // CUDA-GL interop (for DirectX/Vulkan integration)
+    cudaGraphicsResource* gl_output_resource_ = nullptr;
+
+    int width_ = 0, height_ = 0;
+    int half_width_ = 0, half_height_ = 0;
+    
+    cudaStream_t stream_ = 0;
+};
+
+// ================================================================
+// Implementation
+// ================================================================
+
+void WarpFieldPipeline::init(int width, int height) {
+    width_ = width; height_ = height;
+    half_width_ = (width + 1) / 2; half_height_ = (height + 1) / 2;
+
+    cudaStreamCreate(&stream_);
+
+    // Allocate GPU buffers
+    size_t full_pixels = width * height;
+    size_t half_pixels = half_width_ * half_height_;
+
+    cudaMalloc(&d_output_image_,  full_pixels * sizeof(float4));
+    cudaMalloc(&d_background_,   full_pixels * sizeof(float4));
+    cudaMalloc(&d_lensing_buffer_, full_pixels * sizeof(float2));
+    cudaMalloc(&d_composited_,   full_pixels * sizeof(float4));
+    cudaMalloc(&d_temp_warp_,    half_pixels * sizeof(float4));
+
+    cudaMalloc(&d_vortices_,     MAX_VORTICES * sizeof(WakeVortex));
+    cudaMalloc(&d_vortex_count_, sizeof(int));
+    cudaMemset(d_vortex_count_, 0, sizeof(int));
+
+    cudaMalloc(&d_particles_,       NUM_ISM_PARTICLES * sizeof(ISMParticle));
+    cudaMalloc(&d_particle_render_, NUM_ISM_PARTICLES * 2 * sizeof(float3));
+
+    cudaMalloc(&d_constants_, sizeof(WarpConstants));
+}
+
+void WarpFieldPipeline::upload_constants() {
+    h_constants_.resolution = make_uint2(width_, height_);
+    cudaMemcpyAsync(d_constants_, &h_constants_, sizeof(WarpConstants), 
+                    cudaMemcpyHostToDevice, stream_);
+}
+
+void WarpFieldPipeline::update(float dt) {
+    h_constants_.dt = dt;
+    h_constants_.sim_time += dt;
+    upload_constants();
+
+    // --- Spawn new wake vortices ---
+    float spawn_rate = 30.0f * h_constants_.warp_factor;  // 30 vortices/sec at max warp
+    int spawn_count = (int)(spawn_rate * dt);
+    if (spawn_count > 0) {
+        spawn_wake_vortices<<<1, spawn_count, 0, stream_>>>(
+            d_vortices_, d_vortex_count_, MAX_VORTICES, h_constants_, spawn_rate);
+    }
+
+    // --- Update existing vortices ---
+    int current_count;
+    cudaMemcpyAsync(&current_count, d_vortex_count_, sizeof(int), 
+                    cudaMemcpyDeviceToHost, stream_);
+    cudaStreamSynchronize(stream_);
+    current_count = min(current_count, MAX_VORTICES);
+    
+    if (current_count > 0) {
+        int threads = 256;
+        int blocks = (current_count + threads - 1) / threads;
+        update_wake_vortices<<<blocks, threads, 0, stream_>>>(
+            d_vortices_, current_count, h_constants_);
+    }
+
+    // --- Update ISM particles ---
+    {
+        int threads = 256;
+        int blocks = (NUM_ISM_PARTICLES + threads - 1) / threads;
+        update_ism_particles<<<blocks, threads, 0, stream_>>>(
+            d_particles_, NUM_ISM_PARTICLES,
+            d_vortices_, current_count, h_constants_,
+            d_particle_render_);
+    }
+}
+
+void WarpFieldPipeline::render() {
+    upload_constants();
+
+    // --- Clear buffers ---
+    cudaMemsetAsync(d_output_image_, 0, width_ * height_ * sizeof(float4), stream_);
+    cudaMemsetAsync(d_lensing_buffer_, 0, width_ * height_ * sizeof(float2), stream_);
+
+    // --- Volumetric ray march (full resolution) ---
+    {
+        dim3 threads(16, 16);
+        dim3 blocks((width_ + 15) / 16, (height_ + 15) / 16);
+
+        int current_count;
+        cudaMemcpy(&current_count, d_vortex_count_, sizeof(int), cudaMemcpyDeviceToHost);
+        current_count = min(current_count, MAX_VORTICES);
+
+        render_warp_field<<<blocks, threads, 0, stream_>>>(
+            d_output_image_, d_lensing_buffer_,
+            d_vortices_, current_count, h_constants_);
+    }
+
+    // --- Interior view enhancements ---
+    {
+        dim3 threads(16, 16);
+        dim3 blocks((width_ + 15) / 16, (height_ + 15) / 16);
+        
+        render_interior_effects<<<blocks, threads, 0, stream_>>>(
+            d_output_image_, d_background_, d_lensing_buffer_, h_constants_);
+    }
+
+    // --- Composite with background (lensing distortion) ---
+    {
+        dim3 threads(16, 16);
+        dim3 blocks((width_ + 15) / 16, (height_ + 15) / 16);
+        
+        composite_lensing<<<blocks, threads, 0, stream_>>>(
+            d_composited_, d_output_image_, d_background_, d_lensing_buffer_, h_constants_);
+    }
+
+    cudaStreamSynchronize(stream_);
+}
+
+void WarpFieldPipeline::shutdown() {
+    cudaFree(d_output_image_);
+    cudaFree(d_background_);
+    cudaFree(d_lensing_buffer_);
+    cudaFree(d_composited_);
+    cudaFree(d_temp_warp_);
+    cudaFree(d_vortices_);
+    cudaFree(d_vortex_count_);
+    cudaFree(d_particles_);
+    cudaFree(d_particle_render_);
+    cudaFree(d_constants_);
+    cudaStreamDestroy(stream_);
+}
+
+void WarpFieldPipeline::resize(int new_width, int new_height) {
+    shutdown();
+    init(new_width, new_height);
+}
+```
+
+---
+
+## Phase 8: Bloom & Post-Processing
+
+The bloom pass is **critical** for the Hollywood look — the warp field should glow intensely with soft light bleeding into surrounding pixels.
+
+```cpp
+// ================================================================
+// warp_postprocess.cu
+// Bloom (separable Gaussian), tonemapping, final output
+// ================================================================
+
+// ----------------------------------------------------------------
+// Brightness extraction + downsample
+// ----------------------------------------------------------------
+__global__ void extract_bright(
+    float4* output, 
+    const float4* input,
+    int width, int height,
+    float threshold)
+{
+    int px = blockIdx.x * blockDim.x + threadIdx.x;
+    int py = blockIdx.y * blockDim.y + threadIdx.y;
+    if (px >= width || py >= height) return;
+    
+    float4 c = input[py * width + px];
+    float luminance = c.x * 0.2126f + c.y * 0.7152f + c.z * 0.0722f;
+    float brightness = fmaxf(0.0f, luminance - threshold) / (luminance + 1e-6f);
+    
+    output[py * width + px] = make_float4(
+        c.x * brightness, c.y * brightness, c.z * brightness, c.w
+    );
+}
+
+// ----------------------------------------------------------------
+// Separable Gaussian blur (13-tap, used iteratively for wide bloom)
+// ----------------------------------------------------------------
+__constant__ float gaussian_weights[13] = {
+    0.0215f, 0.0465f, 0.0833f, 0.1238f, 0.1529f, 0.1572f, 0.1529f,
+    0.1238f, 0.0833f, 0.0465f, 0.0215f, 0.0086f, 0.0029f
+};
+
+__global__ void blur_horizontal(
+    float4* output, const float4* input, int width, int height)
+{
+    int px = blockIdx.x * blockDim.x + threadIdx.x;
+    int py = blockIdx.y * blockDim.y + threadIdx.y;
+    if (px >= width || py >= height) return;
+    
+    float4 sum = make_float4(0,0,0,0);
+    #pragma unroll
+    for(int i = -6; i <= 6; i++) {
+        int sx = fmaxf(0, fminf(width-1, px + i));
+        float4 s = input[py * width + sx];
+        sum = make_float4(
+            sum.x + s.x * gaussian_weights[i+6],
+            sum.y + s.y * gaussian_weights[i+6],
+            sum.z + s.z * gaussian_weights[i+6],
+            sum.w + s.w * gaussian_weights[i+6]
+        );
+    }
+    output[py * width + px] = sum;
+}
+
+__global__ void blur_vertical(
+    float4* output, const float4* input, int width, int height)
+{
+    int px = blockIdx.x * blockDim.x + threadIdx.x;
+    int py = blockIdx.y * blockDim.y + threadIdx.y;
+    if (px >= width || py >= height) return;
+    
+    float4 sum = make_float4(0,0,0,0);
+    #pragma unroll
+    for(int i = -6; i <= 6; i++) {
+        int sy = fmaxf(0, fminf(height-1, py + i));
+        float4 s = input[sy * width + px];
+        sum = make_float4(
+            sum.x + s.x * gaussian_weights[i+6],
+            sum.y + s.y * gaussian_weights[i+6],
+            sum.z + s.z * gaussian_weights[i+6],
+            sum.w + s.w * gaussian_weights[i+6]
+        );
+    }
+    output[py * width + px] = sum;
+}
+
+// ----------------------------------------------------------------
+// Final composite: scene + warp field + bloom
+// ACES tonemapping + gamma correction
+// ----------------------------------------------------------------
+__device__ float3 aces_tonemap(float3 x) {
+    // ACES RRT/ODT fit by Stephen Hill
+    float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
+    return make_float3(
+        fminf(1.0f, (x.x*(a*x.x+b))/(x.x*(c*x.x+d)+e)),
+        fminf(1.0f, (x.y*(a*x.y+b))/(x.y*(c*x.y+d)+e)),
+        fminf(1.0f, (x.z*(a*x.z+b))/(x.z*(c*x.z+d)+e))
+    );
+}
+
+__global__ void final_composite(
+    float4* output,
+    const float4* scene_warp,     // Composited scene + warp field
+    const float4* bloom,          // Bloom pass result
+    int width, int height,
+    float bloom_intensity,
+    float exposure)
+{
+    int px = blockIdx.x * blockDim.x + threadIdx.x;
+    int py = blockIdx.y * blockDim.y + threadIdx.y;
+    if (px >= width || py >= height) return;
+    int idx = py * width + px;
+    
+    float4 base = scene_warp[idx];
+    float4 blm = bloom[idx];
+    
+    // Additive bloom
+    float3 color = make_float3(
+        base.x + blm.x * bloom_intensity,
+        base.y + blm.y * bloom_intensity,
+        base.z + blm.z * bloom_intensity
+    );
+    
+    // Exposure
+    color = f3mul(color, exposure);
+    
+    // ACES tonemapping
+    color = aces_tonemap(color);
+    
+    // sRGB gamma
+    color = make_float3(
+        powf(fmaxf(0.0f, color.x), 1.0f/2.2f),
+        powf(fmaxf(0.0f, color.y), 1.0f/2.2f),
+        powf(fmaxf(0.0f, color.z), 1.0f/2.2f)
+    );
+    
+    output[idx] = make_float4(color.x, color.y, color.z, 1.0f);
+}
+```
+
+---
+
+## Phase 9: Performance Architecture & Optimization Notes
+
+### Kernel Launch Configuration
+
+```
+┌─────────────────────────────────────────────────┐
+│           FRAME PIPELINE (per frame)             │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│  1. UPDATE PHASE (Compute-bound)                 │
+│     ├─ spawn_wake_vortices    (~32 threads)      │
+│     ├─ update_wake_vortices   (~4K threads)      │
+│     └─ update_ism_particles   (~512K threads)    │
+│                                                  │
+│  2. RENDER PHASE (Memory/bandwidth-bound)        │
+│     ├─ render_warp_field      (~8M threads)      │
+│     │   └─ Per-pixel ray march (128-256 steps)  │
+│     │       └─ sample_warp_field_fast()          │
+│     │           ├─ bubble_sdf() + noise           │
+│     │           ├─ compute_wake()                 │
+│     │           └─ compute_vortex_field()         │
+│     ├─ render_interior_effects (~8M threads)      │
+│     └─ composite_lensing      (~8M threads)      │
+│                                                  │
+│  3. POST-PROCESS PHASE                          │
+│     ├─ extract_bright                            │
+│     ├─ blur_horizontal × 3 passes (pyramid)      │
+│     ├─ blur_vertical   × 3 passes                │
+│     └─ final_composite + ACES tonemap            │
+│                                                  │
+│  Total GPU time target: <8ms at 4K on RTX 4090  │
+└─────────────────────────────────────────────────┘
+```
+
+### Key Optimizations
+
+1. **Half-resolution volumetrics**: The most expensive pass (`render_warp_field`) can run at 50% resolution with bilateral upsampling. This reduces ray-march work by 4× with minimal quality loss since the warp field is inherently soft/blurry.
+
+2. **Early ray termination**: The `accumulated_opacity > 0.98` check exits the march early for pixels where the field is opaque, saving significant work on the bright boundary shell.
+
+3. **Bounding volume skip**: The sphere intersection test at the start of each ray eliminates ~60-80% of pixels that never intersect the warp field.
+
+4. **Adaptive step sizing**: Steps are 3× smaller near the boundary (where visual detail is highest) and larger in empty space, concentrating computation where it matters.
+
+5. **Noise LOD**: The `turb_octaves` parameter can be reduced from 6 to 3 for distant samples, exploiting the fact that fine turbulence is sub-pixel at distance.
+
+6. **Constant memory**: All configuration is in `__constant__` memory (or a single `__constant__` WarpConstants struct), giving broadcast-speed reads across all threads in a warp.
+
+7. **Register pressure**: The `sample_warp_field_fast` function is designed to keep the hot path in registers. The noise functions are the main register pressure source — the 4-octave FBM needs ~16 registers for the accumulator state.
+
+### Compile Flags
+
+```cmake
+# CMakeLists.txt for Ada Lovelace (RTX 4000 series)
+set(CUDA_NVCC_FLAGS "-arch=sm_89;-O3;--use_fast_math;-maxrregcount=128")
+# For RTX 5000 (Blackwell): -arch=sm_100 or sm_120 depending on SKU
+
+# Fast math is acceptable here: the warp field is a visual effect,
+# not a scientific simulation. --use_fast_math gives ~15% speedup
+# on the transcendental functions (exp, cos, sqrt) used heavily in noise.
+```
+
+### Memory Budget (4K)
+
+| Buffer | Resolution | Size |
+|--------|-----------|------|
+| Output image | 3840×2160 | 66 MB |
+| Background | 3840×2160 | 66 MB |
+| Lensing buffer | 3840×2160 | 33 MB |
+| Composited | 3840×2160 | 66 MB |
+| Bloom temporaries | 3840×2160 × 3 | 198 MB |
+| Wake vortices | 4096 | 0.5 MB |
+| ISM particles | 524K | 32 MB |
+| Particle render | 524K × 2 | 12 MB |
+| **Total** | | **~474 MB** |
+
+This fits comfortably in the 24 GB VRAM of an RTX 4090 alongside game assets.
+
+---
+
+## Visual Summary: What You'll See
+
+**External View (camera behind/beside the ship):**
+- The ship is encased in a **turbulent, glowing shell** that's elongated fore-and-aft
+- The **leading edge** blazes blue-white with Cherenkov-like radiation and a sharp compression front
+- The **flanks** shimmer teal-cyan with flowing filamentary structure (Worley-modulated noise)
+- The **trailing edge** glows amber-red, more diffuse, with visible vortex shedding
+- Behind the ship, a **wake corridor** of decaying metric oscillations — visible as rhythmic pulsing rings of blue-violet light that slowly fade
+- **Shed vortices** appear as bright, swirling filaments drifting backward
+- **Background stars** are visibly distorted (gravitationally lensed) near the field — magnified and shifted ahead, compressed and dimmed behind
+- **ISM particles** stream around the bubble and trail behind in glowing streams
+- The whole field **breathes** — subtle pulsations from the noise advection
+
+**Internal View (camera on the bridge):**
+- Looking forward: stars are **blueshifted, magnified, and streaked** into radial lines (the classic warp-tunnel effect, but physically derived)
+- Looking sideways: the bubble boundary appears as a **luminous ring** around the viewport, with the same turbulent filamentary structure and color gradient
+- Looking aft: stars are **redshifted and dimmed**, the boundary glows amber
+- A subtle **rippling distortion** of the entire view, as if looking through heated glass
+- Occasional bright **arcs and sparks** where turbulent fluctuations create momentary intensity peaks in the shell
