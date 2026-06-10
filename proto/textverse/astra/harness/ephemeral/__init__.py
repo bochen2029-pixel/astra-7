@@ -13,6 +13,27 @@ its own sysprompt. They write to the State Bus and REEL; they do NOT emit
 to the operator directly (§4.9 invariant: ephemeral instances don't interact
 with each other or with the operator; only the State Bus and REEL).
 
-Implementation: deferred. v0 closes the loop without ephemerals; they land
-when scenarios surface the need.
+Implementation status (2026-06-10): journal_generator landed (deterministic
+template path; LLM-voiced path later behind the same signature). Consolidator
+and drift_detector land next in this same package.
 """
+
+from astra.harness.ephemeral.base import (
+    EphemeralRole,
+    EphemeralRunStatus,
+    EphemeralStatus,
+)
+from astra.harness.ephemeral.journal_generator import (
+    MAX_JOURNAL_ENTRIES,
+    JournalResult,
+    generate_journal,
+)
+
+__all__ = [
+    "MAX_JOURNAL_ENTRIES",
+    "EphemeralRole",
+    "EphemeralRunStatus",
+    "EphemeralStatus",
+    "JournalResult",
+    "generate_journal",
+]

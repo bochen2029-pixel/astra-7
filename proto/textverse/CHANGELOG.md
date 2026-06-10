@@ -6,6 +6,33 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Journal generator ephemeral + ReelEntry D4 full closure — 2026-06-10
+
+First §4.9 ephemeral instance lands (Tier 3.1). New
+`astra/harness/ephemeral/{base,journal_generator}.py`:
+
+- `generate_journal(τ_ship_range, t_cosmic_range, regime_history, ζ⃗_at_sleep,
+  ζ⃗_at_wake)` per the §4.9 locked signature; §3.9 dual-clock prose (both
+  spans always present), regime-arc sentence from history, kinematic
+  continuity line (β at sleep/wake per the §4.4 cryosleep invariant),
+  long-span watching entry. Deterministic template path; numbers are pure
+  arithmetic on inputs (calculator-bound framing per §15.6). LLM-voiced path
+  later behind the same signature.
+- Output passes `LeakDetector.scan_journal_output` (the §4.9
+  enforce_no_wall_clock invariant) before REEL commit; leak events recorded
+  in `JournalResult`.
+- `EphemeralStatus` record per the §4.9 HarnessState schema
+  (role/status/work_queue/last_artifact).
+- **ReelEntry D4 closure completed**: adds `t_emit_event` (v0.127 two-clock
+  distant-event memory), `regime_at_write` (§3.3 bitmask, wire-stable int),
+  `author_instance_id`, `retrieval_metadata` — all defaulted, back-compat
+  with every existing entry and SaveFile v3.
+
+Tests: `tests/test_ephemeral_journal.py` — 17 tests (dual-clock magnitudes,
+leak-gate wiring with poisoned detector, default-canon cleanliness, voice
+canon no-em-dash, shape/cap/sort, β continuity, regime arc). Gates after:
+616 passed / ruff clean / mypy clean (70 files).
+
 ### SaveFile v3 — §4.6 Persistence Contract serialization — 2026-06-10
 
 Closes the audit Phase 0.x forward-work item "SaveFile v3 serialization".

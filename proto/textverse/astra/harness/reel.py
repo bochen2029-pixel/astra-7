@@ -33,10 +33,15 @@ class ReelEntry(BaseModel):
     without `t_cosmic_at_write` — it's the only way to reconstruct
     "while you were resting" prose with the correct cosmic-time span.
 
-    Remaining canonical fields per spec §4.6 (t_emit_event, regime_at_write,
-    author_instance_id, retrieval_metadata) are reasonable v0 deferrals
-    per §4.6's "inline placeholder" framing — surfaced as audit D4
-    partial; will land with the §4.9 ephemeral-instance work.
+    Full §4.6 canonical field set (audit D4 closure, completed with the
+    §4.9 ephemeral-instance work 2026-06-10): `t_emit_event` records the
+    source-frame cosmic time for entries about observed distant events
+    (v0.127 two-clock memory of observation); `regime_at_write` snapshots
+    the composite regime bitmask (§3.3 canonical hex, wire-stable int);
+    `author_instance_id` distinguishes main-loop writes from ephemeral
+    instances (consolidator / journal_generator / drift_detector);
+    `retrieval_metadata` carries retrieval hints. All default — entries
+    written before this closure load unchanged.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -49,6 +54,14 @@ class ReelEntry(BaseModel):
                                                   # cannot be undone (per §4.6
                                                   # monotonic-irreversibility
                                                   # gate)
+    t_emit_event: float | None = None            # §4.6 v0.127: when the observed
+                                                  # distant event happened at the
+                                                  # source (cosmic time); None for
+                                                  # local entries
+    regime_at_write: int = 0                     # §3.3 bitmask at write time
+    author_instance_id: str = "main"             # §4.9: main | consolidator |
+                                                  # journal_generator | drift_detector
+    retrieval_metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class Reel:
