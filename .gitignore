@@ -176,3 +176,9 @@ book/production/_reference_inside_the_region/
 # Book production — preview/scratch images
 book/production/outputs/_*
 book/production/outputs/**/_preview*
+
+# Repo-local backup snapshots (bundle+tarballs; off-tree copy exists)
+.backups/
+
+# Superseded visualizer V1 build tree (CMake out-of-source)
+ASTRA_VISUALIZER/build/
