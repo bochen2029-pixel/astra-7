@@ -1,0 +1,5 @@
+[INFO] GL version: 4.6.0 NVIDIA 591.74
+[INFO] GL device : NVIDIA GeForce RTX 4070 Ti SUPER/PCIe/SSE2
+[INFO] CUDA sanity: PASS
+[INFO] CUDA-GL interop sanity: PASS
+[INFO] scene loaded: S01_RestBaseline

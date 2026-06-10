@@ -1,0 +1,100 @@
+{
+  "build_commit": "unversioned",
+  "libastra_nexus_assertion_count": 99,
+  "libastra_nexus_assertion_pass_count": 99,
+  "note": "V1.3 — full GL+CUDA context with offscreen FBO; numeric (libastra) + pixel (Layer 1) assertions per scene. Schema per DESIGN_SPEC §7.4.",
+  "platform": "Windows 11 / RTX 40+ / CUDA 13.x / GL 4.6 / MSVC 14.43",
+  "ran_at": "2026-05-16T20:19:42Z",
+  "render_height": 720,
+  "render_width": 1280,
+  "scenes": [
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "astra::Rapidity{{0,0,0}}.gamma()",
+          "measured": 1.0,
+          "name": "gamma_at_rest",
+          "passed": true,
+          "spec_section": "§3.7 v0.126 rapidity",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "astra::dtau_dt_cosmic(0, 1.0, 1.0, false)",
+          "measured": 1.0,
+          "name": "dtau_dt_at_rest",
+          "passed": true,
+          "spec_section": "§3.2 composition rule",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "astra::compute_apparent_rate(0, R_REST)",
+          "measured": 1.0,
+          "name": "apparent_rate_at_rest_zero_vrad",
+          "passed": true,
+          "spec_section": "§3.11 apparent rate (REST branch)",
+          "tolerance": 1e-12
+        }
+      ],
+      "assertions_passed": 6,
+      "assertions_total": 6,
+      "canonical_timestamp_seconds": 0.0,
+      "description": "REST baseline sanity check; gamma=1, dtau/dt=1 (libastra parity)",
+      "frame_ms": 1.7295999987254618,
+      "name": "S01_RestBaseline",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.0009804069995880127,
+          "diff_rel": 0.0021786822790220654,
+          "expected": 0.44999998807907104,
+          "libastra_call": "n/a (visual baseline; hull-color canonical RGB)",
+          "measured": 0.45098039507865906,
+          "name": "center_hull_R",
+          "passed": true,
+          "spec_section": "§1.3 hull placeholder",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0009804069995880127,
+          "diff_rel": 0.0021786822790220654,
+          "expected": 0.44999998807907104,
+          "libastra_call": "n/a",
+          "measured": 0.45098039507865906,
+          "name": "center_hull_G",
+          "passed": true,
+          "spec_section": "§1.3 hull placeholder",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.000980377197265625,
+          "diff_rel": 0.0017825039563936762,
+          "expected": 0.550000011920929,
+          "libastra_call": "n/a",
+          "measured": 0.5490196347236633,
+          "name": "center_hull_B",
+          "passed": true,
+          "spec_section": "§1.3 hull placeholder",
+          "tolerance": 0.019999999552965164
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "assertions_passed": 6,
+    "assertions_total": 6,
+    "scenes_failed": 0,
+    "scenes_passed": 1,
+    "scenes_total": 1,
+    "total_runtime_seconds": 0.0018010000003414461
+  },
+  "version": "0.1.0"
+}

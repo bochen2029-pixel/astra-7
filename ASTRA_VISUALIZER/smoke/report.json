@@ -1,0 +1,1289 @@
+{
+  "build_commit": "unversioned",
+  "libastra_nexus_assertion_count": 99,
+  "libastra_nexus_assertion_pass_count": 99,
+  "note": "V1.3 — full GL+CUDA context with offscreen FBO; numeric (libastra) + pixel (Layer 1) assertions per scene. Schema per DESIGN_SPEC §7.4.",
+  "platform": "Windows 11 / RTX 40+ / CUDA 13.x / GL 4.6 / MSVC 14.43",
+  "ran_at": "2026-05-17T05:04:37Z",
+  "render_height": 720,
+  "render_width": 1280,
+  "scenes": [
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "astra::Rapidity{{0,0,0}}.gamma()",
+          "measured": 1.0,
+          "name": "gamma_at_rest",
+          "passed": true,
+          "spec_section": "§3.7 v0.126 rapidity",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "astra::dtau_dt_cosmic(0, 1.0, 1.0, false)",
+          "measured": 1.0,
+          "name": "dtau_dt_at_rest",
+          "passed": true,
+          "spec_section": "§3.2 composition rule",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "astra::compute_apparent_rate(0, R_REST)",
+          "measured": 1.0,
+          "name": "apparent_rate_at_rest_zero_vrad",
+          "passed": true,
+          "spec_section": "§3.11 apparent rate (REST branch)",
+          "tolerance": 1e-12
+        }
+      ],
+      "assertions_passed": 12,
+      "assertions_total": 12,
+      "canonical_timestamp_seconds": 0.0,
+      "description": "REST baseline; hull + Sun + planet placeholders; gamma=1, dtau/dt=1",
+      "frame_ms": 67.80199999775505,
+      "name": "S01_RestBaseline",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.0009804069995880127,
+          "diff_rel": 0.0021786822790220654,
+          "expected": 0.44999998807907104,
+          "libastra_call": "n/a (visual baseline; canonical RGB)",
+          "measured": 0.45098039507865906,
+          "name": "hull_center_R",
+          "passed": true,
+          "spec_section": "§1.3 placeholder geometry (V1.4)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0009804069995880127,
+          "diff_rel": 0.0021786822790220654,
+          "expected": 0.44999998807907104,
+          "libastra_call": "n/a (visual baseline; canonical RGB)",
+          "measured": 0.45098039507865906,
+          "name": "hull_center_G",
+          "passed": true,
+          "spec_section": "§1.3 placeholder geometry (V1.4)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.000980377197265625,
+          "diff_rel": 0.0017825039563936762,
+          "expected": 0.550000011920929,
+          "libastra_call": "n/a (visual baseline; canonical RGB)",
+          "measured": 0.5490196347236633,
+          "name": "hull_center_B",
+          "passed": true,
+          "spec_section": "§1.3 placeholder geometry (V1.4)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "n/a (visual baseline; canonical RGB)",
+          "measured": 1.0,
+          "name": "sun_center_R",
+          "passed": true,
+          "spec_section": "§1.3 placeholder geometry (V1.4)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.001568615436553955,
+          "diff_rel": 0.0017050167479330633,
+          "expected": 0.9200000166893005,
+          "libastra_call": "n/a (visual baseline; canonical RGB)",
+          "measured": 0.9215686321258545,
+          "name": "sun_center_G",
+          "passed": true,
+          "spec_section": "§1.3 placeholder geometry (V1.4)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.000980377197265625,
+          "diff_rel": 0.0017825039563936762,
+          "expected": 0.550000011920929,
+          "libastra_call": "n/a (visual baseline; canonical RGB)",
+          "measured": 0.5490196347236633,
+          "name": "sun_center_B",
+          "passed": true,
+          "spec_section": "§1.3 placeholder geometry (V1.4)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0019607841968536377,
+          "diff_rel": 0.006535947063130257,
+          "expected": 0.30000001192092896,
+          "libastra_call": "n/a (visual baseline; canonical RGB)",
+          "measured": 0.2980392277240753,
+          "name": "planet_center_R",
+          "passed": true,
+          "spec_section": "§1.3 placeholder geometry (V1.4)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.000980377197265625,
+          "diff_rel": 0.0017825039563936762,
+          "expected": 0.550000011920929,
+          "libastra_call": "n/a (visual baseline; canonical RGB)",
+          "measured": 0.5490196347236633,
+          "name": "planet_center_G",
+          "passed": true,
+          "spec_section": "§1.3 placeholder geometry (V1.4)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.00196075439453125,
+          "diff_rel": 0.002178616051637227,
+          "expected": 0.8999999761581421,
+          "libastra_call": "n/a (visual baseline; canonical RGB)",
+          "measured": 0.8980392217636108,
+          "name": "planet_center_B",
+          "passed": true,
+          "spec_section": "§1.3 placeholder geometry (V1.4)",
+          "tolerance": 0.019999999552965164
+        }
+      ],
+      "screenshot_path": "smoke/S01_RestBaseline.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 2.220446049250313e-16,
+          "diff_rel": 1.9229626863835636e-16,
+          "expected": 1.1547005383792517,
+          "libastra_call": "astra::Rapidity{{0,0,atanh(beta)}}.gamma()",
+          "measured": 1.1547005383792515,
+          "name": "gamma_at_beta",
+          "passed": true,
+          "spec_section": "§3.7 v0.126 rapidity",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.7320508075688772,
+          "libastra_call": "astra::compute_z_kin(beta * C_LIGHT)",
+          "measured": 0.7320508075688772,
+          "name": "z_kin_at_beta",
+          "passed": true,
+          "spec_section": "§3.4 SR longitudinal Doppler",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.5773502691896257,
+          "libastra_call": "astra::compute_apparent_rate(beta*C_LIGHT, R_STL_REL)",
+          "measured": 0.5773502691896257,
+          "name": "apparent_rate_stl_rel",
+          "passed": true,
+          "spec_section": "§3.11 STL_REL apparent rate (SR formula)",
+          "tolerance": 1e-09
+        }
+      ],
+      "assertions_passed": 6,
+      "assertions_total": 6,
+      "canonical_timestamp_seconds": 0.0,
+      "description": "STL_REL recede at beta=0.5; z_kin ~= 0.732 (sqrt(3)-1)",
+      "frame_ms": 65.52449999435339,
+      "name": "S02_StlRecede05c",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.0019755959510803223,
+          "diff_rel": 0.002672503251431396,
+          "expected": 0.7392305135726929,
+          "libastra_call": "physics::apply_kin_redshift(planet_rgb, compute_z_kin(beta*C_LIGHT))",
+          "measured": 0.7372549176216125,
+          "name": "planet_center_R_redshifted",
+          "passed": true,
+          "spec_section": "§3.4 SR longitudinal Doppler -> redshifted planet color",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0016364455223083496,
+          "diff_rel": 0.003432178962349353,
+          "expected": 0.47679492831230164,
+          "libastra_call": "physics::apply_kin_redshift(planet_rgb, compute_z_kin(beta*C_LIGHT))",
+          "measured": 0.47843137383461,
+          "name": "planet_center_G_redshifted",
+          "passed": true,
+          "spec_section": "§3.4 SR longitudinal Doppler -> redshifted planet color",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.000641167163848877,
+          "diff_rel": 0.0012007448480265792,
+          "expected": 0.5339745283126831,
+          "libastra_call": "physics::apply_kin_redshift(planet_rgb, compute_z_kin(beta*C_LIGHT))",
+          "measured": 0.5333333611488342,
+          "name": "planet_center_B_redshifted",
+          "passed": true,
+          "spec_section": "§3.4 SR longitudinal Doppler -> redshifted planet color",
+          "tolerance": 0.019999999552965164
+        }
+      ],
+      "screenshot_path": "smoke/S02_StlRecede05c.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 2.294157338705618,
+          "libastra_call": "astra::Rapidity{{0,0,atanh(beta)}}.gamma()",
+          "measured": 2.294157338705618,
+          "name": "gamma_at_beta",
+          "passed": true,
+          "spec_section": "§3.7 v0.126 rapidity",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 2.6645352591003757e-15,
+          "diff_rel": 7.932763991677709e-16,
+          "expected": 3.358898943540674,
+          "libastra_call": "astra::compute_z_kin(beta * C_LIGHT)",
+          "measured": 3.3588989435406713,
+          "name": "z_kin_at_beta",
+          "passed": true,
+          "spec_section": "§3.4 SR longitudinal Doppler",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 1.3877787807814457e-16,
+          "diff_rel": 6.049187461416408e-16,
+          "expected": 0.22941573387056174,
+          "libastra_call": "astra::compute_apparent_rate(beta*C_LIGHT, R_STL_REL)",
+          "measured": 0.22941573387056188,
+          "name": "apparent_rate_stl_rel",
+          "passed": true,
+          "spec_section": "§3.11 STL_REL apparent rate (SR formula)",
+          "tolerance": 1e-09
+        }
+      ],
+      "assertions_passed": 6,
+      "assertions_total": 6,
+      "canonical_timestamp_seconds": 0.0,
+      "description": "STL_REL recede at beta=0.9; z_kin ~= 3.359 (sqrt(19)-1)",
+      "frame_ms": 65.00299999606796,
+      "name": "S03_StlRecede09c",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "physics::apply_kin_redshift(planet_rgb, compute_z_kin(beta*C_LIGHT))",
+          "measured": 1.0,
+          "name": "planet_center_R_redshifted",
+          "passed": true,
+          "spec_section": "§3.4 SR longitudinal Doppler -> redshifted planet color",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0015761703252792358,
+          "diff_rel": 0.007361494293911078,
+          "expected": 0.2141101062297821,
+          "libastra_call": "physics::apply_kin_redshift(planet_rgb, compute_z_kin(beta*C_LIGHT))",
+          "measured": 0.21568627655506134,
+          "name": "planet_center_G_redshifted",
+          "passed": true,
+          "spec_section": "§3.4 SR longitudinal Doppler -> redshifted planet color",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.0,
+          "libastra_call": "physics::apply_kin_redshift(planet_rgb, compute_z_kin(beta*C_LIGHT))",
+          "measured": 0.0,
+          "name": "planet_center_B_redshifted",
+          "passed": true,
+          "spec_section": "§3.4 SR longitudinal Doppler -> redshifted planet color",
+          "tolerance": 0.019999999552965164
+        }
+      ],
+      "screenshot_path": "smoke/S03_StlRecede09c.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "S04::current_W_ after tick(5s) warmup",
+          "measured": 1.0,
+          "name": "W_at_t5s_equals_1",
+          "passed": true,
+          "spec_section": "§3.3 regime WARP_CHARGE ramp 0..5s",
+          "tolerance": 1e-06
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 8.0,
+          "libastra_call": "S04::cruise_engaged_ == true -> R_WARP_CRUISE (0x08)",
+          "measured": 8.0,
+          "name": "regime_at_t5s_is_cruise",
+          "passed": true,
+          "spec_section": "§3.3 regime transition WARP_CHARGE -> WARP_CRUISE",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.5,
+          "libastra_call": "astra::dtau_dt_cosmic(1.0, 1.0, 1.0, true)",
+          "measured": 0.5,
+          "name": "dtau_dt_at_W1_cruise",
+          "passed": true,
+          "spec_section": "§3.2 composition rule + §3.5 f_warp canon",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.5,
+          "libastra_call": "astra::f_warp_canon(1.0)",
+          "measured": 0.5,
+          "name": "f_warp_at_W1_equals_half",
+          "passed": true,
+          "spec_section": "§3.5 f_warp canon",
+          "tolerance": 1e-12
+        }
+      ],
+      "assertions_passed": 7,
+      "assertions_total": 7,
+      "canonical_timestamp_seconds": 5.0,
+      "description": "Warp Charge: W ramps 0->1 over 5s; regime WARP_CHARGE -> WARP_CRUISE",
+      "frame_ms": 121.85840000165626,
+      "name": "S04_WarpCharge",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.00014704465866088867,
+          "diff_rel": 0.00016662284402568626,
+          "expected": 0.8824999928474426,
+          "libastra_call": "n/a (bubble visual; canonical post-FS color at W=1)",
+          "measured": 0.8823529481887817,
+          "name": "bubble_center_R",
+          "passed": true,
+          "spec_section": "§6 step 6 chaos modulation (V1.6 stand-in)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.000539243221282959,
+          "diff_rel": 0.0007731085715496729,
+          "expected": 0.6974999904632568,
+          "libastra_call": "n/a (bubble visual; canonical post-FS color at W=1)",
+          "measured": 0.6980392336845398,
+          "name": "bubble_center_G",
+          "passed": true,
+          "spec_section": "§6 step 6 chaos modulation (V1.6 stand-in)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "n/a (bubble visual; canonical post-FS color at W=1)",
+          "measured": 1.0,
+          "name": "bubble_center_B",
+          "passed": true,
+          "spec_section": "§6 step 6 chaos modulation (V1.6 stand-in)",
+          "tolerance": 0.03999999910593033
+        }
+      ],
+      "screenshot_path": "smoke/S04_WarpCharge.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": -1.0,
+          "libastra_call": "astra::compute_apparent_rate(2*C_LIGHT, R_WARP_CRUISE)",
+          "measured": -1.0,
+          "name": "apparent_rate_at_v2c_warp_cruise",
+          "passed": true,
+          "spec_section": "§3.11 apparent rate (WARP branch); §6 S05 acceptance #1",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 7.82310962677002e-07,
+          "diff_rel": 5.21540641784668e-08,
+          "expected": -15.0,
+          "libastra_call": "tick(15s) with rate=-1 -> t_emit = -15s",
+          "measured": -15.000000782310963,
+          "name": "t_emit_at_t15s_equals_minus15",
+          "passed": true,
+          "spec_section": "§3.11 retarded-time decreases under superluminal recede",
+          "tolerance": 0.001
+        },
+        {
+          "diff_abs": 8.192341249824153e-08,
+          "diff_rel": 5.215406421620599e-08,
+          "expected": -1.5707963267948966,
+          "libastra_call": "astra::orbit_phase(orb{T=60s, e=0}, t_emit=-15s)",
+          "measured": -1.570796408718309,
+          "name": "phase_delta_at_t15s_equals_minus_pi_over_2",
+          "passed": true,
+          "spec_section": "§6 S05 acceptance #2 — phase delta = -t*2pi/period (reversed)",
+          "tolerance": 1e-06
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": -1.570796408718309,
+          "libastra_call": "astra::orbit_phase(orb, t_emit_)",
+          "measured": -1.570796408718309,
+          "name": "orbit_phase_libastra_parity",
+          "passed": true,
+          "spec_section": "§6 S05 acceptance #3 — rendered phase matches libastra",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "sign(compute_apparent_rate(2c,WARP)) != sign(compute_apparent_rate(0.5c,STL_REL))",
+          "measured": 1.0,
+          "name": "sign_contrast_warp_negative_stl_positive",
+          "passed": true,
+          "spec_section": "§3.11 regime-distinction; §10 validation row",
+          "tolerance": 1e-09
+        }
+      ],
+      "assertions_passed": 8,
+      "assertions_total": 8,
+      "canonical_timestamp_seconds": 15.0,
+      "description": "Warp Cruise v_app=2c: planet orbits BACKWARD via retarded-time observation",
+      "frame_ms": 67.35870000557043,
+      "name": "S05_WarpCruise2c",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.0019607841968536377,
+          "diff_rel": 0.006535947063130257,
+          "expected": 0.30000001192092896,
+          "libastra_call": "astra::orbit_phase(orb, t_emit=-15s) = -pi/2 -> NDC (0, -0.4)",
+          "measured": 0.2980392277240753,
+          "name": "planet_at_reversed_phase_R",
+          "passed": true,
+          "spec_section": "§6 S05 acceptance #3 — planet pixel at reversed-orbit phase position",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.000980377197265625,
+          "diff_rel": 0.0017825039563936762,
+          "expected": 0.550000011920929,
+          "libastra_call": "astra::orbit_phase(orb, t_emit=-15s) = -pi/2 -> NDC (0, -0.4)",
+          "measured": 0.5490196347236633,
+          "name": "planet_at_reversed_phase_G",
+          "passed": true,
+          "spec_section": "§6 S05 acceptance #3 — planet pixel at reversed-orbit phase position",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.00196075439453125,
+          "diff_rel": 0.002178616051637227,
+          "expected": 0.8999999761581421,
+          "libastra_call": "astra::orbit_phase(orb, t_emit=-15s) = -pi/2 -> NDC (0, -0.4)",
+          "measured": 0.8980392217636108,
+          "name": "planet_at_reversed_phase_B",
+          "passed": true,
+          "spec_section": "§6 S05 acceptance #3 — planet pixel at reversed-orbit phase position",
+          "tolerance": 0.019999999552965164
+        }
+      ],
+      "screenshot_path": "smoke/S05_WarpCruise2c.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.5207754699891267,
+          "libastra_call": "astra::compute_cherenkov_angle(1.0, 10.0, 1.0)",
+          "measured": 1.5207754699891267,
+          "name": "cherenkov_angle_at_v10c_W1",
+          "passed": true,
+          "spec_section": "§6 step 10 Cherenkov; AUDIT 5D-F4 closure",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": -1.0,
+          "libastra_call": "astra::compute_cherenkov_angle(0.0, 0.5, 1.0)",
+          "measured": -1.0,
+          "name": "cherenkov_inactive_when_n_beta_le_1",
+          "passed": true,
+          "spec_section": "§6 step 10 inactive branch",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": -9.0,
+          "libastra_call": "astra::compute_apparent_rate(10*C_LIGHT, R_WARP_CRUISE)",
+          "measured": -9.0,
+          "name": "apparent_rate_at_v10c",
+          "passed": true,
+          "spec_section": "§3.11 apparent rate (WARP); paired with Cherenkov for S06",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "compute_cherenkov_angle(W=0.5, b=0.8) < compute_cherenkov_angle(W=1.0, b=0.8)",
+          "measured": 1.0,
+          "name": "cone_opens_with_W_at_fixed_beta",
+          "passed": true,
+          "spec_section": "§6 step 10; v0.130 KNOWN_ISSUES finding (OPENS not narrows)",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "compute_cherenkov_angle(W=1, b=0.55) < compute_cherenkov_angle(W=1, b=0.95)",
+          "measured": 1.0,
+          "name": "cone_opens_with_beta_at_fixed_W",
+          "passed": true,
+          "spec_section": "§6 step 10; v0.130 KNOWN_ISSUES finding (OPENS not narrows)",
+          "tolerance": 1e-09
+        }
+      ],
+      "assertions_passed": 8,
+      "assertions_total": 8,
+      "canonical_timestamp_seconds": 0.0,
+      "description": "Warp Cruise 10c + Cherenkov cone (closes 5D-F4 at visualizer layer)",
+      "frame_ms": 89.17749999818625,
+      "name": "S06_WarpCruise10cCherenkov",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.00014704465866088867,
+          "diff_rel": 0.00016662284402568626,
+          "expected": 0.8824999928474426,
+          "libastra_call": "n/a (visual baseline; canonical bubble core RGB)",
+          "measured": 0.8823529481887817,
+          "name": "bubble_core_R",
+          "passed": true,
+          "spec_section": "§6 step 6 + step 10 (bubble core + Cherenkov tint)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.000539243221282959,
+          "diff_rel": 0.0007731085715496729,
+          "expected": 0.6974999904632568,
+          "libastra_call": "n/a (visual baseline; canonical bubble core RGB)",
+          "measured": 0.6980392336845398,
+          "name": "bubble_core_G",
+          "passed": true,
+          "spec_section": "§6 step 6 + step 10 (bubble core + Cherenkov tint)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "n/a (visual baseline; canonical bubble core RGB)",
+          "measured": 1.0,
+          "name": "bubble_core_B",
+          "passed": true,
+          "spec_section": "§6 step 6 + step 10 (bubble core + Cherenkov tint)",
+          "tolerance": 0.03999999910593033
+        }
+      ],
+      "screenshot_path": "smoke/S06_WarpCruise10cCherenkov.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": -7999.0,
+          "libastra_call": "astra::compute_apparent_rate(8000*C_LIGHT, R_WARP_CRUISE)",
+          "measured": -7999.0,
+          "name": "apparent_rate_at_v8000c",
+          "passed": true,
+          "spec_section": "§3.11 apparent rate (WARP); §6 S07",
+          "tolerance": 1e-06
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "astra::observe(..., R_WARP_CRUISE, t_source_start=-5).beyond_photon_history",
+          "measured": 1.0,
+          "name": "beyond_photon_history_at_t15s",
+          "passed": true,
+          "spec_section": "§3.11 photon-source-history bound (audit D1)",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "observe().t_emit < t_source_start",
+          "measured": 1.0,
+          "name": "t_emit_below_source_start",
+          "passed": true,
+          "spec_section": "§3.11 t_emit < body t_source_start condition",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.0,
+          "libastra_call": "astra::observe(...).beyond_hubble_horizon",
+          "measured": 0.0,
+          "name": "not_beyond_hubble_horizon",
+          "passed": true,
+          "spec_section": "§3.12 Hubble flag; disjoint from §3.11",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "astra::observe(...).time_reversed",
+          "measured": 1.0,
+          "name": "time_reversed_at_8000c",
+          "passed": true,
+          "spec_section": "§3.11 time_reversed flag (paired with retarded-time)",
+          "tolerance": 1e-09
+        }
+      ],
+      "assertions_passed": 8,
+      "assertions_total": 8,
+      "canonical_timestamp_seconds": 15.0,
+      "description": "Warp 8000c photon-history bound: planet is GONE not faded",
+      "frame_ms": 85.19530000194209,
+      "name": "S07_Warp8000cHistoryBound",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.00023529399186372757,
+          "diff_rel": 0.019607832484872606,
+          "expected": 0.012000000104308128,
+          "libastra_call": "n/a (visual = background; planet absent because beyond_photon_history)",
+          "measured": 0.0117647061124444,
+          "name": "center_is_background_R",
+          "passed": true,
+          "spec_section": "§3.11 discrete disappearance (no fade) — §6 S07 acceptance #3",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0016078446060419083,
+          "diff_rel": 0.08932470418089349,
+          "expected": 0.017999999225139618,
+          "libastra_call": "n/a (visual = background; planet absent because beyond_photon_history)",
+          "measured": 0.019607843831181526,
+          "name": "center_is_background_G",
+          "passed": true,
+          "spec_section": "§3.11 discrete disappearance (no fade) — §6 S07 acceptance #3",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.00029411911964416504,
+          "diff_rel": 0.008403403382627439,
+          "expected": 0.03500000014901161,
+          "libastra_call": "n/a (visual = background; planet absent because beyond_photon_history)",
+          "measured": 0.03529411926865578,
+          "name": "center_is_background_B",
+          "passed": true,
+          "spec_section": "§3.11 discrete disappearance (no fade) — §6 S07 acceptance #3",
+          "tolerance": 0.019999999552965164
+        }
+      ],
+      "screenshot_path": "smoke/S07_Warp8000cHistoryBound.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 29540.07736491099,
+          "libastra_call": "astra::schwarzschild_r(10 * M_SUN)",
+          "measured": 29540.07736491099,
+          "name": "schwarzschild_r_at_10Msun",
+          "passed": true,
+          "spec_section": "§3.2 Schwarzschild factor; libastra schwarzschild_r",
+          "tolerance": 0.001
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.9797958971132712,
+          "libastra_call": "astra::compute_grav_factor(bh_list, ship_pos)",
+          "measured": 0.9797958971132712,
+          "name": "grav_factor_at_r25rs",
+          "passed": true,
+          "spec_section": "§3.2 dominant-BH Schwarzschild composition",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 40.0,
+          "libastra_call": "detect_regime logic: WARP_CRUISE | (grav<0.99 ? GRAVITY_WELL : 0)",
+          "measured": 40.0,
+          "name": "grav_well_bit_activates",
+          "passed": true,
+          "spec_section": "§3.3 detect_regime composite (G5 audit); WARP_CRUISE | GRAVITY_WELL",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.6662612100370243,
+          "libastra_call": "astra::dtau_dt_cosmic(0.8, grav_factor, 1.0, true)",
+          "measured": 0.6662612100370243,
+          "name": "dtau_dt_warp_plus_gravity",
+          "passed": true,
+          "spec_section": "§3.2 composition rule full (warp + grav + STL)",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.6799999999999999,
+          "libastra_call": "astra::f_warp_canon(0.8)",
+          "measured": 0.6799999999999999,
+          "name": "f_warp_at_W08",
+          "passed": true,
+          "spec_section": "§3.5 f_warp canon defaults",
+          "tolerance": 1e-12
+        }
+      ],
+      "assertions_passed": 11,
+      "assertions_total": 11,
+      "canonical_timestamp_seconds": 0.0,
+      "description": "Warp 0.8W + 10 M_sun BH at r=25*r_s; composite WARP_CRUISE | GRAVITY_WELL",
+      "frame_ms": 75.82089999777963,
+      "name": "S08_WarpGravityWell",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.001019597053527832,
+          "diff_rel": 0.0013630976182207888,
+          "expected": 0.7480000257492065,
+          "libastra_call": "n/a (canonical bubble core RGB at W=0.8)",
+          "measured": 0.7490196228027344,
+          "name": "bubble_core_R",
+          "passed": true,
+          "spec_section": "§6 step 6 bubble core (warm-tinted under gravity well)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0007058978080749512,
+          "diff_rel": 0.0012515918350092736,
+          "expected": 0.5640000104904175,
+          "libastra_call": "n/a (canonical bubble core RGB at W=0.8)",
+          "measured": 0.5647059082984924,
+          "name": "bubble_core_G",
+          "passed": true,
+          "spec_section": "§6 step 6 bubble core (warm-tinted under gravity well)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0007842779159545898,
+          "diff_rel": 0.0009336642148106051,
+          "expected": 0.8399999737739563,
+          "libastra_call": "n/a (canonical bubble core RGB at W=0.8)",
+          "measured": 0.8392156958580017,
+          "name": "bubble_core_B",
+          "passed": true,
+          "spec_section": "§6 step 6 bubble core (warm-tinted under gravity well)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.0,
+          "libastra_call": "n/a (BH placeholder = pure black)",
+          "measured": 0.0,
+          "name": "bh_event_horizon_R",
+          "passed": true,
+          "spec_section": "§7.4 warp exclusion zone; event-horizon disc (no light escape)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.0,
+          "libastra_call": "n/a (BH placeholder = pure black)",
+          "measured": 0.0,
+          "name": "bh_event_horizon_G",
+          "passed": true,
+          "spec_section": "§7.4 warp exclusion zone; event-horizon disc (no light escape)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.0,
+          "libastra_call": "n/a (BH placeholder = pure black)",
+          "measured": 0.0,
+          "name": "bh_event_horizon_B",
+          "passed": true,
+          "spec_section": "§7.4 warp exclusion zone; event-horizon disc (no light escape)",
+          "tolerance": 0.03999999910593033
+        }
+      ],
+      "screenshot_path": "smoke/S08_WarpGravityWell.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.05013364553451538,
+          "diff_rel": 0.10026729106903076,
+          "expected": 0.5,
+          "libastra_call": "ChaosField::max_value() <= 1.0",
+          "measured": 0.5501336455345154,
+          "name": "chaos_field_max_in_bounds",
+          "passed": true,
+          "spec_section": "§7.1 Fisher-KPP analytic invariant; §6 S09 acceptance #1",
+          "tolerance": 0.5
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "ChaosField::max_value() > 0.001",
+          "measured": 1.0,
+          "name": "chaos_field_max_above_zero",
+          "passed": true,
+          "spec_section": "§7.1 PDE evolution from seed",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "S09::reflex_enabled_ at t > kReflexStart",
+          "measured": 1.0,
+          "name": "reflex_enabled_at_t8s",
+          "passed": true,
+          "spec_section": "§2.3.1 Reflex Contract; §6 S09 acceptance #6",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "ChaosField::mean_value() < 0.9 (Reflex active for 3s)",
+          "measured": 1.0,
+          "name": "reflex_lowered_mean_below_saturation",
+          "passed": true,
+          "spec_section": "§6 S09 acceptance #6 (Reflex damps chaos toward target)",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "all !isnan(ChaosField::data())",
+          "measured": 1.0,
+          "name": "chaos_field_non_nan",
+          "passed": true,
+          "spec_section": "§4.4 CFL stability; §6 S09 acceptance #1 sentinel",
+          "tolerance": 1e-09
+        }
+      ],
+      "assertions_passed": 8,
+      "assertions_total": 8,
+      "canonical_timestamp_seconds": 8.0,
+      "description": "Fisher-KPP chaos PDE (Reflex damping enabled at t=5s)",
+      "frame_ms": 153.9379000023473,
+      "name": "S09_ChaosReflex",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.000657692551612854,
+          "diff_rel": 0.003713085975981246,
+          "expected": 0.17712828516960144,
+          "libastra_call": "viridis_cpu(ChaosField::at(W/2, H/2))",
+          "measured": 0.1764705926179886,
+          "name": "heatmap_center_R",
+          "passed": true,
+          "spec_section": "§7.1 chaos heatmap; viridis(chaos at center grid cell)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.00187605619430542,
+          "diff_rel": 0.0030769182642446653,
+          "expected": 0.6097192168235779,
+          "libastra_call": "viridis_cpu(ChaosField::at(W/2, H/2))",
+          "measured": 0.6078431606292725,
+          "name": "heatmap_center_G",
+          "passed": true,
+          "spec_section": "§7.1 chaos heatmap; viridis(chaos at center grid cell)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0014625191688537598,
+          "diff_rel": 0.0028173610155864813,
+          "expected": 0.5191096067428589,
+          "libastra_call": "viridis_cpu(ChaosField::at(W/2, H/2))",
+          "measured": 0.5176470875740051,
+          "name": "heatmap_center_B",
+          "passed": true,
+          "spec_section": "§7.1 chaos heatmap; viridis(chaos at center grid cell)",
+          "tolerance": 0.03999999910593033
+        }
+      ],
+      "screenshot_path": "smoke/S09_ChaosReflex.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "astra::observe(d=1.2*D_HUBBLE_SI).beyond_hubble_horizon",
+          "measured": 1.0,
+          "name": "beyond_hubble_horizon_at_12_d_hubble",
+          "passed": true,
+          "spec_section": "§3.12 Hubble horizon flag (audit D1)",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.2000000000000002,
+          "libastra_call": "astra::compute_z_cosmo(1.2 * D_HUBBLE_SI)",
+          "measured": 1.2000000000000002,
+          "name": "z_cosmo_at_12_d_hubble",
+          "passed": true,
+          "spec_section": "§3.12 cosmological redshift (linear weak-field)",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 2.220446049250313e-16,
+          "diff_rel": 1.8503717077085943e-16,
+          "expected": 1.2,
+          "libastra_call": "astra::observe(d=1.2*D_HUBBLE_SI).z_cosmo == 1.2",
+          "measured": 1.2000000000000002,
+          "name": "z_cosmo_equals_multiplier",
+          "passed": true,
+          "spec_section": "§3.12 linear-z weak-field invariant",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.5858220572870725e+26,
+          "libastra_call": "astra::observe(...).d_proper",
+          "measured": 1.5858220572870725e+26,
+          "name": "d_proper_at_setup",
+          "passed": true,
+          "spec_section": "§1.1 distance integrity at Hubble scale",
+          "tolerance": 1.0
+        }
+      ],
+      "assertions_passed": 7,
+      "assertions_total": 7,
+      "canonical_timestamp_seconds": 0.0,
+      "description": "Body at d = 1.2*c/H0; frozen + extremely redshifted (beyond Hubble)",
+      "frame_ms": 65.46870000602212,
+      "name": "S10_HubbleHorizon",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "physics::apply_kin_redshift(body_rgb, z_cosmo)",
+          "measured": 1.0,
+          "name": "body_redshifted_R",
+          "passed": true,
+          "spec_section": "§3.12 cosmologically-redshifted body color (visual proxy)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0003921687602996826,
+          "diff_rel": 0.0010320230663704002,
+          "expected": 0.3799999952316284,
+          "libastra_call": "physics::apply_kin_redshift(body_rgb, z_cosmo)",
+          "measured": 0.3803921639919281,
+          "name": "body_redshifted_G",
+          "passed": true,
+          "spec_section": "§3.12 cosmologically-redshifted body color (visual proxy)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.0,
+          "libastra_call": "physics::apply_kin_redshift(body_rgb, z_cosmo)",
+          "measured": 0.0,
+          "name": "body_redshifted_B",
+          "passed": true,
+          "spec_section": "§3.12 cosmologically-redshifted body color (visual proxy)",
+          "tolerance": 0.019999999552965164
+        }
+      ],
+      "screenshot_path": "smoke/S10_HubbleHorizon.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.5773502691896257,
+          "libastra_call": "astra::compute_apparent_rate(0.5*C_LIGHT, R_STL_REL)",
+          "measured": 0.5773502691896257,
+          "name": "stl_rel_apparent_rate_at_beta_05",
+          "passed": true,
+          "spec_section": "§3.11 STL_REL apparent rate; §10 validation row",
+          "tolerance": 1e-10
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.5,
+          "libastra_call": "astra::compute_apparent_rate(0.5*C_LIGHT, R_WARP_CRUISE)",
+          "measured": 0.5,
+          "name": "warp_cruise_apparent_rate_at_v05c",
+          "passed": true,
+          "spec_section": "§3.11 WARP apparent rate (classical retarded-time)",
+          "tolerance": 1e-10
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "compute_apparent_rate(0.5c, R_STL_REL) > compute_apparent_rate(0.5c, R_WARP_CRUISE)",
+          "measured": 1.0,
+          "name": "stl_rate_greater_than_warp_rate_at_same_v",
+          "passed": true,
+          "spec_section": "§3.11 regime-distinction; §6 S11 acceptance #5",
+          "tolerance": 1e-12
+        },
+        {
+          "diff_abs": 2.220446049250313e-16,
+          "diff_rel": 1.9229626863835636e-16,
+          "expected": 1.1547005383792517,
+          "libastra_call": "stl_rate / warp_rate at v=0.5c",
+          "measured": 1.1547005383792515,
+          "name": "stl_over_warp_rate_ratio",
+          "passed": true,
+          "spec_section": "§10 validation row (STL_REL was NOT 1/gamma)",
+          "tolerance": 1e-10
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 0.7320508075688772,
+          "libastra_call": "astra::compute_z_kin(0.5 * C_LIGHT)",
+          "measured": 0.7320508075688772,
+          "name": "z_kin_at_beta_05",
+          "passed": true,
+          "spec_section": "§3.4 SR longitudinal Doppler",
+          "tolerance": 1e-10
+        }
+      ],
+      "assertions_passed": 11,
+      "assertions_total": 11,
+      "canonical_timestamp_seconds": 0.0,
+      "description": "Split-screen STL_REL vs WARP_CRUISE at v_radial=0.5c; regime distinction",
+      "frame_ms": 68.81939999584574,
+      "name": "S11_SplitScreenStlVsWarp",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.0019755959510803223,
+          "diff_rel": 0.002672503251431396,
+          "expected": 0.7392305135726929,
+          "libastra_call": "regime-dispatched render: STL_REL with z_kin vs WARP_CRUISE bare",
+          "measured": 0.7372549176216125,
+          "name": "left_stl_planet_R",
+          "passed": true,
+          "spec_section": "§6 S11 left panel: STL_REL redshifted",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0016364455223083496,
+          "diff_rel": 0.003432178962349353,
+          "expected": 0.47679492831230164,
+          "libastra_call": "regime-dispatched render: STL_REL with z_kin vs WARP_CRUISE bare",
+          "measured": 0.47843137383461,
+          "name": "left_stl_planet_G",
+          "passed": true,
+          "spec_section": "§6 S11 left panel: STL_REL redshifted",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.000641167163848877,
+          "diff_rel": 0.0012007448480265792,
+          "expected": 0.5339745283126831,
+          "libastra_call": "regime-dispatched render: STL_REL with z_kin vs WARP_CRUISE bare",
+          "measured": 0.5333333611488342,
+          "name": "left_stl_planet_B",
+          "passed": true,
+          "spec_section": "§6 S11 left panel: STL_REL redshifted",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.0019607841968536377,
+          "diff_rel": 0.006535947063130257,
+          "expected": 0.30000001192092896,
+          "libastra_call": "regime-dispatched render: STL_REL with z_kin vs WARP_CRUISE bare",
+          "measured": 0.2980392277240753,
+          "name": "right_warp_planet_R",
+          "passed": true,
+          "spec_section": "§6 S11 right panel: WARP_CRUISE bare (no kin shift)",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.000980377197265625,
+          "diff_rel": 0.0017825039563936762,
+          "expected": 0.550000011920929,
+          "libastra_call": "regime-dispatched render: STL_REL with z_kin vs WARP_CRUISE bare",
+          "measured": 0.5490196347236633,
+          "name": "right_warp_planet_G",
+          "passed": true,
+          "spec_section": "§6 S11 right panel: WARP_CRUISE bare",
+          "tolerance": 0.03999999910593033
+        },
+        {
+          "diff_abs": 0.00196075439453125,
+          "diff_rel": 0.002178616051637227,
+          "expected": 0.8999999761581421,
+          "libastra_call": "regime-dispatched render: STL_REL with z_kin vs WARP_CRUISE bare",
+          "measured": 0.8980392217636108,
+          "name": "right_warp_planet_B",
+          "passed": true,
+          "spec_section": "§6 S11 right panel: WARP_CRUISE bare",
+          "tolerance": 0.03999999910593033
+        }
+      ],
+      "screenshot_path": "smoke/S11_SplitScreenStlVsWarp.png"
+    },
+    {
+      "assertions": [
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": -1.0,
+          "libastra_call": "astra::compute_apparent_rate(2*C_LIGHT, R_WARP_CRUISE)",
+          "measured": -1.0,
+          "name": "apparent_rate_warp_2c",
+          "passed": true,
+          "spec_section": "§3.11 apparent rate (WARP); §6 S12 warp-phase coupling",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "S12 phase machine at sim_time=10.5",
+          "measured": 1.0,
+          "name": "phase_at_t10_5_is_shutdown",
+          "passed": true,
+          "spec_section": "§6 S12 phase machine; t in [10, 13) -> SHUTDOWN",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 3.6507844924926758e-06,
+          "diff_rel": 2.1904706954956054e-07,
+          "expected": 16.666666666666668,
+          "libastra_call": "S12 shutdown-phase gap: kWarpGapAtShutdown * (1 - (t-10)/3)",
+          "measured": 16.666663015882175,
+          "name": "eye_ear_gap_at_t10_5",
+          "passed": true,
+          "spec_section": "§6 S12 acceptance #3 — gap shrinks asymptotically over shutdown",
+          "tolerance": 0.0001
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 1.0,
+          "libastra_call": "S12 visual_t < 0 at t=10.5 (post-warp reverse-time legacy)",
+          "measured": 1.0,
+          "name": "visual_t_still_negative_mid_shutdown",
+          "passed": true,
+          "spec_section": "§6 S12 acceptance #2 — visual_t continues reverse-walking",
+          "tolerance": 1e-09
+        },
+        {
+          "diff_abs": 0.0,
+          "diff_rel": 0.0,
+          "expected": 10.500000547617674,
+          "libastra_call": "S12 audio_t = sim_time_seconds_",
+          "measured": 10.500000547617674,
+          "name": "audio_t_equals_sim_time",
+          "passed": true,
+          "spec_section": "§6 S12 acceptance #1 — audio = real-time (no retarded lookup)",
+          "tolerance": 1e-12
+        }
+      ],
+      "assertions_passed": 8,
+      "assertions_total": 8,
+      "canonical_timestamp_seconds": 10.5,
+      "description": "Warp egress eye-ear decoupling; visual lags audio post-shutdown",
+      "frame_ms": 64.8838999986765,
+      "name": "S12_EyeEarDecoupling",
+      "passed": true,
+      "pixel_assertions": [
+        {
+          "diff_abs": 0.0019607841968536377,
+          "diff_rel": 0.006535947063130257,
+          "expected": 0.30000001192092896,
+          "libastra_call": "astra::orbit_phase(orb, S12::visual_t_) -> NDC -> pixel",
+          "measured": 0.2980392277240753,
+          "name": "planet_at_visual_t_R",
+          "passed": true,
+          "spec_section": "§6 S12 visual-lag planet position at visual_t (mid-decoupling)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.000980377197265625,
+          "diff_rel": 0.0017825039563936762,
+          "expected": 0.550000011920929,
+          "libastra_call": "astra::orbit_phase(orb, S12::visual_t_) -> NDC -> pixel",
+          "measured": 0.5490196347236633,
+          "name": "planet_at_visual_t_G",
+          "passed": true,
+          "spec_section": "§6 S12 visual-lag planet position at visual_t (mid-decoupling)",
+          "tolerance": 0.019999999552965164
+        },
+        {
+          "diff_abs": 0.00196075439453125,
+          "diff_rel": 0.002178616051637227,
+          "expected": 0.8999999761581421,
+          "libastra_call": "astra::orbit_phase(orb, S12::visual_t_) -> NDC -> pixel",
+          "measured": 0.8980392217636108,
+          "name": "planet_at_visual_t_B",
+          "passed": true,
+          "spec_section": "§6 S12 visual-lag planet position at visual_t (mid-decoupling)",
+          "tolerance": 0.019999999552965164
+        }
+      ],
+      "screenshot_path": "smoke/S12_EyeEarDecoupling.png"
+    }
+  ],
+  "summary": {
+    "assertions_passed": 100,
+    "assertions_total": 100,
+    "scenes_failed": 0,
+    "scenes_passed": 12,
+    "scenes_total": 12,
+    "total_runtime_seconds": 0.9912498999983654
+  },
+  "version": "0.1.0"
+}

@@ -1,0 +1,156 @@
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+**********************************************************************
+** Visual Studio 2022 Developer Command Prompt v17.0
+** Copyright (c) 2022 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+-- Populating doctest
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/ASTRA-7/ASTRA_VISUALIZER/build/_deps/doctest-subbuild
+[0/7] Performing update step for 'doctest-populate'
+-- Already at requested tag: v2.4.11
+[1/7] No patch step for 'doctest-populate'
+[3/7] No configure step for 'doctest-populate'
+[4/7] No build step for 'doctest-populate'
+[5/7] No install step for 'doctest-populate'
+[6/7] No test step for 'doctest-populate'
+[7/7] Completed 'doctest-populate'
+CMake Deprecation Warning at build/_deps/doctest-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- Populating glfw
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/ASTRA-7/ASTRA_VISUALIZER/build/_deps/glfw-subbuild
+[0/7] Performing update step for 'glfw-populate'
+-- Already at requested tag: 3.4
+[1/7] No patch step for 'glfw-populate'
+[3/7] No configure step for 'glfw-populate'
+[4/7] No build step for 'glfw-populate'
+[5/7] No install step for 'glfw-populate'
+[6/7] No test step for 'glfw-populate'
+[7/7] Completed 'glfw-populate'
+-- Including Win32 support
+-- Populating glad
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/ASTRA-7/ASTRA_VISUALIZER/build/_deps/glad-subbuild
+[0/7] Performing update step for 'glad-populate'
+-- Already at requested tag: v2.0.6
+[1/7] No patch step for 'glad-populate'
+[3/7] No configure step for 'glad-populate'
+[4/7] No build step for 'glad-populate'
+[5/7] No install step for 'glad-populate'
+[6/7] No test step for 'glad-populate'
+[7/7] Completed 'glad-populate'
+-- Glad Library 'glad_gl_core_46'
+-- Populating imgui
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/ASTRA-7/ASTRA_VISUALIZER/build/_deps/imgui-subbuild
+[0/7] Performing update step for 'imgui-populate'
+-- Already at requested tag: v1.91.5
+[1/7] No patch step for 'imgui-populate'
+[3/7] No configure step for 'imgui-populate'
+[4/7] No build step for 'imgui-populate'
+[5/7] No install step for 'imgui-populate'
+[6/7] No test step for 'imgui-populate'
+[7/7] Completed 'imgui-populate'
+-- Populating glm
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/ASTRA-7/ASTRA_VISUALIZER/build/_deps/glm-subbuild
+[0/7] Performing update step for 'glm-populate'
+-- Already at requested tag: 1.0.1
+[1/7] No patch step for 'glm-populate'
+[3/7] No configure step for 'glm-populate'
+[4/7] No build step for 'glm-populate'
+[5/7] No install step for 'glm-populate'
+[6/7] No test step for 'glm-populate'
+[7/7] Completed 'glm-populate'
+-- GLM: Version 1.0.1
+-- GLM: Build with C++ features auto detection
+-- Populating stb
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/ASTRA-7/ASTRA_VISUALIZER/build/_deps/stb-subbuild
+[0/7] Performing update step for 'stb-populate'
+-- Fetching latest from the remote origin
+[1/7] No patch step for 'stb-populate'
+[3/7] No configure step for 'stb-populate'
+[4/7] No build step for 'stb-populate'
+[5/7] No install step for 'stb-populate'
+[6/7] No test step for 'stb-populate'
+[7/7] Completed 'stb-populate'
+-- Populating json
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/ASTRA-7/ASTRA_VISUALIZER/build/_deps/json-subbuild
+[0/7] Performing update step for 'json-populate'
+-- Already at requested tag: v3.11.3
+[1/7] No patch step for 'json-populate'
+[3/7] No configure step for 'json-populate'
+[4/7] No build step for 'json-populate'
+[5/7] No install step for 'json-populate'
+[6/7] No test step for 'json-populate'
+[7/7] Completed 'json-populate'
+-- Using the multi-header code from C:/ASTRA-7/ASTRA_VISUALIZER/build/_deps/json-src/include/
+-- Configuring done (7.9s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/ASTRA-7/ASTRA_VISUALIZER/build
+[0/2] Re-checking globbed directories...
+[1/6] Building CXX object CMakeFiles\astra_visualizer.dir\src\scenes\s06_warp_cruise_10c_cherenkov.cpp.obj
+[2/6] Building CXX object CMakeFiles\astra_visualizer.dir\src\scenes\s08_warp_gravity_well.cpp.obj
+[3/6] Building CXX object CMakeFiles\astra_visualizer.dir\src\scenes\s04_warp_charge.cpp.obj
+[4/6] Linking CXX executable CMakeFiles\astra_visualizer.dir\cmake_device_link.obj
+application.cpp.obj
+cli.cpp.obj
+gl_init.cpp.obj
+headless_mode.cpp.obj
+scene_router.cpp.obj
+main.cpp.obj
+chaos_field.cpp.obj
+gl_helpers.cpp.obj
+placeholder_renderer.cpp.obj
+starfield_renderer.cpp.obj
+s01_rest_baseline.cpp.obj
+s02_stl_recede_05c.cpp.obj
+s04_warp_charge.cpp.obj
+s05_warp_cruise_2c.cpp.obj
+s06_warp_cruise_10c_cherenkov.cpp.obj
+s07_warp_8000c_history_bound.cpp.obj
+s08_warp_gravity_well.cpp.obj
+s09_chaos_reflex.cpp.obj
+s10_hubble_horizon.cpp.obj
+s11_split_screen_stl_vs_warp.cpp.obj
+s12_eye_ear_decoupling.cpp.obj
+screenshot.cpp.obj
+pixel_sampler.cpp.obj
+sanity.cu.obj
+astra_nexus.lib
+glfw3.lib
+glad_gl_core_46.lib
+imgui.lib
+glm.lib
+cudart_static.lib
+cudadevrt.lib
+cudart_static.lib
+kernel32.lib
+user32.lib
+gdi32.lib
+winspool.lib
+shell32.lib
+ole32.lib
+oleaut32.lib
+uuid.lib
+comdlg32.lib
+advapi32.lib
+[5/6] Linking CXX executable astra_visualizer.exe
+[build.bat] DONE: Release
