@@ -126,6 +126,11 @@ The carve-out exists because textverse IS the active measurement instrument that
 
 2026-05-15. All new contributions across every track must conform.
 
+### Scope rulings (2026-06-11, operator-ratified per the Agentic Dev Reference R1/R2)
+
+- **R1 — broad reading confirmed.** The zero-Python rule covers dev-time tooling too: editor automation (incl. UE editor Python), Python-bridged MCP servers, doc/CI helpers — all ineligible outside `proto/textverse/`, even when they ship nothing. Tooling choices follow the same evidence discipline as everything else (no adopting tools in anticipation of need — Mode 6 applies to tooling).
+- **R2 — CI may INVOKE the textverse bench.** Running the carved-out instrument from CI (`uv run pytest` etc.) is the instrument doing its job — loop preservation IS the regression test, and CI is where it runs. The carve-out covers *executing* textverse, not authoring new Python outside it.
+
 ---
 
 ## Platform Discipline (hard directive, 2026-05-15)
