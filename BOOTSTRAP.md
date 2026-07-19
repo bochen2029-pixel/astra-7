@@ -37,7 +37,7 @@ What you do NOT yet have without further reading: the full spec text, the ASTRA 
 | **B — UE5 plugin** (engine / visual) | `proto/ue5plugin/STARTUP.md` *(forthcoming)* | C++ plugin work in Unreal Engine. Parallel to Track A. |
 | **C — physics binary** (proto/astra_nexus) | `proto/astra_nexus.cpp` + the spec's §6.3 / §3.7 (`verify_nexus.py` is a frozen-legacy mirror) | Locked except for additive changes (e.g., Day 2's `--stdio-server` mode). Existing 82 assertions must keep passing. |
 | **Book drafting** | Latest `memory/session_dump_*_book_drafting.md` + `book/CANON.md` + `book/negative_space.md` | The Long Watch novel. Parallel session lineage; separate discipline. |
-| **Spec revision** | `docs/spec-v0.129.md` §15.4 first (current envelope; adopted 2026-06-10). Draft under operator review: `docs/spec-v0.130-DRAFT-2026-07-19.md` | **Forbidden absent an empirical finding from a closed loop.** Mode 6 risk. Route findings into the current draft's QC register or a dated proposal note; never edit the adopted spec in place. |
+| **Spec revision** | `docs/spec-v0.130.md` §15.4 + §15.11 first (current envelope; adopted 2026-07-19 per the finalization packet, rulings R-A…R-D) | **Forbidden absent an empirical finding from a closed loop.** Mode 6 risk. Route findings into a dated proposal note or the next revision's QC register; never edit the adopted spec in place. |
 
 If you're not sure which track: the operator (Bo Chen) will tell you. The default current-build-focus is **Track A textverse**.
 
@@ -91,7 +91,7 @@ For small operator-driven tasks (token rotation help, log scrub, README edit, co
 
 ## 4. Universal discipline (binds all tracks)
 
-These hold regardless of which track you're on. Pulled from `docs/spec-v0.129.md` §15:
+These hold regardless of which track you're on. Pulled from `docs/spec-v0.130.md` §15:
 
 - **§15.4 — Envelope locked; sculpting begins.** Don't propose spec revisions absent empirical findings.
 - **§15.5 — Progressive Specification.** Lock the outer envelope; sculpt detail within bounds; never violate prior locks.
@@ -123,7 +123,7 @@ When you stop work for the session:
 1. Update the relevant CHANGELOG:
    - For textverse work: `proto/textverse/CHANGELOG.md`
    - For book work: append to the latest book session dump
-   - For spec work: this is forbidden by default; if you must, write a `docs/spec-v0.129-proposed.md` with reasoning
+   - For spec work: this is forbidden by default; if you must, write a dated `docs/spec-v0.13x-proposed.md` with reasoning
 2. Commit clean (no `--no-verify`, etc.)
 3. If pushing: use the operator's current token in the push URL only; never write it to `.git/config`
 4. **Stop.** Do not begin the next day's work in the same session.
@@ -141,7 +141,7 @@ If the spec and the architecture and the track STARTUP are silent on a question:
 
 1. **Default to deferral.** Make the smallest commitment that lets the current task proceed. Mark the deferred decision as a TODO in your CHANGELOG entry.
 2. **Don't invent new contract surfaces.** v0.128 named the surfaces; honor them.
-3. **If a spec contradiction surfaces:** that's a finding. Write a brief `docs/spec-v0.129-proposed.md` with the contradiction, your proposed resolution, and which scenario or empirical event surfaced it. Then continue your task using the conservative interpretation.
+3. **If a spec contradiction surfaces:** that's a finding. Write a brief dated `docs/spec-v0.13x-proposed.md` with the contradiction, your proposed resolution, and which scenario or empirical event surfaced it. Then continue your task using the conservative interpretation.
 4. **Ask the operator** rather than guessing on ambiguous architectural choices.
 
 ---
@@ -155,14 +155,15 @@ C:\ASTRA-7\
 ├── README.md
 ├── LICENSE
 ├── docs/
-│   ├── spec-v0.129.md              the envelope (read for any track; adopted 2026-06-10)
-│   ├── spec-v0.130-DRAFT-2026-07-19.md  amendment draft under operator review
+│   ├── spec-v0.130.md              the envelope (read for any track; adopted 2026-07-19)
+│   ├── spec-v0.130-FINALIZATION-PACKET-2026-07-19.md  the adoption record (rulings R-A…R-D)
+│   ├── spec-v0.130-DRAFT-2026-07-19.md  QC-register amendment draft (superseded by adoption)
 │   ├── astra-sysprompt.md          canonical persona text
 │   ├── astra-sysprompt-addendum-stage.md  STAGE protocol addendum
 │   ├── qualia-1-bridge.md          philosophical backbone
 │   ├── synthesis.md                v0.1 architectural through-line (historical)
 │   ├── architecture.md             provisional tactical specifics (historical)
-│   └── spec-v0.{1,123,125,126,127,128}.md  historical precursors (superseded)
+│   └── spec-v0.{1,123,125,126,127,128,129}.md  historical precursors (superseded)
 ├── book/
 │   ├── CANON.md                    universe-separation + Gap Thesis quote
 │   ├── negative_space.md           no-Bo grep list + voice prohibitions

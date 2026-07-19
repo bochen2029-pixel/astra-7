@@ -6,6 +6,37 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### spec v0.130 ADOPTED (adoption pass, commit 2) — 2026-07-19
+
+`docs/spec-v0.130.md` authored: v0.129 text + every packet-ADOPT
+amendment + the four rulings. New: changes-from-v0.129 block (QC
+register + live-run anchors + rulings R-A…R-D verbatim), §4.3.1
+Turn-Scheduling (with live receipt), §4.2 epoch clause + canon-path
+rule, §3.12/§6.3 horizon semantics corrected (wire name retained),
+§3.7 diegetic-clamp annotation, §5.3 trace/event-log split +
+Model-Off Replay (15/15 receipt), §10 positive-control witnesses +
+replay + epoch-KAT rows, §12 falsifier-gated engine rungs (E2
+contention gate + W-A capstone) + Phase 0.x named axes (asynchrony /
+archetypes / Frame Drill), §15.11 Succession Protocol (floor at
+adoption: 914/82/30), §15.12 Risk Register (R-5/R-6/R-7 carry
+live-fired witnesses), §15.8 sibling reciprocity (SECTOR_SIZE
+dial-owned), §15.7 variant-tag rule, §5.7 grounding exemption, §4.9
+adapter-tier + τ-authoring + always-through-adapter + feedback-leg
+invariants, §13 rebuilt as the v0.131 queue, §14 refreshed (line-count
+receipts retired per §15.11 rule 5), Appendix A rows C12 + M3
+clarifier, Appendix B provenance tags + WATCH_LENGTH_S canon + R-B
+targets-beside-floors + 30-scenario receipt, Appendix D Receipts Map.
+Stale-reference sweep (48-assertion citations, v0.130-queue
+self-references, Rig 1/2 status) done.
+
+Supersession + cross-canon sync executed: v0.129 header SUPERSEDED;
+DRAFT header → adoption-record; CLAUDE.md + BOOTSTRAP.md envelope
+pointers → v0.130; STARTUP.md rows + gate numbers → adoption-day;
+scope.yaml spec_ref + locked list (packet + v0.129 added);
+stage-protocol.md §4 gains the F-LIVE-11 variant-tag rule. Named
+residual: the nexus main() banner still cites spec-v0.128 (locked
+file; next dedicated Track C pass).
+
 ### Rulings R-A + R-D landed as code (adoption pass, commit 1) — 2026-07-19
 
 Operator ruled "adopt as recommended" over the finalization packet.

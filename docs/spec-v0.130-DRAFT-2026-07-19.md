@@ -1,6 +1,8 @@
 # ASTRA-7 Foundation Specification v0.130 — DRAFT
 
-*DRAFT 2026-07-19 — NOT ADOPTED. This document plays the role the tentative draft played for v0.129: it specifies the revision; the implementation turns that follow produce the empirical residue; adoption comes by operator ruling over a finalization packet, per §15.4 and §15.10. Nothing here supersedes `docs/spec-v0.129.md` until that ruling.*
+**SUPERSEDED BY ADOPTION — the ruling landed 2026-07-19 ("adopt as recommended", rulings R-A…R-D as pre-marked) over `docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md`; the amendments below merged into `docs/spec-v0.130.md`, which is now the binding envelope. This file is retained as the QC-register evidence base (QCR-1…19) and amendment record. Do not cite it for current locks.**
+
+*DRAFT 2026-07-19 — original preamble follows. This document played the role the tentative draft played for v0.129: it specified the revision; the implementation turns that followed produced the empirical residue; adoption came by operator ruling over the finalization packet, per §15.4 and §15.10.*
 
 *Authored from: a full-corpus QC pass on 2026-07-19 (every load-bearing textverse module read against its v0.129 lock; gates run live: **750 pytest green in 15.17 s**, `astra_nexus.exe` exit 0), plus post-adoption operator residue (Agentic Dev Reference adoption 2026-06-11 @ `ba97272`; ASTRA-3 MVP brainstorm 2026-06-15 @ `b555553`), plus the descendant-corpus review of 2026-07-18 (`C:\Somewhere\SOMEWHERE_ARCHITECTURE.md` v0.2.1 + `AETHER_PROFILE.md`, which read the entire ASTRA-7 corpus, distilled its invariants, bound each to its receipt, and returned method improvements). The descendant review is treated as what it functionally is: the largest parallel-discovery pass this project has received, per §15.10.*
 

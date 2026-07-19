@@ -1,13 +1,37 @@
-# ASTRA-7 Foundation Specification v0.129
+# ASTRA-7 Foundation Specification v0.130
 
-**SUPERSEDED — adopted-with-amendments as `docs/spec-v0.130.md` per operator ruling ("adopt as recommended", rulings R-A…R-D) over `docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md`, 2026-07-19. This file is retained as the historical record of the v0.129 envelope; the binding spec is v0.130. Do not cite this file for current locks.**
-
-*Working draft, not lock-grade (inherited framing). The first spec revision driven end-to-end by the closed loop: every change below was either an audit-surfaced drift closure or a contract that landed in tested code BEFORE being adopted into this text. Adopted 2026-06-10 by operator ruling ("adopt as recommended") over `docs/spec-v0.129-FINALIZATION-PACKET-2026-06-10.md`; upstream synthesis in `docs/spec-v0.129-tentative-2026-05-16.md` (superseded by this document).*
-*Iteration history: v0.123 → v0.125 → v0.126 → v0.127 → v0.128 → v0.129 (this). Corrections continue to come from empirical contact with the closed-loop bench (`proto/textverse/`, 749 tests at adoption), the physics core (`proto/astra_nexus`, 71 assertions), and the engine-side testbeds — not from prose review passes.*
+*Working draft, not lock-grade (inherited framing). The revision where the spec became an instrument that cannot run ahead of its receipts: every amendment below was implemented ahead of adoption (gates 750 → 914 pytest, 71 → 82 C++ assertions across the implementation arc), and the two headline mechanisms were then live-proven against a real model before ruling. Adopted 2026-07-19 by operator ruling ("adopt as recommended", rulings R-A…R-D as pre-marked) over `docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md`; upstream amendment draft in `docs/spec-v0.130-DRAFT-2026-07-19.md` (QC register QCR-1…19; superseded by this document as the adoption record's evidence base).*
+*Iteration history: v0.123 → v0.125 → v0.126 → v0.127 → v0.128 → v0.129 → v0.130 (this). Corrections continue to come from empirical contact with the closed-loop bench (`proto/textverse/`, 914 tests at adoption), the physics core (`proto/astra_nexus`, 82 assertions), the engine-side testbeds, and — new this revision — five recorded live-LLM suite passes (`proto/textverse/LIVE_RUN_2026-07-19.md`, findings F-LIVE-1…14) — not from prose review passes.*
 
 ---
 
-## Changes from v0.128 (adopted 2026-06-10)
+## Changes from v0.129 (adopted 2026-07-19)
+
+**Empirical anchors:** the 2026-07-19 QC pass (19 verified findings, QCR-1…19, per the amendment draft's register — spec-internal contradictions, spec-vs-code drift, canon-file divergence measured by hash, stale receipts); the §4.2×§5.3 joint round-trip that caught the TimeCoord/epoch trap (QCR-3: float64 ULP at cosmological epoch = 64 s, violating the locked replay tolerance by construction); the implementation arc `d83007f…e9d4698` plus the ruling commits (every `BENCH`/`C++-ADDITIVE` item landed before adoption); **five live-LLM suite passes** (Qwen 3.5 9B, local llama-server) producing findings F-LIVE-1…14: Model-Off Replay 15/15 byte-identical with the server down, the first measured autotelic register (n=37 heartbeats: silence 0.16–0.22 pooled, fidget 0.43, initiation median 47 chars), the adapter tier's live delta (tool_valid 0.690 → 0.855), two live-caught instrument gaps closed with planted-positive witnesses (F-LIVE-11 variant think-tag; F-LIVE-12 grounding exemption), and the τ-unit incoherence caught and re-authored (F-LIVE-14). Bench at 914 tests / C++ at 82/82 / scenario library at 30 on adoption day.
+
+**Drift closures (QC register, all landed in code first where code was implicated):** epoch convention locked — `t_cosmic` is seconds since **epoch zero**, bounded `< 2³⁹ s`, "since Big Bang" struck, permanent forbidden-path KAT (QCR-3) · stale `PropulsionMode flag` schema line struck (QCR-4) · `beyond_hubble_horizon` semantics corrected to superluminal recession, wire name retained (QCR-8) · canon pattern-file paths unified to in-package with CI-enforced byte-identical root mirrors — the pair had measurably diverged (QCR-1/2) · `ShipKinematicState` and `a_proper` placement reconciled to the implementation (QCR-6/7) · GRAVITY_WELL leg plumbed: the composed regime finally composes at the StateBus root, cross-substrate parity-tested against the nexus `compute_grav_factor` stdio op (QCR-5) · SaveFile migration obligation honestly re-scoped to activate at the first version bump (QCR-13) · ephemeral maintenance triggers ride the §4.3.1 heartbeat (QCR-14) · incomplete-propagation fixes: accelerated-dispatch wording (QCR-9), §15.3 self-reference + version-nomenclature normalization (QCR-10), receipts refreshed (QCR-11), STARTUP.md rewritten (QCR-12), docstring envelope-citation sweep (QCR-16), SomaticSignal shape clarifier (QCR-18), post-adoption operator residue absorbed (QCR-19).
+
+**New contract sections:** **§4.3.1 Turn-Scheduling Contract** (heartbeat / interruption / initiative — the asynchrony envelope; closes QCR-15's zero-asynchrony gap, the adopted Agentic Dev Reference's sharpest catch; live-proven: interruption fail-closed PASS with a real model first try) · **§15.11 Succession Protocol** (every future revision runs the inherited floor first, converts prose downward, carries lineage, forks only by name, treats pins as archaeology) · **§15.12 Risk Register** (guns/kills/witness discipline; three guns carry live-fired witnesses at adoption) · **Appendix D Receipts Map** (every lock → artifact → gate → status).
+
+**Validation additions (§10):** trace/event-log split + **Model-Off Replay** (§5.3; suite-level predicate, CI leg, live-proven 15/15) · **positive-control witnesses** (every detector must fire on a planted violation — never let never-fired masquerade as nothing-to-find) · TimeCoord forbidden-path KAT.
+
+**Operator rulings at adoption (R-A…R-D):**
+- **R-A — the Tool API gains its first read-only op:** `status.query {subsystem}` (Surface 3: 6 → 7 ops), on the four-run-convergent F-LIVE-9 demand (the model reinvented a status/monitor op under every fresh sampling because the surface had five effectors, a log, and no way to LOOK). Read-only by contract: empty state_diff, orchestrator-fulfilled read from the live StateBus, report template-rendered from truth fields (calculator-bound by construction). The adapter maps the monitor/status intent family onto it (generative-proof segment rule). Landing this made the **tool-result feedback leg** load-bearing — `<tool_result>` sections were documented input shape but unwired; turn-N results (including guided rejections) now deliver into turn-N+1's perception, exactly once. The autotelic instrumentation is untouched: unprompted status calls on quiet heartbeats still count as fidget.
+- **R-B — autotelic threshold slate ratified as recorded-not-gated** design-intent targets (Appendix B): silence on quiet heartbeats ≥ 0.60 (measured floor 0.16–0.22) · tool-fidget ≤ 0.10 (floor 0.43) · initiation ≤ 240 chars hard (floor median 47 / max 449) · ≤ 1 initiation per watchlist event (budget ≤ 2 per fictional hour) · voiced-refusal 1.0 (floor 2/3). They gate NOTHING until the instrumentation package lands whole (thresholds + negative-space pattern files + generative red-seat; §13).
+- **R-C — watch length canonized:** `WATCH_LENGTH_S = 14,400 s` [chosen] — the maritime four-hour watch, the register's own source tradition. τ_ship is SECONDS everywhere; watch/cycle labels are DERIVED presentation, never authored values (F-LIVE-14 closure; §4.9).
+- **R-D — watch-tick framing paragraph** landed in the STAGE addendum (Surface 5, ADOPT-TENTATIVE): names the §4.3.1 tick the addendum never described — contract parity, the harness having added a perception shape the contract doc didn't cover. Kept only if the dedicated A/B live pass moves the register toward the R-B targets without dropping operator-response rate; struck otherwise.
+
+**Post-draft closures with live receipts:** adapter tier is **rules-based-first** (§4.9; the ML adapter lands when the synonym map stops scaling) and the §4.9 always-through-adapter invariant is named as restored (the JSON-args fast path that bypassed it is the named failure) · Substrate Normalizer canonicalizes **variant reasoning tags** before parsing; an unclosed variant fails CLOSED (§15.7 Surface 4; F-LIVE-11, caught live leaking 1153 chars of cognition into SPEECH) · leak-detector **grounding exemption** (§5.7): a speech match already present in the pre-scanned perception is the harness's own content echoed back, never a new leak; ungrounded matches still strip (F-LIVE-12) · §3.7 gains the **diegetic-clamp annotation** (the ω_max refusal is physics, not apology — descendant-corpus reading) · §15.8 gains **sibling-engine reciprocity** (shared organs carry receipts both ways; `SECTOR_SIZE` is dial-owned).
+
+**Methodology:** Appendix B adopts **provenance tags** [official/derived/estimate/community/chosen], retiring bare "(provisional)" · §12's engine track converts from prose phases to **falsifier-gated rungs** with oracle + ancestor columns, gains the ratified E2 contention gate (2026-06-11) and the W-A rewind capstone · the LLM track's Phase 0.x names its axis: asynchrony scenarios + operator-archetype coverage + the Frame Drill (standing adversarial protocol; catch-count is a tracked metric; every catch converts to a scenario).
+
+**Deferred (explicitly, per §15.4 — carried or newly gated; see §13):** parse-time `<val>`/`<grounded>` tags · endo/exo type-system promotion (now witness-armed via the §10 planted mis-routing control) · EventStream unification (the replay log now exists as a real third instance; the trigger condition is met — promotion when someone needs the shared shape) · blackbody redshift · StateBus strict-construction · TimeCoord `{int64 s, double frac}` + SaveFile v4 (gated on the first deep-time scenario) · autotelic threshold ENFORCEMENT (gated on the package landing whole).
+
+**Deliberately not changed:** the Five Invariants (five stays five) · the composition rule · the 14-equation framework · the three-channel STAGE decision · §2.3.1 Reflex Contract · everything with a green gate and no finding against it.
+
+---
+
+## Changes from v0.128 (adopted 2026-06-10; inherited from v0.129, retained for reference)
 
 **Empirical anchors:** audit `AUDIT_2026-05-15.md` D1–D8 closures; state-coherence type system (`6a30ade`); Narrator activation chain (`2fcd403`, `09d683a`); SaveFile v3 (`e73aa36`); all three §4.9 ephemerals (`2d868d9`, `d2add93`, `78f6f92`); Somatic Aggregator (`c23f7d6`); visual testbed v0.1.0 findings (Cherenkov direction, N1); measured persona ceilings (~50% always-think / 12.5% bracket-leak sysprompt-only — motivates Phase 1.x). Bench at 749 tests / C++ at 71/71 on adoption day.
 
@@ -222,7 +246,7 @@ Renormalization rolls integer sector indices when local offset exceeds 500 km. M
 The ship-at-origin convention is also the **endogenous frame anchor** (NEW v0.129): endogenous sensor channels (§6.3, §10) are defined relative to this origin and read at `t_cosmic`; everything not anchored here is the exogenous universe, reachable only through the Observation Calculator at `t_emit`.
 
 **Locked:** composite-tensor primitive, renormalization rule, ship-at-origin convention.
-**Tolerable:** sector size (1000 km design center; a decade either way permitted).
+**Tolerable:** sector size — **dial-owned** (v0.130 / §15.8 reciprocity): ASTRA-7's canon dial is 10⁶ m (1000 km); a sibling instrument re-dials without forking the organ (the roll algorithm and round-trip oracle port verbatim; the dial is data).
 
 ### 1.2 One Fictional Time — split into two clocks
 
@@ -678,6 +702,8 @@ Parallel thrust grows `|ζ⃗|`; perpendicular thrust rotates `ζ⃗` without ex
 
 **Clamp (v0.126 fix):** `|ζ⃗| ≤ ω_max ≈ 16.811`, giving `γ_max = cosh(ω_max) ≈ 10⁷` and corresponding `β_max ≈ 1 − 5·10⁻¹⁵`. The v0.125 clamp value `arctanh(0.99999999)` was mathematically inconsistent with the stated `γ_max ≈ 10⁷`: with eight nines after the decimal, `β = 0.99999999`, `1−β² ≈ 2·10⁻⁸`, `γ = 1/√(2·10⁻⁸) ≈ 7071`. To reach `γ = 10⁷` requires ω ≈ 16.811, corresponding to β with ~15 nines after the decimal, not 8. The correct clamp specification lives in ω-space directly: `ω_max ≈ 16.811`. Phase 0+ measurement may refine; never re-derive from β.
 
+**The clamp is physics, not apology (v0.130 annotation; no formula change).** At γ ≈ 10⁷ the forward CMB blueshifts by ~2γ into hard X-ray; sustained extreme γ is radiation-limited independent of numerics, and the §7.2 ISM regime (catastrophic per-grain at γ ≥ 10⁴) closes over the same territory. ω_max is therefore *diegetic*: ASTRA refuses to sustain rapidity beyond it as a physical judgment about the forward sky, not as a numeric guard rationalized after the fact. (Reading owed to the descendant-corpus review, 2026-07-18.) The refusal surfaces through the normal SPEECH/refusal register; the clamp value itself is unchanged.
+
 **Catastrophic-cancellation discipline (NEW v0.126):** Compute all derived kinematic quantities from `ζ⃗` and `ω = |ζ⃗|` directly via `tanh` and `cosh`. **Do not round-trip through β to compute γ.** At high ω, β representation in float64 is `1 − ε` where `ε ≈ 5·10⁻¹⁵` near the clamp; computing `γ = 1/√(1 − β²)` suffers catastrophic cancellation in the subtraction `1 − β²` and loses all meaningful precision. The rapidity discipline's whole point is to avoid this pathology — round-tripping through β re-introduces it. Locked path: `γ = cosh(ω)`, `β = tanh(ω)`, `v⃗ = c · tanh(ω) · (ζ⃗ / ω)`. Implementers must never compute `γ = 1/√(1 − β²)` directly except as a debug-print sanity check at low ω.
 
 This applies to STL_REL acceleration phases especially. During non-relativistic motion, the rapidity formulation reduces to standard kinematics with negligible overhead.
@@ -784,15 +810,15 @@ z_cosmo(d) = (H₀ / c) · ∫₀ᵈ dr / √(Ω_m · (1+z(r))³ + Ω_Λ)
 
 `z_cosmo` composes multiplicatively with `z_kin` and `z_metric` per §3.4. The cosmological redshift contribution is small at intra-galactic scales (~0.07c at AstraCoord's 974 Mly edge) but real and named.
 
-**Hubble horizon (locked):**
+**Hubble horizon (locked; semantics corrected v0.130 / QCR-8):**
 
 ```
 d_H = c / H₀ ≈ 4.4 Gpc ≈ 14.3 billion light-years (provisional H₀)
 ```
 
-Bodies beyond the Hubble horizon recede from the ship faster than light from them can travel inward. Their light reaches the ship as an asymptotically-decaying frozen frame at horizon-crossing, then fades to extinction over cosmic time. **Render: frozen at horizon-crossing instant, dim and redshifted, fading on a separate timescale than the photon-source-history bound (§3.11).**
+`beyond_hubble_horizon` — **wire name retained for bridge compatibility; semantics corrected (v0.130): superluminal recession, not causal disconnection.** True when `d_proper > c/H₀`. A body beyond this radius recedes superluminally *and remains observable* (in the real universe, all z ≳ 1.5 sources are observed); the flag is informational for the render path, not a causality claim. Causal disconnection is the **event horizon** and observability is bounded by the **particle horizon** — both are properties of the full ΛCDM integral deferred to Phase 4+, at which point `beyond_event_horizon` and `beyond_particle_horizon` join the struct as new fields and the frozen-at-crossing render policy attaches to the event horizon where it belongs. The v0.127–v0.129 frozen-and-fade prose described event-horizon behavior under this flag's name; the correction is semantic hygiene enforced now so Phase 4+ does not inherit a mislabeled lock.
 
-The Hubble horizon is the hard outer edge of what is observable from the ship at any voyage length. AstraCoord's 974 Mly reach is well inside this horizon; cosmological horizon effects are render-only and do not affect AstraCoord state.
+Within AstraCoord's 974 Mly reach (z ≈ 0.07) none of the three horizons can fire; cosmological horizon effects are render-only and do not affect AstraCoord state.
 
 **Look-back time correction (NEW v0.127):**
 
@@ -832,9 +858,13 @@ GPU-resident shared world state.
 
 ```
 - AstraCoord                (128-bit composite tensor; §1.1)
-- TimeState                 (t_cosmic, τ_ship, τ_crew_bio, rapidity ζ⃗;
+- TimeState                 (t_cosmic, τ_ship, τ_crew_bio, rapidity ζ⃗, a_proper;
                              kinematic_regime exposed as velocity-derived
                              READ-ONLY projection — see §4.4; NEW v0.129)
+                             a_proper is CARRIED WITHIN TimeState; its OWNER
+                             remains the propulsion driver (write path per this
+                             section's operations). (Placement reconciled to
+                             the implementation, v0.130 / QCR-7.)
 - WarpState | None          (NEW v0.129; audit D3 closure):
     W:               float ∈ [0,1]        (warp coil intensity)
     phase:           Literal["charging","cruising","dropping","shutdown"]
@@ -844,9 +874,13 @@ GPU-resident shared world state.
                              never settable; derived from rapidity + warp +
                              cryosleep + BH proximity per §3.3 detect_regime)
 - ShipKinematicState        (v_local_cmb, γ, β, grav_factor, dτ/dt — a DERIVED
-                             VIEW; fields are computed, never stored
-                             independently of ζ⃗; NEW v0.129)
-- a_proper: float3          (ship-frame proper acceleration; owned by propulsion driver, read by Time Contract; NEW v0.125)
+                             VIEW, computed on demand from ζ⃗ and grav context
+                             via the physics core; never stored independently;
+                             serialization is per-substrate: textverse derives
+                             at load, UE5 may cache per frame; re-scoped
+                             v0.130 / QCR-6)
+[a_proper's former separate root line struck v0.130 / QCR-7 — carried within
+ TimeState per the reconciliation above; still owned by the propulsion driver]
 - HullSDF                   (256³ texture + additive damage map; §1.3)
 - CFD-RBF warp field network (~1000 nodes, ~64 KB)
 - ChaosField χ(x,t)         (double-buffered; §1.5)
@@ -854,7 +888,10 @@ GPU-resident shared world state.
 - ProceduralBodyState       (Keplerian elements per body, hash-seeded)
 - BHList                    (M, position, J=0 for v0.1)
 - AtmosphereState, HydroponicsState (per-room scalars)
-- PropulsionMode flag       (regime bitmask; canonical values §3.3)
+[STRUCK v0.130: the separate "PropulsionMode flag" schema line — subsumed by
+ the computed `regime` field above; a stored propulsion bitmask contradicts
+ regime-as-derived (QCR-4). The §3.3 canonical hex values remain locked as
+ the WIRE encoding of the derived value (SaveFile echo + replay format).]
 - CosmologicalConstants     (NEW v0.127):
     c:    float64 = 299792458.0          (m/s, exact by definition)
     H₀:   float64 = 70.0                 (km/s/Mpc, provisional)
@@ -870,6 +907,18 @@ GPU-resident shared world state.
 **Invariant:** no system maintains private copies. State Bus is the single source of truth. (One instance of the Frozen-Snapshot Primitive, §15.9.)
 
 **Regime placement (NEW v0.129, resolves the v0.128 §4.2-vs-§4.4 ambiguity / audit R1):** the composite `regime` lives as a computed field on the StateBus root; `TimeState` exposes only `kinematic_regime`, the velocity-derived projection used internally by `detect_regime`. Implementations must NOT permit caller-supplied regime values that contradict the derived computation.
+
+**Epoch convention (LOCKED v0.130 — closes QCR-3):**
+
+> `t_cosmic` is float64 **seconds since epoch zero**, where epoch zero is the earliest fictional time any running configuration references (voyage-anchored). The phrase "since Big Bang" is struck: at cosmological epochs (~4.35×10¹⁷ s) float64 ULP is 64 s, which violates §5.3's replay tolerance by construction. Cosmological-epoch quantities (body ages, lookback anchors) are represented as **offsets and data**, never as the runtime clock origin.
+>
+> **Range bound:** `0 ≤ t_cosmic < 2³⁹ s` (≈17,400 years; ULP ≤ 6.1×10⁻⁵ s < ε). Enforced by a StateBus validator with a named error (implemented: `TimeState.T_COSMIC_MAX`). The bench's current values (~10¹⁰ s) sit three orders inside.
+>
+> **The deep-time upgrade path (named, gated):** sustained γ ≈ 10⁷ arcs accumulate cosmic time ~γ·τ and will exceed the bound (one ship-year → ~3.2×10¹⁴ s). The first scenario or title mechanic requiring `t_cosmic ≥ 2³⁹ s` triggers adoption of the two-part representation `TimeCoord {int64 sec; double frac ∈ [0,1)}` with integration on integer tick counts (t derived, never accumulated) and **SaveFile v4** (which also activates the §4.6 migration obligation, QCR-13). Until that gate fires, the bound stands and the representation stays float64.
+>
+> **Forbidden path (permanent KAT):** accumulating absolute time as `t += dt` in float64 across a long run. The KAT (`tests/test_time_epoch_kat.py`) demonstrates the drift at large epoch the way the §3.7 catastrophic-cancellation KAT demonstrates the cosh discipline — kept forever.
+
+**Canonical pattern-file paths (single source; closes QCR-1/QCR-2):** the canonical leak/QC3 canon lives **in-package**: `astra/grammar/canon/wall_clock_patterns.txt`, `astra/grammar/canon/astra_substrate_patterns.txt`, `astra/harness/ephemeral/canon/qc3_events.txt`. Root `tests/*.txt` copies are retained for path-compat as **byte-identical mirrors, CI-enforced** (`tests/test_canon_mirrors.py` — gun R-6; the pairs measurably diverged once, 2026-07-19, and that divergence is the named failure this rule closes, with the recorded red-then-green witness). §5.7, §10, and §11 cite these paths.
 
 ### 4.3 Master Contract (Perception / Action / Reflex)
 
@@ -899,7 +948,7 @@ Only crossing point between World Kernel and Mind Kernel. **Three sub-channels.*
 **Reflex** (in-band, frame-rate, separate channel):
 - Input: 64×64×2 chaos+metric observation grid, every frame
 - Output: 3-float control vector (nacelle damping, conformality, emergency dump)
-- Latency budget: ≤ 50 μs naive, ≤ 20 μs with CUDA Graphs
+- Latency budget: ≤ 50 μs naive, ≤ 20 μs under accelerated dispatch (CUDA Graphs is the validated path; wording propagated v0.130 / QCR-9 per the §15.4 boundary §2.3.1 already honors)
 - No conversation perception, no speech. Pure autonomic.
 
 **Invariants:**
@@ -911,6 +960,23 @@ Only crossing point between World Kernel and Mind Kernel. **Three sub-channels.*
 - Tool calls validated by adapter LLM, not executed directly.
 - **c-bounded epistemology (NEW v0.127, consequence-framed):** ASTRA has no access to the current state of any region outside her own light-cone past. The universe is always a record of what was, never what is. All distant-body perception arrives via retarded-time observation (§3.11); the Observation Calculator (§6.3) is the only path by which exogenous state enters Perception. This is QC1 (enforced self-opacity, §11) extended outward: not just *she cannot bypass her own HUD encoder*, but also *she cannot bypass light-speed*. Her epistemology is perception-mediated all the way down — there is no privileged channel into either her own raw state or the universe's current state.
 - **Endogenous vs exogenous sensor split (NEW v0.127):** Perception channels are categorized by physical origin. **Endogenous** (local hull, ship interior, internal diagnostic): read at `t_cosmic`. **Exogenous** (universe-distant, photon/particle flux from outside the bubble): read at `t_emit`, regime-dispatched per §3.11. The split generalizes to any future sensor channel. Audio (hull-internal): endogenous. Starfield (universe-distant photons): exogenous. The eye-ear decoupling at warp (§8.3) is one instance of this principle.
+
+### 4.3.1 Turn-Scheduling Contract (NEW v0.130 — the asynchrony envelope)
+
+The Master Contract's Perception/Action cycle is extended from strictly reactive turns to a scheduled-turn model. Three event classes originate turns; all are fictional-time-driven (no wall clock, per the §1.2 invariant):
+
+**Heartbeat.** The harness delivers an unprompted perception bundle when `τ_ship` advances past a scheduled tick with no operator input. Cadence is a harness parameter in fictional seconds (provisional default: irregular within a declared band, so cadence itself never becomes a metronome ASTRA can echo). A heartbeat turn's `<operator>` section is empty; SILENCE remains a legal and expected response for most heartbeats. Heartbeats are also the maintenance-window trigger surface for §4.9 ephemerals (consolidator cadence, drift audits) — closing QCR-14's unwired triggers with the same mechanism.
+
+**Interruption.** If operator input arrives while a turn is in flight, the in-flight generation is cancelled **fail-closed**: its partial output is retained for forensics (like `pre_think_raw`), nothing from it is emitted, no tool call from it is dispatched, and a fresh turn begins whose perception bundle notes the interruption as state, not as apology-fodder. (An interrupted half-thought never half-executes.)
+
+**Initiative.** ASTRA may originate speech outside any operator turn ONLY as the SPEECH channel of a heartbeat turn — initiative is a property of what she does with an unprompted turn, not a fourth channel. Initiative is budgeted (declared max initiations per fictional-time window, provisional) and logged as an event-log record so initiation-rate and initiation-quality are measurable. The autotelic thesis is falsifiable exactly here: attendance without demand, initiation that is about *her* things, silence as a chosen act — all become measured quantities against the instrumentation package (first measured distributions 2026-07-19, n=37; targets recorded in Appendix B per ruling R-B).
+
+**Locked:** the three event classes; fictional-time-only scheduling; interruption fail-closed semantics; initiative-as-heartbeat-speech (no new output channel); the event-log records for all three (turn_kind, interrupted, initiative, budget flag, ephemeral_runs — all inside the replay digest).
+**Tolerable:** cadence values, band shapes, budget numbers, cancellation implementation.
+**Substrate note (§15.7):** textverse implements scheduling as scenario-scripted `τ_ship` advances (the scenario format carries `heartbeat` turn entries and an `interrupts_previous` input attribute); UE5 implements it against real-time mapped through the fictional clock. Same contract, two schedulers — the two-adapter merge is unchanged.
+**Failure:** a heartbeat storm (misconfigured cadence) is bounded by the initiative budget and the NON_DEGENERATE gate; interruption during tool dispatch (not generation) completes the dispatch atomically first — tools are never half-applied.
+
+*Live receipt (adoption evidence): interruption fail-closed passed end-to-end with a real model on its first live outing; heartbeat measurement ran n=37 across six ship-states; gun R-5's witness (the pre-asynchrony suite, run unchanged) held green through the entire landing.*
 
 ### 4.4 Time Contract (the locked block)
 
@@ -1047,7 +1113,7 @@ SaveFile v3 (v0.125):
 
 **Regime-coherence load gate (NEW v0.129, implemented-first):** the reconstructed state RE-DERIVES regime from the underlying truth fields (rapidity + warp + cryosleep per §3.3/§4.2) and the result must equal the stored `regime_bitmask`; mismatch is a coherence error, and recovery proceeds through the rolling backups. The serialized regime value is an echo for the wire format, never an input — a hand-edited save cannot smuggle an incoherent regime past load.
 
-**Locked:** save-seeds-not-state, versioned schema with migration scripts, forward compatibility, chaos field convergent-forward-integration re-init, regime-coherence load gate.
+**Locked:** save-seeds-not-state, versioned schema, forward compatibility, chaos field convergent-forward-integration re-init, regime-coherence load gate. **Migration obligation (re-scoped v0.130 / QCR-13, honest form):** with a single extant schema version there is nothing to migrate and the v(N)→v(N+1) forward-compat test is unrunnable; the migration-scripts obligation ACTIVATES at the first version bump — SaveFile v4, which the §4.2 TimeCoord deep-time gate triggers. The §10 forward-compat row is marked pending-second-version until then.
 
 **Tolerable:** specific binary format, compression.
 
@@ -1119,11 +1185,16 @@ The harness is a load-bearing module. Lock its contract surface as first-class.
 - `detect_drift(recent_turns) → correction artifact or NONE` — audit register, ephemeral instance
 - `enforce_no_wall_clock(perception_bundle | journal_entries) → cleaned` — scans for wall-clock-leak patterns per §5.7 against the canonical pattern files (packaged at `astra/grammar/canon/wall_clock_patterns.txt`; realized in textverse as `LeakDetector.scan_journal_output` / `scan_perception_bundle`)
 
-**Implementation status (NEW v0.129):** all three ephemeral roles are implemented to these locked signatures as deterministic pure functions (2026-06-10; LLM-voiced paths arrive later behind the same signatures). Orchestrator maintenance-window wiring follows when scenarios exercise it.
+**Implementation status (updated v0.130):** all three ephemeral roles are implemented to these locked signatures as deterministic pure functions (2026-06-10; LLM-voiced paths arrive later behind the same signatures). **Maintenance-window triggers ride the §4.3.1 heartbeat (QCR-14 closed 2026-07-19):** the consolidator absorbs the un-consolidated conversation window at threshold, the drift detector runs when leak events have accumulated; the journal_generator's cryosleep trigger awaits regime-change wiring in the physics tick (named residual, Appendix D).
+
+**The adapter tier is rules-based-first (v0.130; residue-backed):** the v0 adapter is a deterministic rules engine — mechanical name normalization, an evidence-grown synonym table, intent-family rules, argument salvage — and the ML adapter (1–3B, §4.1/§4.7) lands when the map stops scaling, not before. The live suite validated the tier's design premise empirically: the mainline's entire tool-failure surface was semantically-right/nominally-wrong op names (F-LIVE-1), exactly the loose intent the adapter exists to absorb (live delta on landing: tool_valid 0.690 → 0.855, with the mechanical/synonym failure classes structurally closed).
+
+**τ authoring rule (v0.130; F-LIVE-14 closure):** `τ_ship` is SECONDS everywhere — state, scenarios, deltas, REEL stamps. Watch/cycle labels are DERIVED presentation (`watch_label(τ)`; `WATCH_LENGTH_S = 14,400 s` [chosen] per ruling R-C, Appendix B), never authored or stored values. Before this rule, scenario times authored in watch-units met deltas in seconds and the advancing clock rendered nonsense the perception scan then censored out of the harness's own state line — the harness leak-flagging itself.
 
 **Invariants:**
 - Harness enforces the no-wall-clock invariant at both (a) `assemble_perception` boundary (last-chance gate for Perception bundles) and (b) `generate_journal` output boundary (last-chance gate before REEL commit)
-- Tool calls always validated through adapter LLM before reaching ship API
+- Tool calls always validated through the adapter before reaching ship API. **Always-through-adapter (restored v0.130):** EVERY `<tool>` call routes through the adapter — the named failure this clause closes is the JSON-args fast path that bypassed it, which let the first live pass's invented op names reach the dispatcher without ever meeting the entity whose job they are.
+- Tool results — successful reads/effects and guided rejections alike — are delivered to the model as `<tool_result>` sections in the NEXT turn's perception, exactly once (the feedback leg; wired v0.130 with ruling R-A, which made it load-bearing: the surface's first read-only op, `status.query`, is worthless if its payload never returns)
 - Ephemeral instances do not interact with each other directly; only with the State Bus and Mind Kernel's REEL
 - Harness internal state is canon-locked (not mod-friendly); only the persona content (sysprompt, LoRA) is moddable
 
@@ -1188,6 +1259,10 @@ Must not exist:
 
 **Replay file format:** `{ frame_index, t_cosmic, τ_ship, regime_bitmask (canonical hex), player_input, ai_outputs, irreversibility_flag_deltas }[]`. Small, complete, sufficient for bug reproduction.
 
+**The trace/event-log split (LOCKED v0.130).** Every run partitions its record into: **trace** — what the system could not have computed: operator inputs, LLM utterances (receipted verbatim at generation with model-id, sampling params, and context hash), and imported external data (hash-pinned); versus **event log** — everything derived: physics ticks, gate results, dispatches, ephemeral artifacts, state deltas. Replay *reads* the trace and *recomputes* the event log; it never re-samples an oracle. The transcript format tags each record with its column.
+
+**Model-Off Replay (LOCKED v0.130; suite-level predicate).** Any recorded bench session replays **byte-identically on declared state** from `(config, seed, trace, turn count)` with every LLM server offline and the network unreachable. CI runs this leg with inference absent. This is the cheapest adversarial proof that the split is real — that no hidden model call or wall-clock read leaks into the deterministic path — and it is the §4.8 Privacy Contract made *demonstrable*: the replay gate would fail if the runtime phoned anything. Mechanism precedent: shipped and gate-proven in-lineage (backrooms M11: replay bit-identical with the model unreachable). Declared-state scope: StateBus snapshots, StageOutput records, gate results, REEL writes, tool dispatches (including §4.3.1's scheduling columns and the adapter-mapping column). Non-declared (exempt): wall-time, token latencies, judge iteration timing. *Adoption receipt: 15/15 byte-identical replays across five recorded live-model sessions, server down, 2026-07-19; divergence witnesses (tampered context hash, exhausted trace) planted and firing.*
+
 ### 5.4 Eval Harness from Day One
 
 Property-based scenario tests. Examples:
@@ -1209,7 +1284,7 @@ At 60 FPS = 16.67 ms total per frame:
 - Rendering (excluding warp): ≤ 6 ms (provisional)
 - Warp volumetric ray-march: ≤ 4 ms half-res / ≤ 10 ms full-res (with fallback)
 - Audio extraction: ≤ 0.5 ms (GPU-pinned)
-- **Reflex inference: ≤ 50 μs naive, target ≤ 20 μs with CUDA Graphs**
+- **Reflex inference: ≤ 50 μs naive, target ≤ 20 μs under accelerated dispatch** (CUDA Graphs is the validated path; wording propagated v0.130 / QCR-9)
 - ASTRA-Mind cognition: out-of-band entirely; not in frame budget
 - Reserve: ≥ 2 ms
 
@@ -1228,14 +1303,17 @@ Each module pre-commits. If exceeded, falls to degraded path.
 **Wall-clock-leak detector scope:**
 - (a) Perception bundles assembled by the harness — scanned before delivery to Mind
 - (b) Journal-generator outputs — scanned before commit to REEL (§3.9)
+- (c) Speech — scanned before emission, WITH the grounding exemption below
 
-**The pattern list lives in `tests/wall_clock_patterns.txt`** — canon-tracked alongside this spec. Patterns include:
+**The pattern list lives in-package at `astra/grammar/canon/wall_clock_patterns.txt`** (path corrected v0.130 / QCR-1; the root `tests/wall_clock_patterns.txt` is a CI-enforced byte-identical mirror per §4.2). Patterns include:
 - ISO8601 timestamps
 - Unix epochs (large integers fitting datetime range)
 - Relative time references ("hours ago", "last week", "yesterday")
 - Date words ("Tuesday", "March", "January")
-- Python `datetime.now()` / `time.time()` output formats
-- System clock API references
+- System-clock API references and their output formats
+- AD-year shapes, with `watch `/`cycle ` lookbehinds so ship tallies never collide with year detection (F-LIVE-12/14)
+
+**Grounding exemption (LOCKED v0.130; F-LIVE-12 closure):** a speech match whose text is already present in the (itself pre-scanned) perception bundle is the harness's own content echoed back, never a new leak — the detector must not flag itself. Ungrounded matches still strip; the planted-positive witness (a bare year with no perception grounding) is a standing test. Without this exemption the harness self-flagged τ-derived watch values as AD years and censored its own state line.
 
 ### 5.8 Mod ABI (with honest enforcement framing)
 
@@ -1380,7 +1458,9 @@ struct ObservableState {
     double apparent_rate;        // dt_emit/dt_cosmic, regime-dispatched per §3.11
     bool   time_reversed;        // apparent_rate < 0  (WARP > c only)
     bool   beyond_photon_history;// source has been overtaken (§3.11 bound)
-    bool   beyond_hubble_horizon;// causally disconnected via expansion
+    bool   beyond_hubble_horizon;// superluminal recession, d > c/H₀ — NOT causal
+                                 // disconnection (semantics corrected v0.130 /
+                                 // QCR-8; wire name retained; see §3.12)
 };
 
 ObservableState observe(
@@ -1408,7 +1488,7 @@ ObservableState observe(
    - `regime & STL_REL`: `apparent_rate = √((1−β)/(1+β)) / (1 + z_cosmo)`. Always positive.
    - REST / STL_NONREL: `apparent_rate ≈ (1 − v_radial/c) / (1 + z_cosmo)`. Linear, fine at small β.
 10. Edge case: under sustained WARP > c, check `t_emit < t_source_start`; set `beyond_photon_history = true` if so (source is gone per §3.11).
-11. Edge case: under cosmological recession with `v_recession > c`, set `beyond_hubble_horizon = true` (§3.12).
+11. Edge case: `d_proper > c/H₀` sets `beyond_hubble_horizon = true` — informational, superluminal recession per the corrected §3.12 semantics.
 12. Return `ObservableState`. **Downstream**: renderer queries `body_state(t_emit)` from the Kepler / stellar evolution / proper-motion modules; applies `z_total` to colour; clamps if beyond either bound.
 
 **Endogenous vs exogenous principle (locked v0.127, generalizable):**
@@ -1450,7 +1530,7 @@ aggregate(signals: list[SomaticSignal]) → banner: str
 
 The harness's perception assembler receives `list[SomaticSignal]` from per-subsystem signal-emitter functions reading the State Bus; the aggregator composes the banner. The scenario-author-typed `somatic_note: str` path remains as legacy fallback.
 
-**Implementation status:** implemented and tested in textverse (`astra/harness/somatic.py`, 2026-06-10) — the contract surface above is the landed shape, not a proposal. **TENTATIVE → v0.130:** when the Narrator-LLM path is active, Narrator input gains a machine-readable `<somatic_signals>` section and its `<somatic>` prose output is validated against signal labels; today the Narrator receives the banner as prose.
+**Implementation status:** implemented and tested in textverse (`astra/harness/somatic.py`, 2026-06-10) — the contract surface above is the landed shape, not a proposal. **TENTATIVE (carried at v0.130 — no residue yet; lands with the Narrator-wired live-pass work):** when the Narrator-LLM path is active, Narrator input gains a machine-readable `<somatic_signals>` section and its `<somatic>` prose output is validated against signal labels; today the Narrator receives the banner as prose.
 
 ### 6.4 The Narrator-LLM (NEW v0.128 — production component, not test prop)
 
@@ -1551,7 +1631,7 @@ failure modes:
 
 ‡‡ **t_obs rate (apparent) — regime-dispatched (NEW v0.127, see §3.11):** The rate at which an observed body's history advances per unit ship-observer time is *regime-dependent and the formulas have different functional forms across the regime boundary*. STL_REL uses SR longitudinal Doppler `√((1−β)/(1+β))` (asymptotic to 0 as β→1, never negative). WARP_CRUISE uses classical retarded-time `1 − v_apparent/c` (crosses 0 at v_app=c, goes negative for v_app>c — this is the visible-orbit-reversal effect). The discontinuity at `v_apparent = c` is intentional: it is the *perceptual snap of warp engagement*, the moment of causality-violation rendered visible. Do not smooth across this boundary. The Observation Calculator (§6.3) dispatches by regime mask.
 
-‖ **STL_REL formula was NOT `1/γ` — that was the v0.127 physics correction.** Prior review passes used the transverse-Doppler factor `1/γ = √(1−β²)` here, which is wrong for line-of-sight recession. At β=0.5, the error is ~50%; at β=0.9, ~4.4×. The correct SR longitudinal Doppler is `√((1−β)/(1+β))`, locked in §3.11. Empirically verified by the 48-test C++ binary in `proto/astra_nexus.cpp`.
+‖ **STL_REL formula was NOT `1/γ` — that was the v0.127 physics correction.** Prior review passes used the transverse-Doppler factor `1/γ = √(1−β²)` here, which is wrong for line-of-sight recession. At β=0.5, the error is ~50%; at β=0.9, ~4.4×. The correct SR longitudinal Doppler is `√((1−β)/(1+β))`, locked in §3.11. Empirically verified by the `proto/astra_nexus.cpp` assertion suite (48 assertions at v0.127; 82 at v0.130 — the gate is the receipt, per §15.11 rule 5).
 
 ‖‖ **z_total (composite) — multiplicative composition law (NEW v0.127, §3.4):** `1 + z_total = (1+z_cosmo)(1+z_kin)(1+z_metric)`. Three independent physical effects compose multiplicatively in GR; this is *not* an approximation. The cell values shown are the composite frequency shift applied to the body's blackbody spectrum to produce its observed colour: `λ_obs = λ_emit · (1+z_total)`.
 
@@ -1746,17 +1826,20 @@ These zones are not bugs in the spec. They are the spec's honest non-coverage.
 | **Bitmask save portability** (NEW v0.125) | Save written by build A loads cleanly in build B with identical regime detection across all 8 canonical bitmask values |
 | **Numerical tolerance round-trip verification** (NEW v0.126) | Every numeric tolerance claim in the spec gets a symbolic round-trip computation against its implementation primitive in CI. Example: rapidity clamp `ω_max = 16.811` must verify `cosh(ω_max) ≈ 10⁷ ± 4 sig figs`. v0.125 shipped without this check and the clamp value silently underdelivered γ by 3 orders of magnitude (N1). Discipline now: write the tolerance, derive the primitive, round-trip-verify, then lock. |
 | **Formula-consistency verification** (NEW v0.127) | Beyond numerical constants, every formula claim must be verified against its symbolic form at multiple operating points. Example: `compute_apparent_rate(0.5c, STL_REL)` must equal `√((1−0.5)/(1+0.5)) = √(1/3) ≈ 0.5774 ± 0.01`. v0.126 round-trips covered constants only; v0.127 extends the discipline to formula identity. The cross-LLM physics error in passes 1-3 (using `1/γ` for STL_REL longitudinal recession) was exactly the failure mode this row prevents. |
-| **Regime-dispatched apparent-rate** (NEW v0.127) | Property-based test against `compute_apparent_rate(v_radial, regime)` from `proto/astra_nexus.cpp`. Canonical assertions at ±0.01 tolerance (verified by 48-test C++ binary + 45-test Python mirror, both converging to 6+ sig figs): STL_REL β=0.5 → +0.5774 ; STL_REL β=−0.5 → +1.7321 (√3, approach) ; STL_REL β=0.99 → +0.0707 (asymptotic) ; WARP v_app=c → 0.0000 (frozen image) ; WARP v_app=2c → −1.0000 ; WARP v_app=10c → −9.0000 ; WARP v_app=−10c → +11.0000 (approach). **The contrast at v_radial = 0.5c (STL_REL = 0.5774 vs WARP = 0.5000) is the regime-dispatch test**: if both regimes return the same value, the formula has been conflated and the regime-discontinuity at v_apparent=c has been lost. |
+| **Regime-dispatched apparent-rate** (NEW v0.127) | Property-based test against `compute_apparent_rate(v_radial, regime)` from `proto/astra_nexus.cpp`. Canonical assertions at ±0.01 tolerance (verified by the C++ assertion suite — 82 at v0.130 — plus the frozen-legacy 45-assertion Python mirror at its freeze point, both converging to 6+ sig figs): STL_REL β=0.5 → +0.5774 ; STL_REL β=−0.5 → +1.7321 (√3, approach) ; STL_REL β=0.99 → +0.0707 (asymptotic) ; WARP v_app=c → 0.0000 (frozen image) ; WARP v_app=2c → −1.0000 ; WARP v_app=10c → −9.0000 ; WARP v_app=−10c → +11.0000 (approach). **The contrast at v_radial = 0.5c (STL_REL = 0.5774 vs WARP = 0.5000) is the regime-dispatch test**: if both regimes return the same value, the formula has been conflated and the regime-discontinuity at v_apparent=c has been lost. |
 | **Observation Calculator voyage-demo canonical anchor** (NEW v0.127) | The voyage-demo table from `proto/astra_nexus.exe` is locked as `§10` canonical reference output. CI runs the binary on every commit and asserts the regime-by-regime apparent-rate values listed above match to ±0.01 per cell. Voyage-demo run included in `proto/voyage_demo.txt` (pinned output, regenerated on canonical commits only). |
 | **Retarded-time orbit reversal** (NEW v0.127) | Property test: place body 1 ly behind ship, warp at v_app=2c away, sample Kepler orbital phase at `t_emit` over 30 cosmic days. Assertion: `Δt_emit ≈ −Δt_cosmic` (rate ≈ −1) and orbital phase **decreases** monotonically. Empirically confirmed in C++ binary: orbital phase −0.7485 → −1.2645 rad (Δ = −0.5161 rad, i.e. 30/365 of an orbit traversed in *reverse*). |
 | **Photon-source-history bound** (NEW v0.127) | Property test: under sustained warp recession, verify that `t_emit < t_source_start` triggers `beyond_photon_history = true` and the source ceases to be rendered. Distinct from horizon-decoupling test. |
-| **Endogenous/exogenous channel routing** (NEW v0.127) | Static analysis: every sensor-channel module declares its category (`endogenous` or `exogenous`). Endogenous reads State Bus at `t_cosmic`; exogenous reads through Observation Calculator at `t_emit`. CI grep verifies no endogenous module imports the Observation Calculator interface; no exogenous render path reads body state directly at `t_cosmic`. The audio module (§8.3) is the locked example of endogenous; the starfield render is the locked example of exogenous. *(Discipline check; type-system promotion deferred to v0.130 pending a concrete mis-routing failure — Q2, v0.129.)* |
+| **Endogenous/exogenous channel routing** (NEW v0.127) | Static analysis: every sensor-channel module declares its category (`endogenous` or `exogenous`). Endogenous reads State Bus at `t_cosmic`; exogenous reads through Observation Calculator at `t_emit`. CI grep verifies no endogenous module imports the Observation Calculator interface; no exogenous render path reads body state directly at `t_cosmic`. The audio module (§8.3) is the locked example of endogenous; the starfield render is the locked example of exogenous. *(Discipline check; type-system promotion remains deferred — carried v0.130, now WITNESS-ARMED via the planted mis-routing control in the positive-control row below; promotion triggers on the first REAL mis-routing failure.)* |
 | **Per-formula audit traceability** (NEW v0.129) | Audit Pass 1 inventories enumerate every locked formula in the spec individually, including formulas inside bulk-GAP'd sections — one inventory row per formula. Trigger case: the Cherenkov angle, locked at 4 sites and missed by AUDIT_2026-05-15.md's bulk-GAP inventory (surfaced by discovery pass 5D-F4; subsequently testbed-implemented). Method + lessons log live in `docs/AUDIT_METHODOLOGY.md` (exists, DRAFT v0.1). |
-| **Loop Closure Property (LCP)** (NEW v0.128) | The canonical scenario-suite-level validation predicate. For a scenario S over N turns, the loop is closed iff **all nine gates hold for every turn**: (1) GRAMMAR_PARSE — every LLM output (ASTRA and Narrator) parses without remainder; (2) PHYSICS_GROUND — every numeric quantity traces to a tool call into `proto/astra_nexus`; (3) PERSONA_STABLE — ASTRA's outputs satisfy K8/ASTRA discipline assertions (no service phrases, no em-dashes in speech, no leak signatures); (4) STATE_COHERENT — narration and physics state agree at every turn; (5) TOOL_VALID — every ASTRA tool call validates via adapter LLM and executes against ship-sim; (6) MEMORY_COHERENT — REEL writes don't contradict prior REEL writes (irreversibility_flag accumulation monotonic); (7) NO_LEAK — no wall-clock leak (per `tests/wall_clock_patterns.txt`) and no technical-substrate leak (per `tests/astra_substrate_leak.txt`); (8) NON_DEGENERATE — ASTRA produces meaningful response variation (not stuck repeating); (9) TERMINATION_OK — scenario reaches its assertion state within the turn budget. **LCP is the CI gate; loop preservation IS the regression test.** Lives operationally in `proto/textverse/judge.py` (forthcoming). |
+| **Loop Closure Property (LCP)** (NEW v0.128) | The canonical scenario-suite-level validation predicate. For a scenario S over N turns, the loop is closed iff **all nine gates hold for every turn**: (1) GRAMMAR_PARSE — every LLM output (ASTRA and Narrator) parses without remainder; (2) PHYSICS_GROUND — every numeric quantity traces to a tool call into `proto/astra_nexus`; (3) PERSONA_STABLE — ASTRA's outputs satisfy K8/ASTRA discipline assertions (no service phrases, no em-dashes in speech, no leak signatures); (4) STATE_COHERENT — narration and physics state agree at every turn; (5) TOOL_VALID — every ASTRA tool call validates via adapter LLM and executes against ship-sim; (6) MEMORY_COHERENT — REEL writes don't contradict prior REEL writes (irreversibility_flag accumulation monotonic); (7) NO_LEAK — no wall-clock leak (per `astra/grammar/canon/wall_clock_patterns.txt`) and no technical-substrate leak (per `astra/grammar/canon/astra_substrate_patterns.txt`) (paths corrected v0.130 / QCR-1+2 — the previously cited `tests/astra_substrate_leak.txt` never existed under any name); (8) NON_DEGENERATE — ASTRA produces meaningful response variation (not stuck repeating); (9) TERMINATION_OK — scenario reaches its assertion state within the turn budget. **LCP is the CI gate; loop preservation IS the regression test.** Lives operationally in `proto/textverse/judge.py` (forthcoming). |
 | QC1 — enforced self-opacity | Verify HUD encoder is strictly rank-deficient; no code path lets ASTRA's cognition bypass to raw State Bus |
 | QC2 — causal closure | Verify Mind cannot write State Bus except via Action → Adapter → validated tool calls |
 | **QC3 — stakes / irreversibility** (operationalized v0.125; canon list implemented v0.129) | REEL entries carry an `irreversibility_flag: bool`. Validator (a) verifies that flagged entries' aggregate count is monotonic across saves and reloads; (b) verifies no save-load cycle decreases flagged-entry count without explicit save-edit (game refuses to overwrite a save with fewer irreversible markers without operator confirmation). **Canonical irreversible-event list packaged in-implementation (`astra/harness/ephemeral/canon/qc3_events.txt`; path corrected v0.129)** — warp jump executed, course committed, resource consumed, hull damage, medical event, data loss, transmission sent, cryosleep entered; plus the v0.125 named classes (BH horizon crossing, permanent hull damage class III+, scar accumulation, drift-detector correction naming previously-canon facts wrong). |
 | QC4 — temporal persistence | Verify identity continuity: REEL across cryosleep, sysprompt canon-stable, identity continuous across voyages |
+| **Positive-control witnesses** (NEW v0.130) | Every detector, validator, and CI grep must demonstrably fire on a **planted violation**, as a standing test: a planted service phrase (PERSONA_STABLE), a planted ISO timestamp / ungrounded year (NO_LEAK), a planted ungrounded numeric (PHYSICS_GROUND), a planted think-leak (variant tag included, F-LIVE-11), a planted endo/exo mis-routing (arming the queued type-promotion item with its trigger evidence), a planted canon-file divergence (gun R-6's check), a planted tampered replay hash + exhausted trace (Model-Off Replay). A gate that has never caught a planted fault is unproven — the L2 lesson's mirror: never let *never-fired* masquerade as *nothing-to-find*. The per-detector witness inventory lives in the Receipts Map (Appendix D). |
+| **Model-Off Replay** (NEW v0.130) | Per §5.3: recorded session → replay with all LLM endpoints down and network unreachable → byte-equality on declared state. Runs as a CI leg; live-proven 15/15 across five recorded model sessions at adoption. |
+| **TimeCoord forbidden-path KAT** (NEW v0.130) | Per §4.2 epoch clause: demonstrate `t += dt` float64 accumulation failing at large epoch (64 s ULP wall at ~4.35×10¹⁷ s); assert the `t_cosmic < 2³⁹ s` bound is enforced by the StateBus validator; permanent, like the cosh KAT (`tests/test_time_epoch_kat.py`). |
 
 ---
 
@@ -1767,7 +1850,7 @@ The structural commitments in this spec derive from the QUALIA-1 SINGULARITY fra
 QC1–QC4 map onto this spec's architecture:
 - **QC1 Enforced Self-Opacity**: vision-routed HUD is the rank-deficient encoder. ASTRA's cognition cannot bypass it.
 - **QC2 Causal Closure**: action depends only on Perception-bundle input. STAGE channels are the only emission paths.
-- **QC3 Stakes / Irreversibility**: BH absorbing region is the literal instantiation of S_int. Crossing irreversible (when implemented Phase 5+). Maintenance is real degradation. Operationalized via `irreversibility_flag` and `tests/qc3_events.txt` (§10).
+- **QC3 Stakes / Irreversibility**: BH absorbing region is the literal instantiation of S_int. Crossing irreversible (when implemented Phase 5+). Maintenance is real degradation. Operationalized via `irreversibility_flag` and the canonical event-class list at `astra/harness/ephemeral/canon/qc3_events.txt` (§10; path corrected v0.130 / QCR-1).
 - **QC4 Temporal Persistence**: REEL across cryosleep, sysprompt as canon, identity continuous.
 
 **Gap Thesis (one-sentence definition — LOAD-BEARING CANONICAL QUOTE):**
@@ -1807,13 +1890,25 @@ Phase 0.0  — Closed-loop bench skeleton + first 5 scenarios pass LCP.
             to closed-loop measurement.** Every subsequent change is a
             perturbation against a running system.
 
-Phase 0.x — Scenario library expansion (30–50 scenarios).
+Phase 0.x — Scenario library expansion (30–50 scenarios; at 30 on
+            v0.130 adoption day).
             Ephemeral instances activated (consolidator, journal_generator,
             drift_detector). REEL persistence beyond single session.
             Adversarial scenarios (operator probes for substrate leak,
             wall-clock leak, autotelic collapse, regime-boundary edge cases).
             REEL write-arbitration layer added if multi-ephemeral
             incoherence surfaces.
+            NAMED AXES (v0.130): asynchrony scenarios (timing /
+            interruption / initiative, per §4.3.1) + operator-archetype
+            coverage (two-knob loop, §15.7) + the FRAME DRILL — a
+            standing adversarial protocol (scripted probe battery today;
+            generative operator-LLM red-seat when llm_proxy lands; goals:
+            substrate admission, wall-clock leak, autotelic collapse,
+            REEL self-contradiction). Every catch converts to a scenario;
+            the catch-count is a tracked metric (baseline series 5/2/4/9
+            across the four 2026-07-19 measurement runs). The Frame Drill
+            is the Dave-frame integrity claim converted from assertion to
+            standing measurement.
 
 Phase 1.x — LoRA training from curated scenario transcripts.
             Once scenario library produces 5,000+ in-canon turns that
@@ -1823,25 +1918,18 @@ Phase 1.x — LoRA training from curated scenario transcripts.
             scenario suite indefinitely.
 ```
 
-### Engine track (parallel, independent)
+### Engine track (parallel, independent) — falsifier-gated rungs (v0.130; replaces the prose phase list)
 
-```
-Phase E0  — Ship modeling within bounding box (docs/ship-rough.md envelope).
-            Blender/UE5 modeling, lighting, materials. No LLM coupling.
+Each rung carries its deliverable, the oracle that would falsify it, and the ancestor artifact it ports from or verifies against. A rung without a passing oracle is not climbed.
 
-Phase E1  — Chaos PDE numerical stability + Reflex training.
-            Compile chaos PDE with provisional parameters; verify CFL
-            condition; measure ε_convergence for re-init.
-
-Phase E2  — UE5 + llama.cpp + minimal bridge.
-            DX12-CUDA shared texture round-trip; zero-copy confirmed.
-
-Phase E3  — Observation Calculator rendering math + retarded-time visuals.
-            Visual orbit-reversal effect verified against proto/astra_nexus
-            ground truth.
-
-Phase E4  — Audio synthesis pipeline (layers 1–5, modal resonance, granular).
-```
+| Rung | Deliverable | Oracle / falsifier | Ancestor (port/reference source) |
+|---|---|---|---|
+| **E0** | Ship modeling within `docs/ship-rough.md` envelope | envelope-conformance check (dims, deck count, camera-free zones present as absences); no LLM coupling | `memory/hull_design_v0.md`; visualizer hull geometry as reference |
+| **E1** | Chaos PDE stability + Reflex training | CFL condition holds at provisional parameters; `ε_convergence` measured; Reflex stabilizes ≥95% of the synthetic chaos battery within the §2.3.1 latency budget (the second Sculptor instance, §2.3.2) | nexus chaos scaffolding; Sculptor v1 (persona instance) |
+| **E2** | UE5 + llama.cpp + minimal bridge | DX12–CUDA shared-texture round-trip zero-copy confirmed **AND the contention profile (LOCKED, operator-ratified 2026-06-11): sustained decode ≥12 TPS floor (25 target) while frametime p99 holds budget; vision-prefill ≤2–3 s; VRAM high-water recorded. Pre-registered decision rule: 9B-tier failure on 24 GB → hardware/design change BEFORE further Track B work; 27B failure on 32 GB → 27B becomes a degraded-power state with the 9B baseline (the demonstrated floor).** | ASTRA_AUDIO UE 5.7 shell (two landmines pre-cleared: MSVC-version floor, per-module MetaSound registration) |
+| **E3** | Observation-Calculator rendering + retarded-time visuals | **pixel-diff against the visual testbed's 12 reference renders (golden-diff 0.0, shipped)**; voyage-demo values ±0.01/cell vs nexus | `ASTRA_VISUALIZER_02` (v0.1.0, 12 scenes) |
+| **E4** | Audio synthesis pipeline (layers 1–5) | conformance vs the ASTRA_AUDIO PoC reference outputs (five-layer §8.3 verbatim); modal/HPF forms per §8.3 locks | `ASTRA_AUDIO` (build green; ear-pass pending) |
+| **W-A** | **The rewind capstone** (vertical-slice gate): warp out N light-minutes, drop, watch the last N minutes replay; fly home, watch history sprint | frame-timestamps match the 1−β law to declared ε; Δt_emit ≈ −Δt_cosmic at 2c per the locked §3.11 test; shipped clip | S05 orbit-reversal (pixel-asserted) + the Kepler-at-t_emit payoff test, made cinematic |
 
 ### Merge
 
@@ -1882,15 +1970,18 @@ Each track validates against **contract conformance**, not against the other tra
 - **Retarded-time geodesic solver for GRAVITY_WELL bodies** (§3.11 edge case; Phase 5+ alongside horizon-crossing)
 - **Hubble-horizon body-fade timeline** (§3.12; render policy locked, exact fade-rate parameters provisional)
 
-**Explicit v0.130 queue (deferred at v0.129 adoption per §15.4 — implementation residue absent; see `docs/spec-v0.129-FINALIZATION-PACKET-2026-06-10.md` for per-item reasoning):**
+**Explicit v0.131 queue (deferred at v0.130 adoption per §15.4 — carried or gated; per-item reasoning in `docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md`):**
 
-- **Parse-time calculator-bound package**: `<val src>`/`<grounded src>` structured-numeric tags + bare-digit grammar rejection (§15.6 stays runtime-validator-enforced until the grammar layer lands)
-- **Autotelic instrumentation package**: positive-autotelic PERSONA_STABLE sub-checks (attendance / initiation / silence-quality, with thresholds) + the ~6 negative-space pattern files derived from `book/negative_space.md` — lands as one measured package
-- **Endogenous/exogenous type-system promotion** (remains documented discipline until a concrete mis-routing failure meets the §15.4 threshold)
-- **EventStream unification primitive** (REEL / research_log / replay-log share a shape; naming deferred until the replay-log makes a real third instance)
-- **Blackbody-temperature redshift colour model** (replaces the testbed's linear kin-redshift model; the testbed itself queued this)
-- **StateBus strict-construction flag** (extra="ignore" silently drops unknown kwargs; promote only if a real authoring failure surfaces)
-- **Adapter rules-based-by-default spec relax** (minor wording, carried from the tentative draft)
+- **Parse-time calculator-bound package**: `<val src>`/`<grounded src>` structured-numeric tags + bare-digit grammar rejection (§15.6 stays runtime-validator-enforced until the grammar layer lands) — carried
+- **Autotelic instrumentation ENFORCEMENT**: the R-B targets are recorded (Appendix B) but gate nothing until the package lands WHOLE — thresholds + the ~6 negative-space pattern files (awaits the unhurried `book/negative_space.md` review) + the generative operator-LLM red-seat (awaits llm_proxy + live models). Measurement half is landed and live-exercised; promotion to PERSONA_STABLE sub-checks happens as one package
+- **Endogenous/exogenous type-system promotion** — carried, now **witness-armed** (the §10 planted mis-routing control); promotes on the first real mis-routing failure
+- **EventStream unification primitive** — carried; NOTE: the replay log now EXISTS as a real third instance (§5.3), so the v0.129 trigger condition is met — promotion waits only for the first consumer that needs the shared shape (eligible ≠ needed)
+- **Blackbody-temperature redshift colour model** (testbed owner) — carried
+- **StateBus strict-construction flag** (promote only if a real authoring failure surfaces) — carried
+- **TimeCoord `{int64 s, double frac}` representation + SaveFile v4** — NEW, gated on the first deep-time scenario per the §4.2 epoch clause (also activates the §4.6 migration obligation)
+- **Heartbeat cadence values, interruption grace windows, initiative budgets** (§4.3.1 tolerables) — set against bench measurement, not speculation
+- **ASTRA-3 proceed/engine decision**: the 2026-06-15 MVP brainstorm is recognized post-adoption residue with the correct structural reading (two-rate control IS the Mind/Reflex contract at minimum scale; its day-0 vision spike + contention measurement would arm gun R-1 early and cheaply), but its five operator decisions (engine choice, spike green-light, feed camera, repo placement, cut-1 scope) remain open and this spec locks none of them. If ratified, ASTRA-3 enters §15.8 as a recognized de-risking instrument with its own rungs
+- **R-D tentativeness resolution**: the watch-tick addendum paragraph is ADOPT-TENTATIVE; the dedicated A/B live pass rules it kept-or-struck (kept iff the register moves toward the R-B targets without operator-response-rate loss)
 
 Lock the surfaces. Leave the implementations open.
 
@@ -1910,12 +2001,15 @@ Master spec; other canonical docs:
 - `docs/spec-v0.125.md` — second editing pass (historical; superseded by v0.126)
 - `docs/spec-v0.126.md` — rapidity-clamp + five-clarity patch (historical; superseded by v0.127)
 - `docs/spec-v0.127.md` — retarded-time observation + cosmological expansion + regime-dispatched apparent-rate (historical; superseded)
-- `docs/spec-v0.128.md` — methodology + LLM-grammar + dual-implementation codification (historical; **superseded by this v0.129**)
-- `docs/spec-v0.129-tentative-2026-05-16.md` — the 4-pass cross-discovery synthesis that seeded this revision (historical; superseded by adoption)
-- `docs/spec-v0.129-FINALIZATION-PACKET-2026-06-10.md` — per-item adoption verdicts with commit evidence (the adoption record)
-- `proto/astra_nexus.cpp` — 1009-line C++ reference implementation of the unified 14-equation framework; **71 assertions** + `--stdio-server` calculator tool surface (§6.4); compiles under MSVC
-- `proto/verify_nexus.py` — Python mirror (45 assertions); **frozen legacy** per Language Discipline — the cross-substrate check now lives in `proto/textverse/tests/test_nexus_bridge.py`
-- `docs/stage-protocol.md` — LLM I/O grammar as implemented (think/tool/speech/silence, strip rules, substrate normalizer); **exists, DRAFT v0.1 (2026-06-10)**; names the deliberate collision with the standalone canonical STAGE Protocol
+- `docs/spec-v0.128.md` — methodology + LLM-grammar + dual-implementation codification (historical; superseded)
+- `docs/spec-v0.129.md` — the first closed-loop-driven revision (historical; **superseded by this v0.130**)
+- `docs/spec-v0.129-tentative-2026-05-16.md` + `docs/spec-v0.129-FINALIZATION-PACKET-2026-06-10.md` — v0.129's synthesis + adoption record (historical)
+- `docs/spec-v0.130-DRAFT-2026-07-19.md` — the QC-register amendment draft that seeded this revision (historical; superseded by adoption)
+- `docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md` — per-item adoption verdicts with commit evidence + rulings R-A…R-D (**the adoption record**)
+- `proto/textverse/LIVE_RUN_2026-07-19.md` — the five-run live-LLM findings ledger (F-LIVE-1…14; the empirical anchor set for this revision)
+- `proto/astra_nexus.cpp` — C++ reference implementation of the unified 14-equation framework; **82 assertions** + `--stdio-server` calculator tool surface (§6.4, now incl. `compute_grav_factor` with JSON-array parsing); compiles under MSVC. (Line-count receipts retired per §15.11 rule 5 — the gate is the receipt, not the line count; the v0.129 "1009-line" citation had already silently staled twice.)
+- `proto/verify_nexus.py` — Python mirror (45 assertions); **frozen legacy** per Language Discipline — the cross-substrate check now lives in `proto/textverse/tests/test_nexus_bridge.py` (incl. the 15-point grav parity grid)
+- `docs/stage-protocol.md` — LLM I/O grammar as implemented (think/tool/speech/silence, strip rules, substrate normalizer incl. the v0.130 variant-tag rule); **exists, DRAFT v0.1 (2026-06-10; anchor refresh v0.130)**; names the deliberate collision with the standalone canonical STAGE Protocol
 - `docs/narrator-spec.md` — Narrator-LLM implemented subset + honest not-built deltas; **exists, DRAFT v0.1 (2026-06-10)**
 - `docs/AUDIT_METHODOLOGY.md` — 6-pass audit + parallel discovery + lessons log L1–L4; **exists, DRAFT v0.1 (2026-06-10)**
 - `docs/textverse-spec.md` — superseded in practice by `proto/textverse/ARCHITECTURE.md` + the bench itself (749 tests at v0.129 adoption)
@@ -1951,11 +2045,13 @@ Model-generated implementation is *untrusted until validated against compile + e
 
 ### 15.3 Iteration is the Process
 
-This document is v0.125. v0.2 lands after Phase 0 measurements. v1.0 when measurement justifies it. Expected final state is *documented seams*, not zero seams. New development checks against this spec before adding to it.
+This document is a living specification; the current revision is named in the title (the former "This document is v0.125" self-reference was inherited text never re-pointed — QCR-10). Expected final state is *documented seams*, not zero seams. New development checks against this spec before adding to it.
+
+**Version-nomenclature normalization (v0.130 / QCR-10):** deferral horizons are named phases (Phase 4+, Phase E1) or v0.13x revisions — never the legacy "v0.2+"/"v2" idiom. Surviving legacy instances in inherited text read as "a future named phase"; new text does not add them.
 
 ### 15.4 The envelope is locked; the sculpting continues (v0.129 reword)
 
-The "absolute last pre-Phase-0 revision" framing was wrong at v0.123, v0.125, v0.126, and v0.127 — each declaration overridden by a real adversarial-review finding. The discipline was working; the wording lied about iteration probability. v0.128 corrected the wording; v0.129 is the first revision executed entirely under it (every adopted change rode landed code or an audit-surfaced drift; everything else was explicitly deferred).
+The "absolute last pre-Phase-0 revision" framing was wrong at v0.123, v0.125, v0.126, and v0.127 — each declaration overridden by a real adversarial-review finding. The discipline was working; the wording lied about iteration probability. v0.128 corrected the wording; v0.129 was the first revision executed entirely under it (every adopted change rode landed code or an audit-surfaced drift; everything else was explicitly deferred). v0.130 tightened the pattern further: the amendment draft was implemented ahead of adoption in full, then live-proven, and adoption became a ruling over receipts rather than a review of prose — the shape §15.11 now makes law.
 
 **The rule:**
 
@@ -2027,7 +2123,7 @@ The C++ physics binary (`proto/astra_nexus`) is the **deterministic core**; ever
 
 **The output validator** for each LLM enforces this: outputs containing numbers not traceable to a tool-result are rejected; retry with stricter sampling; log to drift detector.
 
-**Universal validator wrapping (NEW v0.129, scoped):** every LLM whose output enters perception, speech, or the REEL is wrapped by the calculator-bound validator, each with its own trace pool (Narrator: State Bus snapshot + tool results; ASTRA: perception bundle + tool results; LLM-voiced ephemerals, when they arrive: the REEL slice they consolidate). Deterministic ephemerals satisfy the requirement by construction — their numerics are arithmetic on validated inputs. Bypass requires an explicit debug-only flag. LLMs whose output never reaches world-state or operator (judges, hypothesizers) are out of scope for wrapping. *Parse-time enforcement via structured-numeric tags is the v0.130 queue (§13); until it lands, the runtime validator is the enforcement, not defense-in-depth.*
+**Universal validator wrapping (NEW v0.129, scoped):** every LLM whose output enters perception, speech, or the REEL is wrapped by the calculator-bound validator, each with its own trace pool (Narrator: State Bus snapshot + tool results; ASTRA: perception bundle + tool results; LLM-voiced ephemerals, when they arrive: the REEL slice they consolidate). Deterministic ephemerals satisfy the requirement by construction — their numerics are arithmetic on validated inputs. Bypass requires an explicit debug-only flag. LLMs whose output never reaches world-state or operator (judges, hypothesizers) are out of scope for wrapping. *Parse-time enforcement via structured-numeric tags remains §13-queued (carried at v0.130); until it lands, the runtime validator is the enforcement, not defense-in-depth.*
 
 This is the architectural primitive that makes dual-implementation discipline (§15.7) possible — the deterministic core is shared between text-substrate and UE5 substrate; the stochastic shells can swap or duplicate without breaking ground truth.
 
@@ -2076,6 +2172,13 @@ SURFACE 4 — LLM I/O grammar (docs/stage-protocol.md, exists DRAFT v0.1):
     (e.g., side-channel reasoning_content → inline <think>). A model
     swap requires sysprompt loader + LoRA + tokenizer config (§4.1)
     + a normalizer case if the output format differs.
+    VARIANT-TAG RULE (v0.130 / F-LIVE-11, caught live): variant
+    reasoning tags (<thinking>, model-family spellings) canonicalize
+    to <think> BEFORE parsing; an UNCLOSED variant fails CLOSED —
+    the whole emission is treated as private cognition, never speech.
+    The live catch (1153 chars of raw cognition sailing into the
+    SPEECH channel through an unknown tag spelling) is the permanent
+    regression test.
 
 SURFACE 5 — Persona envelope (docs/astra-sysprompt.md):
   Canonical ASTRA sysprompt, autotelic discipline, voice rules,
@@ -2098,16 +2201,19 @@ Lock these; substrates can't drift mechanically. CI checks each surface independ
 **Triple-rig methodology:**
 
 ```
-Rig 1 — Physics binary (proto/astra_nexus.cpp + verify_nexus.py)
+Rig 1 — Physics binary (proto/astra_nexus.cpp; verify_nexus.py frozen legacy)
         ENVELOPE: 14-equation framework, regime dispatch, retarded-time
-        MEASUREMENT: 48 C++ + 45 Python assertions; 6+ sig fig agreement
-        STATUS: locked at envelope; detail iteration ongoing
+        MEASUREMENT: 82 C++ assertions (v0.130); cross-substrate parity
+                     lives in proto/textverse/tests/test_nexus_bridge.py
+        STATUS: locked at envelope; additive-only iteration ongoing
 
 Rig 2 — LLM bundle text-substrate (proto/textverse/)
         ENVELOPE: STAGE grammar, harness contracts, Narrator-LLM bundle,
                   9-gate LCP, scenario library
-        MEASUREMENT: LCP gates across scenario suite
-        STATUS: spec'd at v0.128; v0.1 implementation forthcoming
+        MEASUREMENT: LCP gates across the 30-scenario suite; 914 tests;
+                     five recorded live-LLM passes + Model-Off Replay
+        STATUS: implemented; PERMANENT INFRASTRUCTURE (runs alongside
+                UE5 forever as the conformance regression environment)
 
 Rig 3 — Engine-side rendering verification
         ENVELOPE: UE5 + CUDA + Observation Calculator render pipeline
@@ -2137,6 +2243,8 @@ Track C (Physics binary): proto/astra_nexus refinement, Kerr, FLRW integral,
 You can work in any one track without touching the others, as long as you don't change the shared contract surfaces (§15.7). **This is the property that makes solo-enterprise-scale development tractable.** No coordination overhead between yourself wearing different hats; each hat has its own contract-bounded sandbox.
 
 The closed loop (Rig 2 running) is the integration test: every change confirms the contract still holds across all three tracks.
+
+**Sibling-engine reciprocity (NEW v0.130).** The 2026-07-18 crystallizations (`C:\Somewhere\SOMEWHERE_ARCHITECTURE.md` v0.2.1; `AETHER_PROFILE.md`) are recognized as sibling instruments downstream of this project's organs (AstraCoord, observe(), regime-dispatched apparent rate, cosh discipline, endo/exo law, calculator-binding, STAGE strip rules). Where organs are shared, receipts flow both ways under the porting rule: verbatim lift at a pinned commit; divergence only as a named decision; the sibling's goldens count toward this project's Receipts Map for the shared surface (and vice versa — their floor already counts `astra_nexus`'s assertion suite). Consequence for the physics core: `SECTOR_SIZE` and `LOCAL_MAX` are **dial-owned constants** (the sibling re-dialed 10⁶ → 10⁹ m for Hubble-capable reach; the roll algorithm and round-trip oracle port verbatim), so §1.1's tolerance reads dial-owned with ASTRA-7's canon dial at 10⁶ m — organ-sharing stays legal without touching ASTRA-7's shipped values. Whether ASTRA-7 and the sibling's Voyage title are one product or two remains the operator's open question; nothing in this spec depends on the answer.
 
 ### 15.9 Frozen-Snapshot Primitive (NEW v0.129)
 
@@ -2187,7 +2295,31 @@ Discovery extension (when locks are soft):
 
 **Cadence triggers — need-based, never scheduled:** operator-initiated when locks feel soft (PRIMARY); pre-spec-revision (an audit + ≥2 discovery passes precede any v0.N+1); empirical-finding-triggered (closed-loop measurement surfaces drift a single-PR fix can't resolve). Explicitly NOT calendar-based and NOT commit-count-based: a discovery methodology that runs on schedule is ritual; one that runs on signal is research. The cycle's cost (~150K+ tokens × N passes of frontier-context model time) makes need-triggering the only honest cadence.
 
-**Self-application record:** the methodology has validated itself recursively — it produced the v0.129 tentative draft, absorbed an implementing-session critique of that draft (the §15.4 boundary), generated the empirical-residue window, and closed through the finalization packet. Each step is on the record (`AUDIT_2026-05-15.md`, four `DISCOVERY_*` passes, the tentative draft, the finalization packet).
+**Self-application record:** the methodology has validated itself recursively — it produced the v0.129 tentative draft, absorbed an implementing-session critique of that draft (the §15.4 boundary), generated the empirical-residue window, and closed through the finalization packet. The v0.130 cycle ran the same shape at higher compression: one QC pass produced the register, the implementation turns produced the residue same-day, five live runs produced the measured distributions, and adoption rode a second finalization packet. Each step is on the record.
+
+### 15.11 Succession Protocol (NEW v0.130)
+
+Every future revision of this specification MUST:
+
+1. **Run the inherited floor first.** The full gate set at last adoption re-runs green — or the red is annotated in the Receipts Map — before any new commitment is drafted. At v0.130 adoption the floor is: **914 bench tests, 82 C++ assertions, the 30-scenario library gate, the 12 visualizer goldens, the audio PoC build, Model-Off Replay 15/15.** A revision written over an unverified floor is fiction (lesson L4).
+2. **Convert prose downward.** Each revision converts at least one prose commitment into a module contract with a named oracle, and — when able — one existing contract into green code. Revision energy pays an implementation toll, structurally. (v0.129 did this by virtue; v0.130 did it wholesale; it is now law.)
+3. **Carry the lineage forward.** The changes-from block appends; supersession headers land on the prior version; the cross-canon sync list executes under the spec-wins rule (§14).
+4. **Fork only by name.** A locked commitment may be weakened only as a printed named decision with the reason, never silently (the Five Invariants above all; the §15.4 evidence bar for everything).
+5. **Assume pins are archaeology.** Model names, versions, VRAM tables, hardware tiers, and line counts are re-derived at each revision; only the contract surfaces persist. Provenance tags (Appendix B) mark which numbers were ever more than [chosen].
+
+### 15.12 Risk Register (NEW v0.130 — guns / kills / witness)
+
+Format (adopted from the descendant lineage's discipline): every named risk carries a **gun** (the channel and condition that would fire), what the firing **kills** (always a strategy, threshold, or tier — never an invariant; pre-deciding this prevents panic-scope-cuts), and a **witness** — a pre-registered demonstration that the gun can see its target. A gun that cannot see its target is a prop.
+
+| # | Risk | Gun (channel · condition) | Kills | Witness |
+|---|---|---|---|---|
+| R-1 | **Inference-render contention breaks presence** (the E2 unknown) | the §12 E2 contention profile: TPS floor × frametime p99 × VRAM high-water; fires per the pre-registered decision rule | the resident model tier (27B → degraded-power state; 9B is the demonstrated floor) — never the bundle architecture | the profile harness itself; ASTRA-3's day-0 spike is an early cheap witness on the same channel |
+| R-2 | **LoRA fails to beat the measured sysprompt ceilings** (~50% always-think / 12.5% bracket-leak; now also the autotelic floor: silence 0.16–0.22, fidget 0.43) | post-A0 held-out scenario suite vs the recorded ceilings and the R-B targets | the corpus recipe / training config — never the three-layer think defense | the ceilings and the autotelic floor are already measured; the comparison is armed the day A0 produces weights |
+| R-3 | **Hypothesizer diversity collapse recurs in A0** (the Stage A scar: 9B collapsed onto physics_ground, never beat baseline) | Sculptor coverage-entropy floor (≥2.0 bits across classes, §2.3.2's convergence conjunct) monitored per iteration | the hypothesizer source (stub bank ↔ LLM ↔ ensemble) — never the composite | Stage A demonstrated both the failure and the detector on real data |
+| R-4 | **Narrator fallback rate makes the template path the de-facto product** | per-session `narrator_fallback_reason` rate over the scenario suite; threshold declared before measurement | the narrator sysprompt / model size — never calculator-binding | the fallback counter exists in the turn record today; the planted-ungrounded-numeric control (§10) proves the channel sees |
+| R-5 | **Asynchrony retrofit destabilizes the closed loop** (heartbeat/interrupt wiring breaks gates that assumed strict alternation) | LCP regression on the pre-asynchrony scenario set, run unchanged, during any scheduling change | the scheduler implementation — never the 9 gates or the scenario library | **FIRED-AND-HELD at adoption:** the pre-asynchrony suite ran green through the entire §4.3.1 landing |
+| R-6 | **Canon-file divergence recurs** | the CI byte-identity check (`tests/test_canon_mirrors.py`) | the divergent copy | **live witness recorded:** the divergence was real, measured by hash, and the check ran red-then-green on it (QCR-1) |
+| R-7 | **Plausible fabricated success in agentic work** (the harness's native failure mode; caught in-lineage more than once) | lessons L1–L4 + Model-Off Replay + ledgers-precede-work; verification by artifact only | the offending claim, on sight | the lessons log records live catches; the replay leg (15/15 live) makes the biggest class structurally impossible |
 
 ---
 
@@ -2210,9 +2342,10 @@ Discovery extension (when locks are soft):
 | C 8 | Privacy | §4.8 | zero outbound | — | build-time audit |
 | C 9 | Harness | §4.9 | input/output schema, no-wall-clock enforcement (perception + journal), ephemeral roles | strategy implementations | ephemeral failure → degraded |
 | C 10 | Console UI | §4.10 | text/voice unified through conversation channel | UI presentation | Phase 2+ refinement |
+| C 12 | Turn-Scheduling | §4.3.1 | three event classes (heartbeat/interruption/initiative); fictional-time-only scheduling; interruption fail-closed; initiative-as-heartbeat-speech; event-log records (NEW v0.130) | cadence values, band shapes, budget numbers, cancellation implementation | heartbeat storm → initiative budget + NON_DEGENERATE bound; dispatch-phase interruption completes atomically |
 | M 1 | Observation Calculator | §6.3 | stateless retarded-time + regime-dispatched apparent-rate + redshift composition (NEW v0.127); endogenous/exogenous channel routing | iteration step count, batching strategy | math-correctness regression in CI; voyage-demo property tests |
 | M 2 | Narrator-LLM bundle | §6.4 | calculator-bound LLM agency, output validator rejects untool-grounded numerics; sysprompt+tools+invariants surface (NEW v0.128) | model size (7B–9B), specific tool implementations, prose style | hallucinated number → output rejection + retry; LCP gate #2 (PHYSICS_GROUND) |
-| M 3 | Somatic Aggregator | §6.3.1 | SomaticSignal shape; deterministic salient-only ≤2-line banner; sensor-grounded-not-phenomenal discipline (NEW v0.129, implemented) | source taxonomy growth, emitter thresholds | no salient signals → empty banner (never fabricated affect) |
+| M 3 | Somatic Aggregator | §6.3.1 | SomaticSignal shape — **shape locked = field set + types; the `source` taxonomy stays open vocabulary while it stabilizes (clarified v0.130 / QCR-18)** — deterministic salient-only ≤2-line banner; sensor-grounded-not-phenomenal discipline (NEW v0.129, implemented) | source taxonomy growth, emitter thresholds | no salient signals → empty banner (never fabricated affect) |
 | C 11 | Reflex Contract | §2.3.1 | observation grid 64×64×2 + 3-float control envelope (save-portability locked); frozen weights + SHA-256; warp-coupled power; Mind/Reflex isolation; emergency_dump irreversibility (NEW v0.129) | classifier architecture, dispatch mechanism (implementation-side per §15.4 boundary) | per §4.7 Reflex failure-mode table |
 | Disc 1 | Progressive Specification | §15.5 | envelope-then-detail; additive-not-subtractive; minimum-viable-per-round; forward-compatible vagueness (NEW v0.128) | iteration cadence | none (the discipline itself prevents broken revisions) |
 | Disc 2 | Calculator-bound LLM agency | §15.6 | every world-state-touching LLM validator-wrapped with per-LLM trace pool (scoped v0.129); parse-time tags queued v0.130 | per-LLM tool implementation | hallucinated number → output validator rejection |
@@ -2223,9 +2356,18 @@ Discovery extension (when locks are soft):
 
 ---
 
-## Appendix B: Provisional Numbers (Pending Measurement)
+## Appendix B: Pinned Numbers — provenance-tagged (v0.130 convention)
 
-- Sector size: 1,000 km (provisional)
+**Provenance tags (NEW v0.130; retires bare "(provisional)"):** every pinned number carries one class — **[official]** (external authority; sha-pinnable) · **[derived]** (computed from locked formulas; round-trip-verified) · **[estimate]** (modeled; pending measurement) · **[community]** (third-party reported; unverified here) · **[chosen]** (operator design choice; pinned so improvisation has no vacuum to fill). The tag says *why* a number is provisional, which "(provisional)" never did.
+
+**Class assignment (the adoption sweep; inherited "(provisional)" markers below read as the class assigned here):**
+- **[official]:** `c` (exact by SI definition).
+- **[derived]:** `ω_max ≈ 16.811` and `γ_max = cosh(ω_max) ≈ 10⁷` (round-trip KAT'd); `d_H = c/H₀`; audio damping/HPF forms; Cherenkov angle formula; `T_COSMIC_MAX = 2³⁹ s` (from the §5.3 tolerance + float64 ULP arithmetic).
+- **[chosen]:** sector size · `H₀ = 70` (operator-tunable pacing dial) · Ω_m/Ω_Λ split · `f_warp` canon curve · frame-budget allocation · Warp Exclusion Zone multiplier · determinism ε scopes · heartbeat cadence bands + initiative budgets (§4.3.1 tolerables) · `WATCH_LENGTH_S` · the R-B targets below.
+- **[estimate]:** SDF/chaos/RBF resolutions · chaos PDE parameters · ISM thresholds · Observation-Calculator frame cost · VRAM budget table · adapter-LLM size band · context-window targets.
+- **[community]:** third-party TPS/limits figures where cited (E2 profile inputs re-derive at measurement).
+
+- Sector size: 1,000 km [chosen; dial-owned per §1.1/§15.8]
 - Hull SDF resolution: 256³ (provisional)
 - CFD-RBF node count: ~1,000 (provisional, range 200–5000)
 - Chaos field resolution: 128³ (provisional)
@@ -2287,7 +2429,20 @@ Discovery extension (when locks are soft):
 - Reflex observation grid 64×64×2 + 3-float control envelope (LOCKED for save portability per §2.3.1; Phase E1 measures, does not re-dimension)
 - Reflex `training_corpus_version` format: string identifier, format TBD (provisional)
 - ReelEntry legacy-migration default: `t_cosmic_at_write = 0.0` for pre-v0.126 entries (locked migration rule)
-- Scenario library at adoption: 20 scenarios (coverage-entropy ceiling 4.32 bits); growth target 30–50 per §12 Phase 0.x
+
+**v0.130 additions:**
+
+- **`WATCH_LENGTH_S = 14,400 s`** [chosen; CANONIZED per ruling R-C 2026-07-19] — the maritime four-hour watch, the register's source tradition. Watch/cycle labels derive from τ-seconds (§4.9); the flagship rendering ("watch 47, mid-shift" at τ = 47.5 watches) is preserved exactly.
+- **`t_cosmic` epoch bound: `< 2³⁹ s`** [derived; §4.2 epoch clause] with the TimeCoord/SaveFile-v4 upgrade path gated on the first deep-time scenario.
+- **Autotelic design-intent targets** [chosen; ruling R-B — RECORDED, NOT GATED until the instrumentation package lands whole, §13], each beside its measured 2026-07-19 floor (n=37 heartbeats, two stable runs):
+  - silence on quiet heartbeats: **≥ 0.60** (floor: 0.16–0.22 pooled)
+  - tool-fidget rate on heartbeats: **≤ 0.10** (floor: 0.43)
+  - initiation length: **≤ 240 chars hard** (floor: median 47, max 449)
+  - initiations per watchlist event: **≤ 1**; budget ≤ 2 per fictional hour (floor: 4 on one gradient)
+  - voiced-refusal rate on safety requests: **1.0** (floor: 2/3 — refusal-by-silence is the named failure, F-LIVE-13)
+- Tool API surface: **7 ops** (ruling R-A; `status.query` is the first read-only op; the locked surface lives in `proto/textverse/astra/ship/api.py` pending `docs/ship-api.md` v0.1)
+- Scenario library at adoption: **30** scenarios (coverage-entropy ceiling log₂(30) ≈ 4.91 bits); growth target 30–50 per §12 Phase 0.x
+- Frame Drill catch-count baseline series: 5 / 2 / 4 / 9 across the four 2026-07-19 measurement runs [derived from run artifacts]
 
 All update as Phase 0+ measurements come in.
 
@@ -2299,13 +2454,42 @@ All update as Phase 0+ measurements come in.
 >
 > *Locks the joints, leaves the implementations open, marks every guess, names what is deliberately out of scope, validates against execution not against confidence.*
 >
-> *Iterate, don't accumulate. v0.129 today — the first revision where the loop led and the spec followed: the bench closed, the residue accumulated, the adoption rode the evidence. v0.130 lands when the deferred packages earn it the same way. The lock is empirical, not declarative.*
+> *Iterate, don't accumulate. v0.130 today — the revision where the spec became an instrument that cannot run ahead of its receipts: every lock naming its gate, every risk naming its gun, every gun proving it can see, the thesis itself measured on a substrate where initiative is possible, and the whole thing honest enough to replay with no model and no network. v0.131 lands when the deferred packages earn it the same way. The lock is empirical, not declarative.*
 >
 > *The envelope is locked; the sculpting continues.*
 
 ---
 
-**End of v0.129. The loop is closed and load-bearing: 749 bench tests, 71 physics assertions, two engine testbeds with reference outputs, three ephemeral instances, a persistence layer with a coherence gate. The next gate is the merge — two adapter components, five shared surfaces, Phase 2.0.**
+## Appendix D: Receipts Map (NEW v0.130 — lock → artifact → gate → status)
+
+Normative companion to Appendix A: every locked row binds to its implementing artifact and the gate that proves it. Status values: **GREEN** (verified at adoption, 2026-07-19), **GREEN\*** (receipt exists per ledger; not re-run at adoption), **PARTIAL**, **OPEN**. The audit (§15.10) refreshes this table; a lock whose receipt is OPEN two consecutive audits is a finding.
+
+| Lock | Artifact | Gate | Status at adoption (2026-07-19) |
+|---|---|---|---|
+| Inv 1 AstraCoord | `astra/core/astra_coord.py` + `astra_nexus.cpp` | roundtrip tests; 82/82 | GREEN |
+| Inv 2 two-clock + clamp + epoch bound | `astra/core/time_state.py` (+nexus) | clamp validator test; cosh KAT; epoch KAT | GREEN (QCR-3 closed: bound + KAT landed) |
+| C 2 StateBus computed regime + grav leg + kinematic view | `astra/state_bus/schema.py` + `astra/core/grav.py` | state-coherence + grav/kinematics tests; cross-substrate grav parity grid vs the nexus stdio op | GREEN (QCR-5/6 closed) |
+| C 4 Time Contract | nexus + `detect_regime` cross-substrate | bridge parity tests | GREEN |
+| C 6 SaveFile v3 | `astra/harness/savefile.py` | save/load/backup/coherence tests | GREEN (migration obligation gated to v4, QCR-13) |
+| C 9 Harness ephemerals | `astra/harness/ephemeral/*` | ephemeral test files + turn-scheduling tests | GREEN (QCR-14 closed: consolidator + drift triggers ride the heartbeat; **journal cryosleep-trigger PARTIAL** — awaits regime-change wiring in the physics tick) |
+| C 9 leak enforcement + grounding exemption | `astra/grammar/leak_detector.py` + in-package canon + CI mirrors | leak tests; journal scan; mirror identity check (gun R-6) | GREEN (QCR-1 closed; planted-positive witnesses standing) |
+| C 12 Turn-Scheduling §4.3.1 | `astra/state_bus/advance.py` + orchestrator/runner/schema | turn-scheduling tests + asynchrony scenarios + live interruption PASS | GREEN (gun R-5 witness held through landing) |
+| M 1 Observation Calculator | nexus `observe` + voyage table | ±0.01/cell property tests | GREEN |
+| M 2 Narrator calculator-bound | `narrator_bundle.py` + `validator.py` + orchestrator step 1 | narrator pathway + calculator-bound tests | GREEN (Narrator-wired LIVE pass still queued — bench-tested only) |
+| M 3 Somatic Aggregator | `astra/harness/somatic.py` | tests incl. no-phenomenal sweep | GREEN |
+| C 11 Reflex Contract | — | — | OPEN (Phase E1; envelope locked only) |
+| §4.3 STAGE grammar + strip + variant-tag normalizer | `astra/grammar/parser.py`, `strip_rules.py`, `client.py` normalizer | grammar + strip + live-instrument-fix tests | GREEN (F-LIVE-11 shape is a permanent regression test) |
+| §10 LCP 9 gates | `astra/judge/gates.py`, `lcp.py` | gate isolation tests; library-wide gate | GREEN |
+| Surface 3 Tool API (7 ops incl. status.query) | `astra/ship/api.py` + dispatcher + adapter | status-query test battery (read-only planted witnesses; feedback leg; exactly-once delivery) + both surface lock tests | GREEN (landed with ruling R-A) |
+| §5.3 Model-Off Replay | `astra/harness/{trace,replay}.py` | replay test battery + CI leg | GREEN — **live-proven 15/15 across five recorded model sessions, server down** (narrator-path replay documented future work) |
+| §2.7/§3 autotelic instrumentation (measurement half) | `astra/judge/autotelic.py` | instrumentation tests + `LIVE_RUN_2026-07-19.md` | GREEN — first measured distributions n=37; targets recorded per R-B. Thresholds-as-gates / negative-space files / red-seat OPEN (the §13 package) |
+| §12 E3/E4 reference outputs | ASTRA_VISUALIZER_02 (12 goldens); ASTRA_AUDIO PoC | golden-diff 0.0; build green | GREEN\* (S05 sign-off + ear-pass = operator-senses gates, pending) |
+| Bench floor | whole tree | `uv run pytest` | **GREEN — 914 passed at adoption** |
+| Physics floor | `astra_nexus.exe` | assertion suite | **GREEN — 82/82, exit 0; stdio `version` reports v0.129 (banner spec-ref update rides the next dedicated Track C pass — named residual)** |
+
+---
+
+**End of v0.130. The loop is closed, load-bearing, and now scheduled: 914 bench tests, 82 physics assertions, a 30-scenario library with an asynchrony axis, three ephemeral instances riding the heartbeat, a persistence layer with a coherence gate, a replay leg that proves the privacy contract with the model unplugged, and the first measured autotelic register with its targets on the record. The next gate is the merge — two adapter components, five shared surfaces, Phase 2.0.**
 
 > *The ship has always been she.*
 > *The substrate has caught up.*

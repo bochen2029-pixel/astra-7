@@ -12,7 +12,7 @@ If you are a fresh Claude Code session, a future-you, or a coding agent picking 
 
 You are joining **ASTRA-7's `proto/textverse/`** — the closed-loop verification bench for the project's bundle architecture, **Implementation A** of the dual-implementation discipline (spec v0.129 §15.7) and **permanent infrastructure**: it runs alongside UE5 forever as the contract-conformance regression environment.
 
-The loop is closed and load-bearing. As of 2026-07-19: **774 pytest green** (canonical runner: `uv run pytest`; if the bare venv is stale, `uv sync` repairs it), ruff + strict-mypy clean, `proto/astra_nexus.exe` at **71/71 assertions**, scenario library at **20** with an 82-test library-wide validation gate. Three LLM bundles (ASTRA / Narrator / Adapter) run calculator-bound to the C++ physics binary; three §4.9 ephemerals (consolidator, journal_generator, drift_detector) are implemented as deterministic pure functions; SaveFile v3 carries the regime-coherence load gate; the Somatic Aggregator is live.
+The loop is closed and load-bearing. As of v0.130 adoption (2026-07-19): **914 pytest green** (canonical runner: `uv run pytest`; if the bare venv is stale, `uv sync` repairs it), ruff + strict-mypy clean, `proto/astra_nexus.exe` at **82/82 assertions**, scenario library at **30** with the library-wide validation gate. Three LLM bundles (ASTRA / Narrator / Adapter) run calculator-bound to the C++ physics binary; the Tool API carries **7 ops** including the read-only `status.query` (ruling R-A) with the tool-result feedback leg wired; three §4.9 ephemerals are implemented with consolidator + drift triggers riding the §4.3.1 heartbeat; SaveFile v3 carries the regime-coherence load gate; the Somatic Aggregator is live; Model-Off Replay is live-proven 15/15.
 
 **Loop preservation IS the regression test (§15.6).** Every commit either keeps the suite green or is a finding.
 
@@ -23,8 +23,8 @@ The loop is closed and load-bearing. As of 2026-07-19: **774 pytest green** (can
 | # | File | Why |
 |---|------|-----|
 | 1 | `CHANGELOG.md` (this directory) | What was done last; pick up at the top entry |
-| 2 | `docs/spec-v0.129.md` | The adopted envelope. ~45K tokens — size it and chunk it if your context demands (`C:\chunker\`) |
-| 3 | `docs/spec-v0.130-DRAFT-2026-07-19.md` | The amendment draft: QC findings register (QCR-1…19), amended contract text, and the current work queue. Code lands citing this draft; adoption rides the commits (§15.4 pattern). **Finalization packet assembled 2026-07-19** (`docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md`) — awaiting operator ruling; rulings R-A…R-D live there |
+| 2 | `docs/spec-v0.130.md` | **The adopted envelope** (2026-07-19, rulings R-A…R-D). Sized like its predecessor — chunk it if your context demands (`C:\chunker\`) |
+| 3 | `docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md` | The adoption record: per-item verdicts, commit evidence, the four rulings. The DRAFT (`spec-v0.130-DRAFT-2026-07-19.md`) is its QC-register evidence base — both superseded-by-adoption, read for provenance only |
 | 4 | `docs/stage-protocol.md` + `docs/narrator-spec.md` | Implemented I/O grammar + Narrator contract (DRAFT v0.1, written from code) |
 | 5 | `docs/astra-sysprompt.md` + `docs/astra-sysprompt-addendum-stage.md` | Surface 5 — the persona envelope. Canon-locked |
 | 6 | `ARCHITECTURE.md` (this directory) | The original ground-up design (2026-05-15, v0.128-aligned). Historical plan-of-record — code and v0.129 win where they moved on |
@@ -33,9 +33,9 @@ The loop is closed and load-bearing. As of 2026-07-19: **774 pytest green** (can
 
 ---
 
-## 2. Work picker (post-parity)
+## 2. Work picker (post-adoption)
 
-QC-to-parity vs v0.129 completed 2026-07-19 (see CHANGELOG). Forward implementation toward v0.130, in the draft's §4.2 order:
+QC-to-parity vs v0.129 completed 2026-07-19; **v0.130 ADOPTED same day** (rulings R-A…R-D; adoption pass landed `status.query` + the feedback leg + the watch-tick addendum line + the merged spec + supersessions). The table below is the implementation history of that arc; remaining routing at the bottom:
 
 | # | Work item | Draft ref | Status |
 |---|-----------|-----------|--------|
@@ -66,8 +66,8 @@ One work item per session. Land it, gate it, log it, commit, stop.
 
 ## 4. Files you must NOT touch
 
-- **`docs/spec-v0.129.md`** — the adopted envelope. Findings route into the v0.130 draft's QC register or a dated proposal note; the adopted spec is never edited in place.
-- **`docs/spec-v0.130-DRAFT-2026-07-19.md`** — operator-owned amendment draft; implementation cites it, only the operator's adoption ruling changes it.
+- **`docs/spec-v0.130.md`** — the adopted envelope. Findings route into a dated proposal note or the next revision's QC register; the adopted spec is never edited in place.
+- **`docs/spec-v0.130-DRAFT-2026-07-19.md`** + **`spec-v0.130-FINALIZATION-PACKET-2026-07-19.md`** + **`spec-v0.129.md`** — adoption lineage, historical; never edited.
 - **`proto/astra_nexus.cpp`** — locked; additive-only changes, and only in a dedicated Track C session that rebuilds and reruns all 82 assertions in the same commit. (If working from a git worktree: `build.bat` now builds the source beside itself — `%~dp0` — after the 2026-07-19 hardcoded-path catch.)
 - **`docs/astra-sysprompt.md`** (+ addendum) — Surface 5 canon. `prompts/` holds the runtime copies.
 - **Canon pattern files** (`astra/grammar/canon/*.txt`, `astra/harness/ephemeral/canon/qc3_events.txt`) — additions only, and keep the root `tests/` mirrors byte-identical (`tests/test_canon_mirrors.py` enforces; the pairs diverged once — QCR-1 — never again).
@@ -76,7 +76,7 @@ One work item per session. Land it, gate it, log it, commit, stop.
 
 ---
 
-## 5. Discipline cheatsheet (spec v0.129 §15)
+## 5. Discipline cheatsheet (spec v0.130 §15)
 
 - **§15.4** — lock against current findings; revise on new findings; do not polish without findings. Mode 6 (spec drift without empirical justification) is the named failure mode.
 - **§15.5** — Progressive Specification: detail tightens within the envelope, never violates it.

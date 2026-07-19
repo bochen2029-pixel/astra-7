@@ -87,6 +87,14 @@ This keeps the parser substrate-portable: one grammar, many models. A model
 swap requires sysprompt loader + LoRA + tokenizer config + (if needed) a
 normalizer case (§4.1 plus the v0.129-TENTATIVE fourth item).
 
+**Variant-tag rule (v0.130 / F-LIVE-11, caught live):** variant reasoning
+tags (`<thinking>`, model-family spellings) canonicalize to `<think>`
+BEFORE parsing (`normalize_reasoning_tags`); an UNCLOSED variant fails
+CLOSED — the whole emission is treated as private cognition, never
+speech. The live catch (1153 chars of raw cognition entering the SPEECH
+channel through an unknown tag spelling) is the permanent regression
+test (`tests/test_live_instrument_fixes.py`).
+
 ## 5. Defense in depth for the think channel
 
 Three independent layers (§4.3): LoRA discipline (future fine-tune),
