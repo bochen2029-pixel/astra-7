@@ -5,10 +5,11 @@ Pure closed-form kinematic derivation in the detect_regime / rapidity
 mirror family: small, anchor-tested against the same values the C++ suite
 asserts, used where a synchronous derivation is required (StateBus
 computed fields — a frozen snapshot cannot await the stdio bridge).
-Cross-substrate parity note: the C++ binary carries the identical
-algorithm internally but does not yet expose it as a stdio op (its JSON
-parser has no array support); exposing `compute_grav_factor` for grid
-parity is queued additive Track C work (spec-v0.130-DRAFT QCR-5).
+Cross-substrate parity: the C++ binary exposes the identical algorithm
+as the `compute_grav_factor` stdio op (QCR-5 additive Track C turn,
+2026-07-19; the wire's first array-bearing op), and the two substrates
+are held in agreement across a mass/distance grid by
+tests/test_nexus_bridge.py::test_compute_grav_factor_python_matches_cpp.
 
 Formula (spec v0.129 §3.2, locked): the dominant BH (smallest r/r_s with
 r > r_s) contributes full Schwarzschild `√(1 − r_s/r)`; non-dominant

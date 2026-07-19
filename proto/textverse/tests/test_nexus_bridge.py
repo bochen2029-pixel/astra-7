@@ -251,13 +251,13 @@ def test_observe_flags_beyond_hubble_horizon() -> None:
 
 
 @pytest.mark.requires_nexus
-def test_version_op_returns_v0_128() -> None:
-    """Header bump verification: version op reports v0.128."""
+def test_version_op_returns_v0_129() -> None:
+    """Version bump verification: version op reports the adopted envelope."""
     with NexusBridge() as bridge:
         r = bridge.call("version")
         assert r.ok
         assert isinstance(r.result, str)
-        assert "v0.128" in r.result
+        assert "v0.129" in r.result
 
 
 # --- §3.3 detect_regime cross-substrate verification (G5 of audit) -------
@@ -333,6 +333,159 @@ def test_detect_regime_python_matches_cpp() -> None:
                 f"detect_regime mismatch for ω={omega}, phase={phase}, "
                 f"cryo={cryo}, grav={grav}: py={py_regime!r}, cpp={cpp_regime!r}"
             )
+
+
+# --- §3.2 compute_grav_factor cross-substrate verification (QCR-5) --------
+
+@pytest.mark.requires_nexus
+def test_compute_grav_factor_python_matches_cpp() -> None:
+    """Python compute_grav_factor must agree with the C++ stdio
+    compute_grav_factor op across a mass/distance grid plus multi-body
+    and edge configurations. Prevents drift between the two
+    implementations of the §3.2 Schwarzschild-dominant composition
+    (spec-v0.130-DRAFT QCR-5; the wire's first array-bearing op).
+    """
+    from dataclasses import dataclass
+
+    from astra.core.astra_coord import SECTOR_SIZE_M, AstraCoord
+    from astra.core.grav import compute_grav_factor, schwarzschild_radius_m
+
+    m_sun = 1.98892e30  # kg (matches astra_nexus.cpp M_SUN)
+
+    @dataclass(frozen=True)
+    class BH:
+        mass_kg: float
+        position: AstraCoord
+
+    def coord_of(x_m: float = 0.0, y_m: float = 0.0, z_m: float = 0.0) -> AstraCoord:
+        """Decompose metre offsets into (sector, local) per axis."""
+
+        def split(m: float) -> tuple[int, float]:
+            sector = round(m / SECTOR_SIZE_M)
+            return sector, m - sector * SECTOR_SIZE_M
+
+        sx, lx = split(x_m)
+        sy, ly = split(y_m)
+        sz, lz = split(z_m)
+        return AstraCoord(sx=sx, sy=sy, sz=sz, lx=lx, ly=ly, lz=lz)
+
+    def vec_of(c: AstraCoord) -> dict[str, float]:
+        """Serialize an AstraCoord to the wire's flat-metres vec3.
+
+        Per-axis metres use the same `sector * SECTOR_SIZE_M + local`
+        expression `astra_distance` evaluates against the origin, so with
+        the ship at (0,0,0) both substrates see bit-identical deltas.
+        """
+        return {
+            "x": c.sx * SECTOR_SIZE_M + c.lx,
+            "y": c.sy * SECTOR_SIZE_M + c.ly,
+            "z": c.sz * SECTOR_SIZE_M + c.lz,
+        }
+
+    origin = AstraCoord(sx=0, sy=0, sz=0)
+
+    # Single-BH grid: mass x distance-ratio (in units of r_s), axes cycled.
+    configs: list[tuple[str, list[BH], AstraCoord]] = []
+    masses = [1.0 * m_sun, 10.0 * m_sun, 1.0e6 * m_sun]
+    ratios = [3.0, 10.0, 100.0, 1.0e4, 1.0e8]
+    for i, mass in enumerate(masses):
+        for j, ratio in enumerate(ratios):
+            r = ratio * schwarzschild_radius_m(mass)
+            offsets = [0.0, 0.0, 0.0]
+            offsets[(i + j) % 3] = r
+            configs.append(
+                (
+                    f"grid m={mass:.3g} r={ratio:.3g}rs axis={(i + j) % 3}",
+                    [BH(mass, coord_of(*offsets))],
+                    origin,
+                )
+            )
+
+    # Flat space: empty list is exactly 1.0 on both substrates.
+    configs.append(("empty", [], origin))
+
+    # Very far single body: factor approaches 1 smoothly.
+    configs.append(("far", [BH(10.0 * m_sun, coord_of(x_m=1.0e15))], origin))
+
+    # Dominant + weak-field partner (mirrors the C++ in-process test).
+    rs10 = schwarzschild_radius_m(10.0 * m_sun)
+    configs.append(
+        (
+            "dominant+partner",
+            [
+                BH(10.0 * m_sun, coord_of(x_m=100.0 * rs10)),
+                BH(1.0 * m_sun, coord_of(y_m=1.0e12)),
+            ],
+            origin,
+        )
+    )
+
+    # Ship inside the r_s of one body while another dominates: the inside
+    # body is excluded from dominance AND its weak-field term hits the
+    # arg<=0 guard. Both substrates must agree on both exclusions.
+    configs.append(
+        (
+            "inside-rs partner",
+            [
+                BH(1.0 * m_sun, coord_of(x_m=1.0e10)),
+                BH(1.0e6 * m_sun, coord_of(y_m=1.0e9)),
+            ],
+            origin,
+        )
+    )
+
+    # Three bodies, mixed axes and signs.
+    configs.append(
+        (
+            "three-body",
+            [
+                BH(10.0 * m_sun, coord_of(z_m=5.0e7)),
+                BH(1.0 * m_sun, coord_of(x_m=-1.0e11)),
+                BH(1.0 * m_sun, coord_of(y_m=2.0e12)),
+            ],
+            origin,
+        )
+    )
+
+    # Non-origin ship (small sectors: every value exact in float64).
+    configs.append(
+        (
+            "non-origin ship",
+            [BH(10.0 * m_sun, coord_of(x_m=100.0 * rs10 + 2_001_000.0))],
+            AstraCoord(sx=2, sy=0, sz=0, lx=1000.0),
+        )
+    )
+
+    with NexusBridge() as bridge:
+        for label, bh_list, ship in configs:
+            py = compute_grav_factor(bh_list, ship)
+            r = bridge.call(
+                "compute_grav_factor",
+                bh_list=[
+                    {"M": bh.mass_kg, "pos": vec_of(bh.position)} for bh in bh_list
+                ],
+                ship_pos=vec_of(ship),
+            )
+            assert r.ok, f"compute_grav_factor failed for {label}: {r.error}"
+            cpp = float(r.result)  # type: ignore[arg-type]
+            assert cpp == pytest.approx(py, rel=1e-12, abs=1e-15), (
+                f"grav-factor mismatch for {label}: py={py!r}, cpp={cpp!r}"
+            )
+            assert 0.0 < cpp <= 1.0, f"factor out of (0,1] for {label}: {cpp}"
+
+
+@pytest.mark.requires_nexus
+def test_compute_grav_factor_rejects_non_array_bh_list() -> None:
+    """A non-array bh_list produces ok=false with an error naming the field."""
+    with NexusBridge() as bridge:
+        r = bridge.call(
+            "compute_grav_factor",
+            bh_list=42,
+            ship_pos={"x": 0.0, "y": 0.0, "z": 0.0},
+        )
+        assert r.ok is False
+        assert r.error is not None
+        assert "bh_list" in r.error
 
 
 @pytest.mark.requires_nexus

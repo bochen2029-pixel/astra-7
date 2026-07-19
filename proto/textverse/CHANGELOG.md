@@ -6,6 +6,46 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Track C micro-turn: nexus compute_grav_factor op + QCR-8 wording + version bump — 2026-07-19
+
+Work item 4 of the draft's §4.2 queue (QCR-5/QCR-8; C++, additive-only,
+rebuild + rerun in the same commit). Gates at close: **814 pytest**
+(812 → 814), ruff clean, mypy strict clean, `astra_nexus.exe` rebuilt
+(MSVC, artifact verified on disk) at **82/82 assertions** (71 → 82:
++6 array-parser, +5 stdio-op).
+
+- `proto/astra_nexus.cpp` — three additive changes:
+  - **`compute_grav_factor` stdio op (QCR-5).** The hand-rolled JSON
+    parser gains array support (`JValue::ARRAY` + `parse_array`;
+    whitespace-tolerant, nested, empty — the wire's first array-bearing
+    surface). The op takes `bh_list=[{M, pos:{x,y,z}}, ...]` +
+    `ship_pos` (metres) and returns the §3.2 Schwarzschild-dominant
+    factor from the same internal function the assertion suite already
+    pinned; reachable through `physics_query` like every other op. New
+    in-process test section (11 assertions): parser shapes, 2-BH wire
+    result vs internal result, empty list == 1.0 exactly, non-array
+    `bh_list` errors.
+  - **QCR-8 horizon wording.** Both `beyond_hubble_horizon` comment
+    sites now read superluminal recession, NOT causal disconnection
+    (draft §2.2; struct layout and wire keys unchanged). The
+    "causally disconnected" wording survives only in superseded specs
+    and historical audit/changelog entries, which stay as written.
+  - **`version` op:** "astra_nexus v0.128" → "astra_nexus v0.129"
+    (the adopted envelope; v0.130 is still DRAFT).
+- `tests/test_nexus_bridge.py`:
+  `test_compute_grav_factor_python_matches_cpp` — cross-substrate
+  parity in the detect_regime-grid pattern: 15-point mass x distance
+  grid (1/10/1e6 M_sun x 3/10/1e2/1e4/1e8 r_s, axes cycled) + empty +
+  far-body + dominant-with-partner + inside-r_s-guard + three-body +
+  non-origin-ship, `astra.core.grav.compute_grav_factor` vs the stdio
+  op at rel 1e-12 (wire round-trip is exact; both substrates mirror
+  expression order). Plus a non-array-`bh_list` error-path test, and
+  the version assertion updated to v0.129 (test renamed
+  `test_version_op_returns_v0_129`). File: 31 → 33 tests.
+- `astra/core/grav.py`: docstring's "not yet exposed as a stdio op /
+  parser has no array support" parity note replaced with a pointer to
+  the live op + parity test.
+
 ### Forward items 1+2: Model-Off Replay + §4.3.1 Turn-Scheduling — 2026-07-19
 
 Forward implementation toward v0.130 per the draft's §4.2 queue, same

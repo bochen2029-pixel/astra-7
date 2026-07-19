@@ -258,7 +258,14 @@ struct ObservableState {
     double apparent_rate;        // dt_emit/dt_cosmic — can be < 0 in WARP
     bool   time_reversed;
     bool   beyond_photon_history;  // §3.11: true when t_emit < t_source_start (source not yet emitting)
-    bool   beyond_hubble_horizon;  // §3.12: true when d_proper > c/H_0 (causally disconnected)
+    // §3.12: true when d_proper > c/H_0. Semantics per v0.130-DRAFT QCR-8:
+    // superluminal recession, NOT causal disconnection — such a body remains
+    // observable (in the real universe, all z ≳ 1.5 sources); the flag is
+    // informational for the render path. Causal disconnection is the EVENT
+    // horizon and observability is bounded by the PARTICLE horizon — both
+    // full-ΛCDM-integral properties deferred to Phase 4+ (§3.12). Wire name
+    // retained for bridge compatibility.
+    bool   beyond_hubble_horizon;
 };
 
 // Regime-dispatched apparent rate (§3.11 v0.127, §10 validation row)
@@ -358,8 +365,10 @@ ObservableState observe(Vec3   ship_pos,
     // body's first emission (body wasn't emitting yet at t_emit).
     obs.beyond_photon_history = obs.t_emit < body_t_source_start;
 
-    // §3.12: Hubble horizon. True when proper distance exceeds c/H_0
-    // (causally disconnected; the linear-z weak-field formula's domain).
+    // §3.12: Hubble horizon. True when proper distance exceeds c/H_0.
+    // QCR-8 (v0.130-DRAFT): superluminal recession, NOT causal disconnection;
+    // the body remains observable. Informational for the render path (and the
+    // linear-z weak-field formula's domain edge).
     obs.beyond_hubble_horizon = obs.d_proper > D_HUBBLE_SI;
 
     return obs;
@@ -427,6 +436,11 @@ void check_close(double actual, double expected, double tol, const char* name) {
 void section(const char* name) {
     std::printf("\n--- %s ---\n", name);
 }
+
+// §3.2 compute_grav_factor stdio-op + JSON-array-parser assertions (QCR-5).
+// Declared here, defined after the stdio_server namespace (it exercises the
+// server's parser + dispatch in-process); called from run_all().
+void run_stdio_grav_tests();
 
 void run_all() {
     std::printf("\n========================= TEST SUITE =========================\n");
@@ -882,6 +896,8 @@ void run_all() {
               "observe: 1 Gly < c/H0 → beyond_hubble_horizon=false");
     }
 
+    run_stdio_grav_tests();
+
     std::printf("\n============== SUMMARY: %d passed, %d failed ==============\n",
                 passed, failed);
 }
@@ -961,16 +977,18 @@ void demo_voyage() {
 //
 // Hand-rolled minimal JSON parser; no external dependencies. The parser
 // accepts: object (key:value pairs), quoted string, number (incl. scientific
-// notation), and nested object for "args". No arrays, no null, no booleans
-// — Day 2 doesn't need them. Day N+ can extend.
+// notation), nested object for "args", and arrays (added additively for the
+// QCR-5 compute_grav_factor op's bh_list; v0.130-DRAFT). No null, no
+// booleans — nothing has needed them yet.
 // =============================================================================
 namespace stdio_server {
 
 struct JValue {
-    enum Type { NUMBER, STRING, OBJECT } type = OBJECT;
+    enum Type { NUMBER, STRING, OBJECT, ARRAY } type = OBJECT;
     double n = 0.0;
     std::string s;
     std::map<std::string, JValue> obj;
+    std::vector<JValue> arr;
 };
 
 static void skip_ws(const std::string& src, size_t& i) {
@@ -1043,6 +1061,23 @@ static JValue parse_object(const std::string& src, size_t& i) {
     return out;
 }
 
+static JValue parse_array(const std::string& src, size_t& i) {
+    if (i >= src.size() || src[i] != '[') throw std::runtime_error("expected array");
+    i++;
+    skip_ws(src, i);
+    JValue out;
+    out.type = JValue::ARRAY;
+    if (i < src.size() && src[i] == ']') { i++; return out; }
+    while (true) {
+        out.arr.push_back(parse_value(src, i));
+        skip_ws(src, i);
+        if (i < src.size() && src[i] == ',') { i++; continue; }
+        if (i < src.size() && src[i] == ']') { i++; break; }
+        throw std::runtime_error("expected ',' or ']'");
+    }
+    return out;
+}
+
 static JValue parse_value(const std::string& src, size_t& i) {
     skip_ws(src, i);
     if (i >= src.size()) throw std::runtime_error("unexpected EOF");
@@ -1053,6 +1088,7 @@ static JValue parse_value(const std::string& src, size_t& i) {
         return v;
     }
     if (src[i] == '{') return parse_object(src, i);
+    if (src[i] == '[') return parse_array(src, i);
     JValue v;
     v.type = JValue::NUMBER;
     v.n = parse_number(src, i);
@@ -1172,7 +1208,7 @@ static std::string dispatch(const JValue& req) {
     }
 
     if (op == "version") {
-        return make_ok_string("astra_nexus v0.128");
+        return make_ok_string("astra_nexus v0.129");
     }
 
     if (op == "compute_apparent_rate") {
@@ -1330,6 +1366,36 @@ static std::string dispatch(const JValue& req) {
         }
     }
 
+    if (op == "compute_grav_factor") {
+        // §3.2 composite gravitational time-dilation factor (v0.130-DRAFT
+        // QCR-5, additive). First array-bearing op on the wire: 'bh_list' is
+        // a JSON array of {M:<mass kg>, pos:{x,y,z} metres} records;
+        // 'ship_pos' is a vec3 in metres. Returns the composed factor as a
+        // number, from the same internal compute_grav_factor the test suite
+        // pins. Cross-substrate verified against
+        // astra.core.grav.compute_grav_factor (tests/test_nexus_bridge.py).
+        if (args.type != JValue::OBJECT) return make_error("'args' must be an object");
+        try {
+            auto it_list = args.obj.find("bh_list");
+            if (it_list == args.obj.end() || it_list->second.type != JValue::ARRAY)
+                throw std::runtime_error("missing or non-array 'bh_list'");
+            std::vector<BHEntry> bh_list;
+            bh_list.reserve(it_list->second.arr.size());
+            for (const JValue& item : it_list->second.arr) {
+                if (item.type != JValue::OBJECT)
+                    throw std::runtime_error("bh_list entries must be objects");
+                BHEntry entry;
+                entry.M   = require_number(item, "M");
+                entry.pos = require_vec3(item, "pos");
+                bh_list.push_back(entry);
+            }
+            Vec3 ship_pos = require_vec3(args, "ship_pos");
+            return make_ok_number(compute_grav_factor(bh_list, ship_pos));
+        } catch (const std::exception& e) {
+            return make_error(e.what());
+        }
+    }
+
     if (op == "physics_query") {
         // Generic dispatch wrapper per §6.4 — args carry an inner `query`
         // string and `params` object. Routes by re-invoking dispatch with a
@@ -1380,6 +1446,95 @@ int run() {
 }
 
 } // namespace stdio_server
+
+// =============================================================================
+// test::run_stdio_grav_tests — §3.2 compute_grav_factor stdio op (QCR-5)
+//
+// Defined after stdio_server so it can exercise the server's JSON parser and
+// dispatch in-process; declared in namespace test above and called from
+// run_all(). The full cross-substrate mass/distance grid parity lives in
+// proto/textverse/tests/test_nexus_bridge.py::
+// test_compute_grav_factor_python_matches_cpp.
+// =============================================================================
+namespace test {
+
+void run_stdio_grav_tests() {
+    section("§3.2 compute_grav_factor stdio op + JSON arrays (QCR-5)");
+
+    auto call_line = [](const std::string& line) -> std::string {
+        size_t i = 0;
+        stdio_server::JValue req = stdio_server::parse_value(line, i);
+        return stdio_server::dispatch(req);
+    };
+    const std::string ok_prefix = "{\"ok\":true,\"result\":";
+
+    // Parser: array support (whitespace-tolerant, nested, empty).
+    {
+        std::string src = " [ 1 , 2.5 , {\"a\": 3} , [4] ] ";
+        size_t i = 0;
+        stdio_server::JValue v = stdio_server::parse_value(src, i);
+        check(v.type == stdio_server::JValue::ARRAY, "parser: '[' yields ARRAY");
+        check(v.arr.size() == 4, "parser: array holds 4 elements");
+        check(v.arr[0].type == stdio_server::JValue::NUMBER && v.arr[0].n == 1.0,
+              "parser: numeric array element");
+        check(v.arr[2].type == stdio_server::JValue::OBJECT,
+              "parser: object array element");
+        check(v.arr[3].type == stdio_server::JValue::ARRAY && v.arr[3].arr.size() == 1,
+              "parser: nested array element");
+
+        std::string empty_src = "[]";
+        i = 0;
+        stdio_server::JValue e = stdio_server::parse_value(empty_src, i);
+        check(e.type == stdio_server::JValue::ARRAY && e.arr.empty(),
+              "parser: empty array");
+    }
+
+    // Op matches the internal compute_grav_factor on a 2-BH configuration
+    // (dominant 10 M_sun at 100·r_s on x + weak-field 1 M_sun partner on y).
+    {
+        double rs = schwarzschild_r(10.0 * M_SUN);
+        std::vector<BHEntry> bhs;
+        bhs.push_back({10.0 * M_SUN, {100.0 * rs, 0.0, 0.0}});
+        bhs.push_back({1.0 * M_SUN, {0.0, 1.0e12, 0.0}});
+        double expected = compute_grav_factor(bhs, {0.0, 0.0, 0.0});
+
+        char req[512];
+        std::snprintf(req, sizeof(req),
+            "{\"op\":\"compute_grav_factor\",\"args\":{"
+            "\"bh_list\":[{\"M\":%.17g,\"pos\":{\"x\":%.17g,\"y\":0,\"z\":0}},"
+            "{\"M\":%.17g,\"pos\":{\"x\":0,\"y\":1e12,\"z\":0}}],"
+            "\"ship_pos\":{\"x\":0,\"y\":0,\"z\":0}}}",
+            10.0 * M_SUN, 100.0 * rs, 1.0 * M_SUN);
+        std::string resp = call_line(req);
+        bool ok = resp.compare(0, ok_prefix.size(), ok_prefix) == 0;
+        check(ok, "stdio compute_grav_factor: ok response (2-BH)");
+        double got = ok ? std::stod(resp.substr(ok_prefix.size())) : std::nan("");
+        check_close(got, expected, 1e-15,
+                    "stdio compute_grav_factor matches internal (2-BH)");
+    }
+
+    // Empty bh_list → flat space, exactly 1.0.
+    {
+        std::string resp = call_line(
+            "{\"op\":\"compute_grav_factor\",\"args\":{\"bh_list\":[],"
+            "\"ship_pos\":{\"x\":0,\"y\":0,\"z\":0}}}");
+        bool ok = resp.compare(0, ok_prefix.size(), ok_prefix) == 0;
+        check(ok, "stdio compute_grav_factor: empty bh_list ok");
+        double got = ok ? std::stod(resp.substr(ok_prefix.size())) : std::nan("");
+        check_close(got, 1.0, 0.0, "stdio compute_grav_factor: empty bh_list == 1.0");
+    }
+
+    // Malformed bh_list (not an array) → ok:false with an error message.
+    {
+        std::string resp = call_line(
+            "{\"op\":\"compute_grav_factor\",\"args\":{\"bh_list\":42,"
+            "\"ship_pos\":{\"x\":0,\"y\":0,\"z\":0}}}");
+        check(resp.find("\"ok\":false") != std::string::npos,
+              "stdio compute_grav_factor: non-array bh_list errors");
+    }
+}
+
+} // namespace test
 
 } // namespace astra
 
