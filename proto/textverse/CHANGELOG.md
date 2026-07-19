@@ -6,6 +6,25 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Track C merge to main + build.bat worktree fix + receipt sync — 2026-07-19
+
+The Track C micro-turn below (worktree branch, `2a8456f` + `01484ea`)
+fast-forwarded into main. Post-merge verification run IN MAIN, not
+trusted from the report: the sub-session had NOT committed its built
+binary, and `build.bat` hardcoded `cd /d C:\ASTRA-7\proto` (so from a
+worktree it silently compiled the main checkout's source — the
+sub-session caught this and hand-invoked the compiler). Fix: build.bat
+now builds the source beside itself (`%~dp0`), and the exe was rebuilt
+from main source with the fixed script — **82/82 assertions**, stdio
+wire probe returns `astra_nexus v0.129`, **814 pytest** (the new
+cross-substrate grav parity grid exercising the fresh exe), ruff clean,
+mypy strict clean. Receipt counts synced 71 → 82 across CLAUDE.md,
+BOOTSTRAP.md, STARTUP.md §4, and the v0.130 draft's succession floor +
+Receipts Map (which also flips C2/C9/replay/scheduling rows to GREEN
+per this session's landings). Still queued for a future Track C pass:
+the exe main() banner's spec-v0.128 citation (locked file, outside any
+mandate so far).
+
 ### Track C micro-turn: nexus compute_grav_factor op + QCR-8 wording + version bump — 2026-07-19
 
 Work item 4 of the draft's §4.2 queue (QCR-5/QCR-8; C++, additive-only,

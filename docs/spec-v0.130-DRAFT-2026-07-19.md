@@ -174,7 +174,7 @@ The LLM track table is unchanged except Phase 0.x, which now names its next axis
 ### 2.9 §15.11 NEW — Succession Protocol
 
 > Every future revision of this specification MUST:
-> 1. **Run the inherited floor first.** The full gate set at last adoption (at v0.130 drafting: 750 pytest, 71 C++ assertions, the 12 visualizer goldens, the audio PoC build, the scenario-library gate) re-runs green — or the red is annotated in the Receipts Map — before any new commitment is drafted. A revision written over an unverified floor is fiction (L4).
+> 1. **Run the inherited floor first.** The full gate set at last adoption (at v0.130 drafting: 750 pytest, 71 C++ assertions, the 12 visualizer goldens, the audio PoC build, the scenario-library gate; risen by the draft's own implementation turns to 814 pytest / 82 assertions as of 2026-07-19) re-runs green — or the red is annotated in the Receipts Map — before any new commitment is drafted. A revision written over an unverified floor is fiction (L4).
 > 2. **Convert prose downward.** Each revision converts at least one prose commitment into a module contract with a named oracle, and — when able — one existing contract into green code. Revision energy pays an implementation toll, structurally. (v0.129 did this by virtue; it is now law.)
 > 3. **Carry the lineage forward.** The changes-from block appends; supersession headers land on the prior version; the cross-canon sync list (§1.1-style) is executed under the spec-wins rule.
 > 4. **Fork only by name.** A locked commitment may be weakened only as a printed named decision with the reason, never silently (the Five Invariants above all; the §15.4 evidence bar for everything).
@@ -206,10 +206,10 @@ The LLM track table is unchanged except Phase 0.x, which now names its next axis
 |---|---|---|---|
 | Inv 1 AstraCoord | `astra/core/astra_coord.py` + `astra_nexus.cpp` | roundtrip tests; 71/71 | GREEN |
 | Inv 2 two-clock + clamp | `astra/core/time_state.py` (+nexus) | clamp validator test; cosh KAT | GREEN (epoch bound OPEN until QCR-3 lands) |
-| C 2 StateBus computed regime | `astra/state_bus/schema.py` | `test_state_coherence.py` (24) | **PARTIAL** — grav leg unplumbed (QCR-5); ShipKinematicState absent (QCR-6) |
+| C 2 StateBus computed regime | `astra/state_bus/schema.py` | `test_state_coherence.py` + `test_grav_and_kinematics.py` | GREEN (QCR-5/6 closed 2026-07-19: grav leg plumbed — GW composes at the root; kinematic view wired; cross-substrate grav parity vs the nexus stdio op) |
 | C 4 Time Contract | nexus + `detect_regime` cross-substrate | bridge parity test | GREEN |
 | C 6 SaveFile v3 | `astra/harness/savefile.py` | save/load/backup/coherence tests | GREEN (migration obligation deferred to v4, QCR-13) |
-| C 9 Harness ephemerals | `astra/harness/ephemeral/{consolidator,journal_generator,drift_detector}.py` | their test files | **PARTIAL** — functions GREEN; orchestrator triggers unwired (QCR-14 → §4.3.1) |
+| C 9 Harness ephemerals | `astra/harness/ephemeral/{consolidator,journal_generator,drift_detector}.py` | their test files + `test_turn_scheduling.py` | GREEN (QCR-14 closed 2026-07-19: consolidator + drift triggers ride the §4.3.1 heartbeat; journal trigger awaits regime-change wiring in the physics tick) |
 | C 9 leak enforcement | `astra/grammar/leak_detector.py` + in-package canon | leak tests; journal scan | GREEN (canon-path unification pending, QCR-1) |
 | M 1 Observation Calculator | nexus `observe` + voyage table | ±0.01/cell property tests | GREEN |
 | M 2 Narrator calculator-bound | `narrator_bundle.py` + `validator.py` + orchestrator step 1 | narrator pathway + calculator-bound tests | GREEN |
@@ -218,10 +218,11 @@ The LLM track table is unchanged except Phase 0.x, which now names its next axis
 | §4.3 STAGE grammar + strip | `astra/grammar/parser.py`, `strip_rules.py` | grammar + strip tests | GREEN |
 | §10 LCP 9 gates | `astra/judge/gates.py`, `lcp.py` | gate isolation tests; library gate (82) | GREEN |
 | §12 E3/E4 reference outputs | ASTRA_VISUALIZER_02 (12 goldens); ASTRA_AUDIO PoC | golden-diff 0.0; build green | GREEN\* (S05 sign-off + ear-pass = operator gates, pending) |
-| §5.3 Model-Off Replay | — | CI replay leg | OPEN (NEW v0.130) |
-| §4.3.1 Turn-Scheduling | — | asynchrony scenarios | OPEN (NEW v0.130) |
-| Bench floor | whole tree | `uv run pytest` | **GREEN — 750 passed, 15.17 s, 2026-07-19** |
-| Physics floor | `astra_nexus.exe` | assertion suite | **GREEN — exit 0, 2026-07-19** |
+| §5.3 Model-Off Replay | `astra/harness/{trace,replay}.py` | `test_model_off_replay.py` (record→replay digest; planted witnesses) | GREEN (landed 2026-07-19; narrator-path replay documented future work) |
+| §4.3.1 Turn-Scheduling | `astra/state_bus/advance.py` + orchestrator/runner/schema | `test_turn_scheduling.py` + 3 asynchrony scenarios | GREEN (landed 2026-07-19; gun R-5 witness held) |
+| §2.7/§3 instrumentation (measurement half) | `astra/judge/autotelic.py` | `test_autotelic_instrumentation.py` | GREEN (metrics + drill aggregation; thresholds/negative-space/red-seat OPEN by design) |
+| Bench floor | whole tree | `uv run pytest` | **GREEN — 814 passed, 2026-07-19 (was 750 at drafting)** |
+| Physics floor | `astra_nexus.exe` | assertion suite | **GREEN — 82/82, rebuilt from main source via the fixed build.bat, 2026-07-19 (was 71 at drafting)** |
 
 ---
 

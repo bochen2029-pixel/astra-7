@@ -64,7 +64,7 @@ One work item per session. Land it, gate it, log it, commit, stop.
 
 - **`docs/spec-v0.129.md`** — the adopted envelope. Findings route into the v0.130 draft's QC register or a dated proposal note; the adopted spec is never edited in place.
 - **`docs/spec-v0.130-DRAFT-2026-07-19.md`** — operator-owned amendment draft; implementation cites it, only the operator's adoption ruling changes it.
-- **`proto/astra_nexus.cpp`** — locked; additive-only changes, and only in a dedicated Track C session that rebuilds and reruns all 71 assertions in the same commit.
+- **`proto/astra_nexus.cpp`** — locked; additive-only changes, and only in a dedicated Track C session that rebuilds and reruns all 82 assertions in the same commit. (If working from a git worktree: `build.bat` now builds the source beside itself — `%~dp0` — after the 2026-07-19 hardcoded-path catch.)
 - **`docs/astra-sysprompt.md`** (+ addendum) — Surface 5 canon. `prompts/` holds the runtime copies.
 - **Canon pattern files** (`astra/grammar/canon/*.txt`, `astra/harness/ephemeral/canon/qc3_events.txt`) — additions only, and keep the root `tests/` mirrors byte-identical (`tests/test_canon_mirrors.py` enforces; the pairs diverged once — QCR-1 — never again).
 - **`tuning/`** — the Sculptor's own contract surface; `scope.yaml` bounds what Sculptor may edit and names the locked set.

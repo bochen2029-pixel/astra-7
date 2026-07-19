@@ -35,7 +35,7 @@ What you do NOT yet have without further reading: the full spec text, the ASTRA 
 |-------|------------|-------------------|
 | **A — textverse** (LLM bundle bench, **current build focus**) | `proto/textverse/STARTUP.md` | Build the closed-loop verification rig in Python. Pure code work. Days 1-7 plan. |
 | **B — UE5 plugin** (engine / visual) | `proto/ue5plugin/STARTUP.md` *(forthcoming)* | C++ plugin work in Unreal Engine. Parallel to Track A. |
-| **C — physics binary** (proto/astra_nexus) | `proto/astra_nexus.cpp` + the spec's §6.3 / §3.7 (`verify_nexus.py` is a frozen-legacy mirror) | Locked except for additive changes (e.g., Day 2's `--stdio-server` mode). Existing 71 assertions must keep passing. |
+| **C — physics binary** (proto/astra_nexus) | `proto/astra_nexus.cpp` + the spec's §6.3 / §3.7 (`verify_nexus.py` is a frozen-legacy mirror) | Locked except for additive changes (e.g., Day 2's `--stdio-server` mode). Existing 82 assertions must keep passing. |
 | **Book drafting** | Latest `memory/session_dump_*_book_drafting.md` + `book/CANON.md` + `book/negative_space.md` | The Long Watch novel. Parallel session lineage; separate discipline. |
 | **Spec revision** | `docs/spec-v0.129.md` §15.4 first (current envelope; adopted 2026-06-10). Draft under operator review: `docs/spec-v0.130-DRAFT-2026-07-19.md` | **Forbidden absent an empirical finding from a closed loop.** Mode 6 risk. Route findings into the current draft's QC register or a dated proposal note; never edit the adopted spec in place. |
 
