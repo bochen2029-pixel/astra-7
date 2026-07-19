@@ -32,6 +32,7 @@ from astra.harness.perception_assembler import (
     assemble_perception_bundle_via_narrator,
 )
 from astra.harness.reel import Reel, ReelEntry
+from astra.harness.trace import SessionTrace, text_sha256
 from astra.llm.adapter_bundle import AdapterResult, RulesBasedAdapter
 from astra.llm.astra_bundle import AstraBundle
 from astra.llm.narrator_bundle import NarratorBundle, NarratorValidationError
@@ -98,6 +99,7 @@ class TurnOrchestrator:
         leak_detector: LeakDetector | None = None,
         adapter: RulesBasedAdapter | None = None,
         narrator_bundle: NarratorBundle | None = None,
+        trace: SessionTrace | None = None,
     ) -> None:
         self.state_bus = state_bus
         self.astra_bundle = astra_bundle
@@ -105,6 +107,12 @@ class TurnOrchestrator:
         self.validator = validator or CalculatorBoundValidator(severity="soft")
         self.leak_detector = leak_detector or LeakDetector.from_default_canon()
         self.adapter = adapter or RulesBasedAdapter()
+        # §5.3 trace column (spec-v0.130-DRAFT §2.4): when provided, the
+        # orchestrator receipts every oracle event — operator inputs and
+        # LLM utterances verbatim at generation, with the context hash
+        # that Model-Off Replay later verifies. The rest of TurnResult is
+        # the event-log column (derived, recomputed on replay).
+        self.trace = trace
         # T2.3 (2026-05-16): when narrator_bundle is wired, step 1 of the
         # turn loop routes through the LLM-based perception assembler
         # with calculator-bound auto-validation. Falls back to the
@@ -166,9 +174,24 @@ class TurnOrchestrator:
         )
 
         # 3. Send to ASTRA-LLM
+        if self.trace is not None:
+            self.trace.record_operator(self._turn_index, operator_text)
         raw = await self.astra_bundle.client.chat_complete(
             cleaned_perception, self.astra_bundle.sampling,
         )
+        if self.trace is not None:
+            self.trace.record_utterance(
+                self._turn_index,
+                role="astra",
+                payload=raw,
+                context=cleaned_perception,
+                model_id=self.astra_bundle.client.model_name,
+                params_fingerprint=text_sha256(
+                    json.dumps(
+                        self.astra_bundle.sampling.model_dump(), sort_keys=True,
+                    ),
+                ),
+            )
 
         # 4. Parse STAGE channels
         stage = parse_stage(raw)

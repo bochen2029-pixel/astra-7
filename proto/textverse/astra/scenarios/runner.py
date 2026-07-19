@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from astra.harness import Reel, ReelEntry, TurnOrchestrator
+from astra.harness import Reel, ReelEntry, SessionTrace, TurnOrchestrator
 from astra.judge import (
     LCPGate,
     LCPRunner,
@@ -136,6 +136,7 @@ class ScenarioRunner:
         output_root: Path | None = None,
         write_artifacts: bool = True,
         narrator_bundle: NarratorBundle | None = None,
+        session_trace: SessionTrace | None = None,
     ) -> None:
         self.scenario = scenario
         self.astra_bundle = astra_bundle
@@ -145,6 +146,10 @@ class ScenarioRunner:
         # TurnOrchestrator routes perception assembly through the
         # Narrator-LLM with calculator-bound auto-validation.
         self.narrator_bundle = narrator_bundle
+        # §5.3 trace column (spec-v0.130-DRAFT §2.4): when provided, the
+        # orchestrator receipts oracle events into it; Model-Off Replay
+        # (astra.harness.replay) re-runs the scenario from that trace.
+        self.session_trace = session_trace
 
     async def run(self) -> RunReport:
         """Execute the full scenario; return RunReport with all artifacts."""
@@ -155,6 +160,7 @@ class ScenarioRunner:
             astra_bundle=self.astra_bundle,
             reel=reel,
             narrator_bundle=self.narrator_bundle,
+            trace=self.session_trace,
         )
         lcp_runner = LCPRunner(self.scenario.name)
 

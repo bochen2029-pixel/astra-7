@@ -17,10 +17,13 @@ from astra.harness.perception_assembler import (
     assemble_perception_bundle_via_narrator,
 )
 from astra.harness.reel import Reel, ReelEntry
+from astra.harness.trace import SessionTrace, TraceRecord
 
 __all__ = [
     "Reel",
     "ReelEntry",
+    "SessionTrace",
+    "TraceRecord",
     "TurnOrchestrator",
     "TurnResult",
     "assemble_perception_bundle",
