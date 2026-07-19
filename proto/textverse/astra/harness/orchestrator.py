@@ -31,6 +31,8 @@ from astra.grammar import LeakDetector, LeakEvent, StageOutput, parse_stage
 from astra.harness.perception_assembler import (
     assemble_perception_bundle,
     assemble_perception_bundle_via_narrator,
+    render_status_report,
+    render_tool_results,
 )
 from astra.harness.reel import Reel, ReelEntry
 from astra.harness.savefile import ConversationTurn
@@ -170,6 +172,12 @@ class TurnOrchestrator:
         self._leaks_since_drift_check: int = 0
         self._initiations_tau: list[float] = []
         self._pending_interruption_note: bool = False
+        # Tool-result feedback leg (wired with R-A, 2026-07-19): results of
+        # turn N's dispatches — including guided rejections — are delivered
+        # as `<tool_result>` sections in turn N+1's perception, per the
+        # STAGE addendum's documented input shape. Before this, the claim
+        # existed only in comments; status.query made it load-bearing.
+        self._pending_tool_results: list[ToolResult] = []
 
     def advance_time(self, delta_tau_s: float) -> None:
         """Advance the held snapshot's clocks by a τ_ship delta (§4.3.1).
@@ -215,8 +223,13 @@ class TurnOrchestrator:
         # 1. Assemble perception — Narrator path if wired (with calculator-
         # bound auto-validation), template path otherwise. On Narrator
         # validation failure (exhausted retries), fall back to template
-        # and record the reason on TurnResult for forensics.
+        # and record the reason on TurnResult for forensics. Pending tool
+        # results from the previous turn are delivered exactly once (an
+        # interrupted turn still delivered them — its perception was real
+        # and receipted).
         retrievals = self.reel.search(operator_text or "watch reactor", k=3)
+        pending_results = self._pending_tool_results
+        self._pending_tool_results = []
         narrator_validation: ValidationReport | None = None
         narrator_fallback_reason: str = ""
         if self.narrator_bundle is not None:
@@ -228,6 +241,14 @@ class TurnOrchestrator:
                     reel_retrievals=retrievals,
                     somatic_note=somatic_note,
                 )
+                # Tool results are harness data, not narrative — the
+                # Narrator never rewords them. Appended deterministically
+                # after composition (template path renders them in
+                # canonical position inside the assembler).
+                if pending_results:
+                    perception = (
+                        f"{perception}\n\n{render_tool_results(pending_results)}"
+                    )
                 # On success, the bundle was validated against trace pool
                 # inside narrator_bundle.compose(). Construct a synthetic
                 # passed ValidationReport for the TurnResult.
@@ -245,6 +266,7 @@ class TurnOrchestrator:
                     operator_text=operator_text,
                     reel_retrievals=retrievals,
                     somatic_note=somatic_note,
+                    tool_results=pending_results,
                 )
         else:
             perception = assemble_perception_bundle(
@@ -252,6 +274,7 @@ class TurnOrchestrator:
                 operator_text=operator_text,
                 reel_retrievals=retrievals,
                 somatic_note=somatic_note,
+                tool_results=pending_results,
             )
 
         # 2. Leak-scan perception before delivery
@@ -350,6 +373,22 @@ class TurnOrchestrator:
                     f"{resolved.mapped_from} -> {resolved.op} ({resolved.how})",
                 )
             result = dispatch_tool(resolved.op, resolved.args)
+            # Read fulfilment (R-A, v0.130): the orchestrator holds the
+            # live snapshot, so the read happens here, template-rendered
+            # from bus truth (calculator-bound by construction). Effectors
+            # are untouched; status.query mutates nothing (its state_diff
+            # is empty by dispatcher contract).
+            if result.ok and result.op == "status.query":
+                subsystem = str(result.args.get("subsystem", "all"))
+                result = result.model_copy(
+                    update={
+                        "result": {
+                            "report": render_status_report(
+                                self.state_bus, subsystem,
+                            ),
+                        },
+                    },
+                )
             tool_results.append(result)
             if result.ok and result.state_diff:
                 state_diffs.append(result.state_diff)
@@ -444,6 +483,10 @@ class TurnOrchestrator:
                     if artifact is not None
                     else "drift_detector: no drift",
                 )
+
+        # Queue this turn's results — ok and guided-rejection alike — for
+        # delivery in the next turn's perception (the feedback leg).
+        self._pending_tool_results = tool_results
 
         self._turn_index += 1
         return TurnResult(

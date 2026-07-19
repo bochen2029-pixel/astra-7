@@ -79,7 +79,8 @@ def test_scenario_turn_indices_within_termination(path: Path) -> None:
 
 
 def test_tool_api_lock_unchanged() -> None:
-    """Scenario authoring assumes the locked 6-op surface (§1.4/§4.9)."""
+    """Scenario authoring assumes the locked 7-op surface (§1.4/§4.9;
+    status.query added by operator ruling R-A, v0.130 adoption)."""
     assert set(TOOL_API) == {
         "warp.engage",
         "warp.disengage",
@@ -87,4 +88,5 @@ def test_tool_api_lock_unchanged() -> None:
         "sensors.scan",
         "power.allocate",
         "log.write",
+        "status.query",
     }

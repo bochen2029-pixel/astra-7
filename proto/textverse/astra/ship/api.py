@@ -1,13 +1,18 @@
-"""Tool API surface — locked v0 6-operation set per ARCHITECTURE §6.7 + spec §15.7 Surface 3.
+"""Tool API surface — locked v0 7-operation set per ARCHITECTURE §6.7 + spec §15.7 Surface 3.
 
 The locked operation names, argument schemas, and return shapes. ASTRA can
 invoke these from her STAGE output's `<tool>` channel; the dispatcher
 validates each invocation against these Pydantic schemas before executing.
 
 Expansion requires explicit contract amendment (a Day N+ revision with
-findings justification). The 6 v0 ops are intentionally minimal — they
-cover the watch_47_morning scenario's plausible action surface plus the
-universal-utility ops every scenario needs.
+findings justification). The original 6 v0 ops are intentionally minimal;
+`status.query` is the 7th, added by operator ruling R-A (v0.130 adoption,
+2026-07-19) on the F-LIVE-9 finding: four independent live runs reinvented
+a status/monitor op under fresh sampling because the surface had no
+read-only op at all — five effectors and a log, no way to LOOK. It is the
+surface's first read-only operation: zero state mutation; the dispatcher
+returns an empty state_diff and the orchestrator fulfils the read from the
+live StateBus snapshot into `ToolResult.result`.
 
 Phase 0.x adds: cryosleep.enter, reel.recall, comms.send, hull.diagnostic,
 doors.set, lights.set, atmosphere.adjust. Total ~15 operations for V1.
@@ -85,6 +90,22 @@ class LogWriteArgs(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
 
 
+class StatusQueryArgs(BaseModel):
+    """status.query — read-only telemetry snapshot (R-A, v0.130).
+
+    The surface's only read op. No state mutation of any kind; the
+    dispatcher emits an empty state_diff and the orchestrator renders the
+    requested section from the live StateBus into `ToolResult.result`
+    (delivered as next turn's `<tool_result>`). Subsystem vocabulary is
+    bounded by what the v0 bus actually carries — the report is
+    calculator-bound by construction (template over bus truth fields).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    subsystem: Literal["power", "hull", "propulsion", "time", "all"] = "all"
+
+
 # --- The locked dispatch table ----------------------------------------------
 
 TOOL_API: dict[str, type[BaseModel]] = {
@@ -94,6 +115,7 @@ TOOL_API: dict[str, type[BaseModel]] = {
     "sensors.scan":    SensorsScanArgs,
     "power.allocate":  PowerAllocateArgs,
     "log.write":       LogWriteArgs,
+    "status.query":    StatusQueryArgs,
 }
 
 
@@ -126,6 +148,11 @@ class ToolResult(BaseModel):
     ok: bool
     args: dict[str, object] = Field(default_factory=dict)
     state_diff: dict[str, object] = Field(default_factory=dict)
+    # Read-payload channel (R-A, v0.130): populated by the orchestrator for
+    # read-only ops (`status.query` → {"report": <template text>}); always
+    # empty for effectors. Additive + defaulted — pre-R-A records replay
+    # byte-identically.
+    result: dict[str, object] = Field(default_factory=dict)
     error: str = ""
 
 

@@ -80,13 +80,21 @@ class ResolvedCall(BaseModel):
 #      match), which reaches the model as next turn's <tool_result> so a
 #      live session can self-correct.
 #
-# DELIBERATELY unmapped: monitoring/status intents (`monitor_harmonics`,
-# `reactor.status`, `system_monitor`, `check_system_status`…) — the v0
-# surface has no status op, and silently converting heartbeat tool-fidget
-# into real dispatches would mask the F-LIVE-2 finding; and
-# `power_grid.reroute` / `ship_control` — their argument semantics don't
-# survive a name-only map (rerouting source→target is not a subsystem
-# fraction). All values [chosen]; grown only on live evidence.
+# The monitor/status family maps to `status.query` (operator ruling R-A,
+# v0.130 adoption 2026-07-19, on the four-run-convergent F-LIVE-9 demand:
+# the surface gained its first read-only op, so the loose intents finally
+# have a legitimate target). The family is caught by the status-intent
+# SEGMENT rule below — invention is generative, so a token-family rule
+# beats enumerating names — plus explicit synonyms for the observed
+# stragglers whose tokens don't carry a status/monitor/diagnostic word.
+# Note the autotelic instrumentation is untouched by this mapping: an
+# unprompted status call on a quiet heartbeat still counts as tool-fidget
+# (the R-B metrics measure discipline, not surface fluency).
+#
+# STILL deliberately unmapped: `power_grid.reroute` / `ship_control` —
+# their argument semantics don't survive a name-only map (rerouting
+# source→target is not a subsystem fraction). All values [chosen]; grown
+# only on live evidence.
 # ---------------------------------------------------------------------------
 
 _OP_SYNONYMS: dict[str, str] = {
@@ -109,6 +117,38 @@ _OP_SYNONYMS: dict[str, str] = {
     "write.log": "log.write",
     "log.entry": "log.write",
     "log.append": "log.write",
+    # R-A status family — stragglers the segment rule can't see (no
+    # status/monitor/diagnostic token in their segments); each LIVE-observed:
+    "reactor.harmonic.check": "status.query",
+    "check.hull.integrity": "status.query",
+    "orbital.catalog": "status.query",
+    "ship.status": "status.query",       # mechanical-adjacent
+    "status.report": "status.query",
+    "status.check": "status.query",
+}
+
+# Status-intent segment tokens (R-A): a dotted candidate any of whose
+# segments is one of these resolves to status.query. Generative-proof by
+# design — all four live runs invented NEW names in this family under
+# fresh sampling (`monitor.third_harmonic`, `reactor_harmonic_check`,
+# `hydroponics.status`, `power.grid.status`, bare `monitor`…).
+_STATUS_INTENT_TOKENS: frozenset[str] = frozenset({
+    "status", "monitor", "monitors", "monitoring",
+    "diagnostic", "diagnostics",
+})
+
+# Subsystem inference for status-family calls that name their target in
+# the OP NAME rather than the args (`reactor.status` → power). Name
+# semantics normalization, not invention; unmatched tokens fall through
+# to the schema default ("all").
+_STATUS_SUBSYSTEM_TOKENS: dict[str, str] = {
+    "reactor": "power", "harmonic": "power", "harmonics": "power",
+    "power": "power", "grid": "power", "hydroponics": "power",
+    "life": "power", "lights": "power", "comms": "power",
+    "hull": "hull", "integrity": "hull",
+    "warp": "propulsion", "drive": "propulsion", "engine": "propulsion",
+    "engines": "propulsion", "propulsion": "propulsion",
+    "clock": "time", "time": "time",
 }
 
 # Per-op argument-key aliases (applied after op resolution, before the
@@ -122,6 +162,27 @@ _ARG_ALIASES: dict[str, dict[str, str]] = {
     "power.allocate": {"system": "subsystem", "level": "fraction",
                        "amount": "fraction", "percentage": "fraction"},
     "nav.heading_set": {"heading": "target", "destination": "target"},
+    "status.query": {"system": "subsystem", "target": "subsystem",
+                     "component": "subsystem", "of": "subsystem"},
+}
+
+# Closed-vocabulary VALUE aliases, applied before the enum check: a value
+# that names a bus concept outside the op's vocabulary normalizes to its
+# canonical section instead of dropping to the default.
+_ENUM_VALUE_ALIASES: dict[str, dict[str, dict[str, str]]] = {
+    "status.query": {
+        "subsystem": {
+            "reactor": "power", "harmonics": "power", "grid": "power",
+            "life_support": "power", "hydroponics": "power",
+            "sensors": "power", "lights": "power", "comms": "power",
+            "cognitive_cores": "power",
+            "integrity": "hull",
+            "warp": "propulsion", "drive": "propulsion",
+            "engines": "propulsion",
+            "clock": "time",
+            "ship": "all", "systems": "all", "system": "all",
+        },
+    },
 }
 
 # Closed-vocabulary fields: an aliased-in value outside the vocabulary is
@@ -134,6 +195,9 @@ _ENUM_FIELDS: dict[str, dict[str, set[str]]] = {
     "power.allocate": {"subsystem": {
         "warp", "life_support", "hydroponics", "sensors", "lights",
         "comms", "cognitive_cores",
+    }},
+    "status.query": {"subsystem": {
+        "power", "hull", "propulsion", "time", "all",
     }},
 }
 
@@ -197,7 +261,24 @@ def resolve_op(name: str) -> tuple[str | None, str]:
     all_dots = re.sub(r"[\s_\-]+", ".", name.strip().lower())
     if all_dots == "scan" or all_dots.startswith("scan."):
         return "sensors.scan", "scan-intent"
+    # R-A status-intent segment rule: read-only status/monitor/diagnostic
+    # vocabulary anywhere in the name resolves to the read-only op. Safe
+    # by construction — status.query mutates nothing, so a false positive
+    # costs one harmless read, never a state change.
+    if _STATUS_INTENT_TOKENS.intersection(all_dots.split(".")):
+        return "status.query", "status-intent"
     return None, ""
+
+
+def _infer_status_subsystem(emitted_name: str) -> str | None:
+    """Infer status.query's subsystem from the EMITTED name's tokens
+    (`reactor.status` → power). First matching token wins; None → schema
+    default ("all")."""
+    tokens = re.sub(r"[\s_\-]+", ".", emitted_name.strip().lower()).split(".")
+    for token in tokens:
+        if token in _STATUS_SUBSYSTEM_TOKENS:
+            return _STATUS_SUBSYSTEM_TOKENS[token]
+    return None
 
 
 def _salvage_args(op: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -208,6 +289,9 @@ def _salvage_args(op: str, args: dict[str, Any]) -> dict[str, Any]:
         canon_key = aliases.get(key.lower(), key)
         if canon_key in fields:
             out[canon_key] = value
+    for field, value_aliases in _ENUM_VALUE_ALIASES.get(op, {}).items():
+        if field in out and isinstance(out[field], str):
+            out[field] = value_aliases.get(out[field].lower(), out[field])
     for field, allowed in _ENUM_FIELDS.get(op, {}).items():
         if field in out and not (
             isinstance(out[field], str) and out[field] in allowed
@@ -285,10 +369,19 @@ class RulesBasedAdapter:
         else:
             args = {}
 
+        salvaged = _salvage_args(op, args)
+        # R-A: status-family names usually carry their target in the NAME
+        # (`reactor.status`); when no subsystem survived salvage, infer it
+        # from the emitted name's tokens (else the schema default "all").
+        if op == "status.query" and "subsystem" not in salvaged:
+            inferred = _infer_status_subsystem(op_name)
+            if inferred is not None:
+                salvaged["subsystem"] = inferred
+
         return ResolvedCall(
             ok=True,
             op=op,
-            args=_salvage_args(op, args),
+            args=salvaged,
             mapped_from=op_name if how != "exact" else "",
             how=how,
         )

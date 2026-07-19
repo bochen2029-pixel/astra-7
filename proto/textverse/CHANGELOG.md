@@ -6,6 +6,61 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Rulings R-A + R-D landed as code (adoption pass, commit 1) — 2026-07-19
+
+Operator ruled "adopt as recommended" over the finalization packet.
+Per §15.4, code lands first; the spec text follows in the next commit.
+
+**R-A — `status.query`, the surface's first read-only op (F-LIVE-9
+closure).** TOOL_API 6 → 7 (`StatusQueryArgs`: subsystem ∈
+power|hull|propulsion|time|all, default all). Dispatcher: empty
+state_diff by contract (a read has no effect to describe). The
+orchestrator — the entity holding the live snapshot — fulfils the read
+via `render_status_report` (deterministic template over bus truth
+fields: calculator-bound by construction) into the new
+`ToolResult.result` payload channel (additive + defaulted; pre-R-A
+records replay byte-identically). Adapter: the monitor/status family
+now maps — a generative-proof status-intent SEGMENT rule
+(status/monitor/diagnostic tokens) + explicit synonyms for observed
+stragglers (`reactor_harmonic_check`, `check_hull_integrity`,
+`orbital_catalog`), subsystem inference from the emitted name
+(`reactor.status` → power), value-alias normalization
+(`subsystem: reactor` → power). `power_grid.reroute` / `ship_control`
+stay deliberately unmapped. The autotelic instrumentation is untouched:
+an unprompted status call on a quiet heartbeat still counts as fidget
+(R-B measures discipline, not surface fluency).
+
+**The tool-result feedback leg, documented-but-unwired, now wired.**
+The STAGE addendum has always documented `<tool_result>` as an input
+section and two code comments claimed guided rejections arrive that
+way — no mechanism existed. R-A made it load-bearing (a read op is
+worthless if its payload never returns). Turn N's ToolResults — ok and
+guided-rejection alike — now render as `<tool_result name=".."
+status="ok|error">` sections in turn N+1's perception (template path in
+canonical position; narrator path appended deterministically, results
+are harness data the Narrator never rewords). Delivered exactly once.
+
+**R-D — watch-tick framing paragraph (ADOPT-TENTATIVE)** landed in
+`docs/astra-sysprompt-addendum-stage.md` + `prompts/` runtime copy:
+names the §4.3.1 tick the addendum never described ("A tick is not a
+prompt … You do not prove the watching by running checks nothing called
+for. It is sufficient on its own."). Contract-parity reading: the
+harness added a perception shape; the contract doc catches up. The A/B
+live pass measures the silence/fidget delta; struck if it doesn't move
+the register (packet §6 R-D).
+
+**R-C rides along:** WATCH_LENGTH_S comment [chosen, provisional] →
+[chosen, CANON per v0.130 R-C].
+
+Library 29 → 30 (`status_query_reactor`, measurement-first). Tests:
+`test_status_query.py` (30: resolution family from all four live runs'
+observed names, subsystem inference, value aliases, read-only planted
+witnesses at dispatch AND event-log level, report rendering, end-to-end
+read + feedback + exactly-once delivery, guided-rejection feedback
+planted witness); both 6-op lock tests → 7; deliberate-non-mapping
+suite trimmed to the two semantic holdouts. Gates: **914 pytest**
+(was 885), ruff clean, mypy strict clean.
+
 ### v0.130 finalization packet assembled — 2026-07-19
 
 `docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md` (v0.129-packet

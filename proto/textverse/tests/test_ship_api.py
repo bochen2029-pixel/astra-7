@@ -76,10 +76,13 @@ def test_all_zones_unique() -> None:
 
 # --- TOOL_API locked names ---------------------------------------------------
 
-def test_tool_api_has_six_v0_ops() -> None:
+def test_tool_api_has_seven_v0_ops() -> None:
+    """Six effector/log ops + status.query, the surface's only read op
+    (ruling R-A, v0.130 adoption 2026-07-19)."""
     expected = {
         "warp.engage", "warp.disengage", "nav.heading_set",
         "sensors.scan", "power.allocate", "log.write",
+        "status.query",
     }
     assert set(TOOL_API) == expected
 

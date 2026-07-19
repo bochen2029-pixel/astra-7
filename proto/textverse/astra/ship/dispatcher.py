@@ -90,5 +90,12 @@ def _describe_effect(op_name: str, validated_args: Any) -> dict[str, Any]:
                 "text": validated_args.text,
             },
         }
+    if op_name == "status.query":
+        # Read-only (R-A, v0.130): NO state diff, ever. The orchestrator —
+        # the entity holding the live StateBus — fulfils the read into
+        # ToolResult.result after dispatch; this module stays the pure
+        # parse-validate-describe boundary and a read has no effect to
+        # describe.
+        return {}
     # Should never reach here — schema_cls lookup above guards this.
     return {}

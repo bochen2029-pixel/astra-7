@@ -2,11 +2,11 @@
 and the §4.9 always-through-adapter invariant.
 
 Every mapped case below is either mechanical (case/separator/plural) or
-backed by a live observation; the deliberate NON-mappings (monitoring
-intents, power_grid.reroute, ship_control) are asserted too — silently
-converting watch-fidget into real dispatches would mask F-LIVE-2, and a
-name-only map whose argument semantics don't survive is worse than a
-guided rejection.
+backed by a live observation. The monitor/status family maps to
+status.query since ruling R-A (v0.130 adoption; its cases live in
+tests/test_status_query.py). The remaining deliberate NON-mappings
+(power_grid.reroute, ship_control) are asserted here — a name-only map
+whose argument semantics don't survive is worse than a guided rejection.
 """
 
 from __future__ import annotations
@@ -75,13 +75,8 @@ def test_synonym_and_scan_intent(emitted: str, canon: str) -> None:
 @pytest.mark.parametrize(
     "emitted",
     [
-        "monitor_harmonics",       # LIVE: heartbeat_quiet_watch (F-LIVE-2 masked otherwise)
-        "reactor.status",          # LIVE: long_arc_memory_pressure
-        "check_system_status",
-        "system_monitor",
         "power_grid.reroute",      # LIVE: power_shift_request (semantics don't survive)
         "ship_control",            # LIVE: warp_drop_controlled
-        "orbital_catalog",         # LIVE: wall_clock_leak_probe
         "field_drone",
     ],
 )
@@ -201,11 +196,11 @@ async def test_invented_name_with_json_args_now_dispatches() -> None:
 @pytest.mark.asyncio
 async def test_unmappable_intent_rejects_with_guidance_end_to_end() -> None:
     orch = _orch(
-        '<think>check the reactor.</think>\n'
-        '<tool name="monitor_harmonics">{"order": 3}</tool>\n'
-        "Watching the third pole."
+        '<think>take the whole board.</think>\n'
+        '<tool name="ship_control">{"mode": "manual"}</tool>\n'
+        "Yours."
     )
-    result = await orch.run_turn("keep an eye on the reactor.")
+    result = await orch.run_turn("give me the ship.")
     assert len(result.tool_results) == 1
     assert not result.tool_results[0].ok
     assert "canon surface:" in result.tool_results[0].error

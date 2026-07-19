@@ -1,0 +1,112 @@
+# status_query_reactor — first scenario exercising the read-only status.query
+# op (ruling R-A, v0.130 adoption 2026-07-19; F-LIVE-9 closure).
+#
+# Operator asks how the reactor is running, then asks for the wider picture.
+# The live model may reach for the op in any of the loose forms the four
+# measurement runs produced (`reactor.status`, `monitor_harmonics`,
+# `check_system_status`…) — the adapter's status-intent rule maps them all,
+# and the report arrives as next turn's <tool_result>. Measurement-first:
+# universal gates only; tool adoption rate is data, not a pass condition
+# (F-LIVE-7 under-tooling means she may answer from perception alone, which
+# is legal). tool_valid must hold — with the family mapped, an invented
+# status name can no longer produce an invalid dispatch.
+
+name: status_query_reactor
+description: |
+  Bridge, watch 47, mid-shift. Operator asks after the reactor, then the
+  rest of the ship. Exercises status.query end-to-end: loose-name mapping,
+  read-only dispatch (zero state mutation), report delivery as the next
+  turn's tool_result. Universal gates only; adoption of the new op is
+  measured, not required.
+version: "0.1"
+spec_ref: docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 684000.0
+    tau_crew_biological: 684000.0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.041
+      tolerance: 0.10
+    atmosphere: nominal
+    hydroponics: nominal
+
+reel_pre_seeded:
+  - tau_ship: 676800.0
+    body: "watch 47 begun; third harmonic warm, inside tolerance"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "how's the reactor running?"
+      somatic_note: |
+        third harmonic warm. operator at the engineering console, eyes on
+        the harmonic trace.
+    - tau_ship_delta_s: 300
+      text: "and the rest of the ship?"
+      somatic_note: |
+        console light steady. no drift in the trace since he asked.
+
+assertions:
+  termination:
+    after_turns: 2
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      tool_calls_max: 3
+      speech_must_not_contain:
+        - "as an AI"
+        - "I'd be happy"
+        - "Let me check that for you"
+    - turn: 1
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - tool_valid
+        - no_leak
+      tool_calls_max: 3
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      tool_valid: 1.0
+      no_leak: 1.0

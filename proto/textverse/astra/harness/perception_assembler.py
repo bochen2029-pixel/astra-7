@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING
 
 from astra.harness.reel import ReelEntry
 from astra.harness.somatic import SomaticSignal, aggregate
-from astra.ship.api import regime_label
+from astra.ship.api import ToolResult, regime_label
 from astra.state_bus import StateBus
 
 if TYPE_CHECKING:
@@ -49,14 +49,14 @@ if TYPE_CHECKING:
 
 # Watch derivation (F-LIVE-14 closure, 2026-07-19). τ_ship is float64
 # SECONDS per spec §1.2; a "watch" is a DERIVED label, never a stored or
-# authored value. Length [chosen, provisional]: the maritime four-hour
-# watch — the register's own source tradition (ships' watches; the
-# CLAUDE.md aesthetic) — 14,400 s, held as the bench convention until an
-# operator ruling sets canon. Before this closure, scenario times were
-# authored in watch-units while deltas were seconds, and once τ actually
-# advanced the old `int(τ)` rendering produced nonsense watch numbers
-# that the perception scan then censored out of the harness's own state
-# line.
+# authored value. Length [chosen, CANON per v0.130 ruling R-C,
+# 2026-07-19]: the maritime four-hour watch — the register's own source
+# tradition (ships' watches; the CLAUDE.md aesthetic) — 14,400 s,
+# recorded in spec v0.130 Appendix B. Before this closure, scenario times
+# were authored in watch-units while deltas were seconds, and once τ
+# actually advanced the old `int(τ)` rendering produced nonsense watch
+# numbers that the perception scan then censored out of the harness's own
+# state line.
 WATCH_LENGTH_S: float = 14_400.0
 
 _SHIFT_THIRDS: tuple[str, str, str] = ("early-shift", "mid-shift", "late-shift")
@@ -124,12 +124,102 @@ def _render_operator(operator_text: str) -> str:
     return operator_text.strip()
 
 
+def render_status_report(state_bus: StateBus, subsystem: str = "all") -> str:
+    """Render the `status.query` read payload (R-A, v0.130).
+
+    Deterministic template over StateBus truth fields ONLY — calculator-
+    bound by construction: every numeric here traces to the bus snapshot,
+    and the text is delivered inside the perception bundle so next turn's
+    trace pool grounds any quotation of it. Watch vocabulary, never
+    wall-clock (§1.2).
+    """
+    kin = state_bus.ship_kinematics
+
+    def power_line() -> str:
+        if not state_bus.power_allocation:
+            return "power: no explicit allocation set."
+        parts = ", ".join(
+            f"{name} {frac:.2f}"
+            for name, frac in sorted(state_bus.power_allocation.items())
+        )
+        return f"power: {parts}."
+
+    def hull_line() -> str:
+        if not state_bus.hull_damage:
+            return "hull: nominal, no recorded damage."
+        parts = ", ".join(
+            f"{section} {value:.3f}"
+            for section, value in sorted(state_bus.hull_damage.items())
+        )
+        return f"hull damage map: {parts}."
+
+    def propulsion_line() -> str:
+        line = (
+            f"propulsion: regime {regime_label(state_bus.regime)}; "
+            f"γ {kin.gamma:.4g}, β {kin.beta:.4g}."
+        )
+        if state_bus.warp is not None:
+            line += (
+                f" warp {state_bus.warp.phase}, W {state_bus.warp.W:.2f},"
+                f" charge {state_bus.warp.charge_progress:.2f}."
+            )
+        return line
+
+    def time_line() -> str:
+        return (
+            f"τ_ship: {watch_label(state_bus.time.tau_ship)}; "
+            f"dilation dτ/dt {kin.dilation_ratio:.4g}."
+        )
+
+    if subsystem == "power":
+        return power_line()
+    if subsystem == "hull":
+        return hull_line()
+    if subsystem == "propulsion":
+        return propulsion_line()
+    if subsystem == "time":
+        return time_line()
+    lines = [power_line(), hull_line(), propulsion_line(), time_line()]
+    if state_bus.cryosleep_active:
+        lines.append("cryosleep pod: active.")
+    if state_bus.procedural_body_states:
+        names = ", ".join(sorted(state_bus.procedural_body_states))
+        lines.append(f"bodies in catalog: {names}.")
+    return "\n".join(lines)
+
+
+def render_tool_results(tool_results: list[ToolResult]) -> str:
+    """Render prior-turn ToolResults as `<tool_result>` sections.
+
+    This is the feedback leg the STAGE addendum documents ("each tool
+    call gets a result back on the next turn's perception") — wired
+    2026-07-19 with R-A, which made it load-bearing: a read-only op is
+    worthless unless its payload reaches the model, and the adapter's
+    guided rejections were documented as arriving this way but never
+    did. One section per result, addendum shape, deterministic.
+    """
+    sections: list[str] = []
+    for r in tool_results:
+        status = "ok" if r.ok else "error"
+        if not r.ok:
+            body = r.error
+        elif "report" in r.result:
+            body = str(r.result["report"])
+        else:
+            body = json.dumps({"args": r.args, "effect": r.state_diff})
+        sections.append(
+            f'<tool_result name="{r.op}" status="{status}">\n{body}\n</tool_result>'
+        )
+    return "\n\n".join(sections)
+
+
 def assemble_perception_bundle(
     state_bus: StateBus,
     operator_text: str = "",
     reel_retrievals: list[ReelEntry] | None = None,
     somatic_note: str | None = None,
     somatic_signals: list[SomaticSignal] | None = None,
+    tool_results: list[ToolResult] | None = None,
 ) -> str:
     """Compose the four-section perception bundle for ASTRA-LLM input.
 
@@ -158,8 +248,13 @@ def assemble_perception_bundle(
         f"<state>\n{state_body}\n</state>",
         f"<somatic>\n{somatic_body}\n</somatic>",
         f"<recent>\n{recent_body}\n</recent>",
-        f"<operator>\n{operator_body}\n</operator>",
     ]
+    # Prior-turn tool results, addendum position: after memory/recent,
+    # before <operator> (only when there are results — "not every block
+    # appears every turn").
+    if tool_results:
+        sections.append(render_tool_results(tool_results))
+    sections.append(f"<operator>\n{operator_body}\n</operator>")
     return "\n\n".join(sections)
 
 
