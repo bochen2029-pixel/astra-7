@@ -35,9 +35,9 @@ What you do NOT yet have without further reading: the full spec text, the ASTRA 
 |-------|------------|-------------------|
 | **A — textverse** (LLM bundle bench, **current build focus**) | `proto/textverse/STARTUP.md` | Build the closed-loop verification rig in Python. Pure code work. Days 1-7 plan. |
 | **B — UE5 plugin** (engine / visual) | `proto/ue5plugin/STARTUP.md` *(forthcoming)* | C++ plugin work in Unreal Engine. Parallel to Track A. |
-| **C — physics binary** (proto/astra_nexus) | `proto/astra_nexus.cpp` + `verify_nexus.py` + the architecture's §6.3 / §3.7 | Locked except for additive changes (e.g., Day 2's `--stdio-server` mode). Existing 48 assertions must keep passing. |
+| **C — physics binary** (proto/astra_nexus) | `proto/astra_nexus.cpp` + the spec's §6.3 / §3.7 (`verify_nexus.py` is a frozen-legacy mirror) | Locked except for additive changes (e.g., Day 2's `--stdio-server` mode). Existing 71 assertions must keep passing. |
 | **Book drafting** | Latest `memory/session_dump_*_book_drafting.md` + `book/CANON.md` + `book/negative_space.md` | The Long Watch novel. Parallel session lineage; separate discipline. |
-| **Spec revision** | `docs/spec-v0.128.md` §15.4 first | **Forbidden absent an empirical finding from a closed loop.** Mode 6 risk. |
+| **Spec revision** | `docs/spec-v0.129.md` §15.4 first (current envelope; adopted 2026-06-10). Draft under operator review: `docs/spec-v0.130-DRAFT-2026-07-19.md` | **Forbidden absent an empirical finding from a closed loop.** Mode 6 risk. Route findings into the current draft's QC register or a dated proposal note; never edit the adopted spec in place. |
 
 If you're not sure which track: the operator (Bo Chen) will tell you. The default current-build-focus is **Track A textverse**.
 
@@ -91,7 +91,7 @@ For small operator-driven tasks (token rotation help, log scrub, README edit, co
 
 ## 4. Universal discipline (binds all tracks)
 
-These hold regardless of which track you're on. Pulled from `docs/spec-v0.128.md` §15:
+These hold regardless of which track you're on. Pulled from `docs/spec-v0.129.md` §15:
 
 - **§15.4 — Envelope locked; sculpting begins.** Don't propose spec revisions absent empirical findings.
 - **§15.5 — Progressive Specification.** Lock the outer envelope; sculpt detail within bounds; never violate prior locks.
@@ -155,13 +155,14 @@ C:\ASTRA-7\
 ├── README.md
 ├── LICENSE
 ├── docs/
-│   ├── spec-v0.128.md              the envelope (read for any track)
+│   ├── spec-v0.129.md              the envelope (read for any track; adopted 2026-06-10)
+│   ├── spec-v0.130-DRAFT-2026-07-19.md  amendment draft under operator review
 │   ├── astra-sysprompt.md          canonical persona text
 │   ├── astra-sysprompt-addendum-stage.md  STAGE protocol addendum
 │   ├── qualia-1-bridge.md          philosophical backbone
 │   ├── synthesis.md                v0.1 architectural through-line (historical)
 │   ├── architecture.md             provisional tactical specifics (historical)
-│   └── spec-v0.{1,123,125,126,127}.md  historical precursors
+│   └── spec-v0.{1,123,125,126,127,128}.md  historical precursors (superseded)
 ├── book/
 │   ├── CANON.md                    universe-separation + Gap Thesis quote
 │   ├── negative_space.md           no-Bo grep list + voice prohibitions
@@ -171,7 +172,8 @@ C:\ASTRA-7\
 ├── proto/
 │   ├── astra_nexus.cpp             physics binary source
 │   ├── astra_nexus.exe             compiled binary (Windows)
-│   ├── verify_nexus.py             Python mirror (45 assertions)
+│   ├── verify_nexus.py             Python mirror (45 assertions; FROZEN legacy —
+│   │                               cross-substrate checks live in textverse tests)
 │   ├── build.bat                   MSVC build
 │   └── textverse/
 │       ├── ARCHITECTURE.md         the full design
@@ -181,8 +183,10 @@ C:\ASTRA-7\
 │       ├── tests/                  3 sanity tests
 │       └── scenarios/              first scenario as markdown
 └── tests/
-    ├── wall_clock_patterns.txt     leak-detector patterns
-    └── qc3_events.txt              irreversible-event canon
+    ├── wall_clock_patterns.txt     byte-identical MIRROR of the canonical copy at
+    │                               proto/textverse/astra/grammar/canon/ (CI-enforced)
+    └── qc3_events.txt              byte-identical MIRROR of the canonical copy at
+                                    proto/textverse/astra/harness/ephemeral/canon/
 ```
 
 Memory (auto-loaded, not in repo):
