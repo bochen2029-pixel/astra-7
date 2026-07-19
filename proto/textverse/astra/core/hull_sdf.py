@@ -1,6 +1,6 @@
 """HullSDF — stub for v0; full SDF deferred to Implementation B (UE5).
 
-Per spec v0.128 §1.3, the ship's physical form is one signed-distance field
+Per spec v0.129 §1.3, the ship's physical form is one signed-distance field
 read through an additive damage map. UE5 (Implementation B) provides the
 actual SDF texture; textverse (Implementation A) doesn't render hulls, so it
 carries damage state only.

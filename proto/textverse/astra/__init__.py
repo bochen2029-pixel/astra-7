@@ -6,7 +6,7 @@ Implementation status: scaffolded; Day 1 (Pydantic types in `core/` + `state_bus
 is the first actual code work. Until Day 1 lands, all submodules are empty.
 
 This package implements:
-- The harness contract (spec v0.128 §4.9)
+- The harness contract (spec v0.129 §4.9)
 - The STAGE grammar (§4.3)
 - The Observation Calculator (§6.3)
 - The Narrator-LLM bundle (§6.4)

@@ -1,4 +1,4 @@
-"""StateBus Layer 0 schema per spec v0.128 §4.2.
+"""StateBus Layer 0 schema per spec v0.129 §4.2.
 
 The State Bus is the world's truth. Frame-coherent reads, atomic writes at
 frame boundary, double-buffered conceptually (textverse implements this as
@@ -30,7 +30,9 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validat
 
 from astra.core.astra_coord import AstraCoord
 from astra.core.detect_regime import detect_regime
+from astra.core.grav import compute_grav_factor
 from astra.core.regime import Regime
+from astra.core.ship_kinematic import ShipKinematicState, derive_ship_kinematics
 from astra.core.time_state import TimeState
 
 
@@ -45,7 +47,7 @@ class BHRecord(BaseModel):
 
 
 class WarpState(BaseModel):
-    """Warp drive state per spec v0.128 §4.2 / §4.6 (audit D3 closure).
+    """Warp drive state per spec v0.129 §4.2 / §4.6 (audit D3 closure).
 
     `W` is the warp coil intensity (0.0 = inactive, 1.0 = max cruise).
     `phase` selects which WARP_* bit composes into Regime:
@@ -65,7 +67,7 @@ class WarpState(BaseModel):
 
 
 class CosmologicalParams(BaseModel):
-    """Cosmological constants per spec v0.128 §4.2 (NEW v0.127).
+    """Cosmological constants per spec v0.129 §4.2 (NEW v0.127).
 
     Flat ΛCDM: Ω_m + Ω_Λ ≡ 1. Default values are provisional.
     """
@@ -83,7 +85,7 @@ class CosmologicalParams(BaseModel):
             raise ValueError(
                 f"Flat ΛCDM violated: Ω_m + Ω_Λ = "
                 f"{self.omega_m + self.omega_lambda}, expected 1.0 "
-                f"(spec v0.128 §4.2)"
+                f"(spec v0.129 §4.2)"
             )
         return self
 
@@ -141,18 +143,20 @@ class BodyState(BaseModel):
 
 
 class StateBus(BaseModel):
-    """Layer 0 single source of truth per spec v0.128 §4.2.
+    """Layer 0 single source of truth per spec v0.129 §4.2.
 
     Frozen per spec §1.5: each turn produces a new snapshot; no mutation
     of a prior frame is possible. Reads at turn start are frame-coherent
     by construction (the snapshot is the read).
 
-    `regime` is a computed_field — never appears in `model_fields`,
-    only in `model_computed_fields`. The schema cannot construct
-    incoherent state because regime is always derived from the
-    underlying `warp` / `cryosleep_active` / `time.rapidity_zeta`
-    fields. grav_factor defaults to 1.0; will be computed from
-    `bh_list` + `astra_coord` in a follow-up commit per audit Tier 2.
+    `regime`, `grav_factor`, and `ship_kinematics` are computed_fields —
+    never in `model_fields`, only in `model_computed_fields`. The schema
+    cannot construct incoherent state because all three are always derived
+    from the underlying `warp` / `cryosleep_active` / `time.rapidity_zeta`
+    / `bh_list` / `astra_coord` truth fields (QCR-5 + QCR-6 closure,
+    2026-07-19: the GRAVITY_WELL leg is plumbed and the §4.2 kinematic
+    view is wired). Serialized dumps carry them as echoes; loads ignore
+    the echoes and re-derive (the §4.6 coherence-gate pattern).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -170,17 +174,37 @@ class StateBus(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
+    def grav_factor(self) -> float:
+        """Schwarzschild-dominant gravitational factor (§3.2), derived from
+        `bh_list` + `astra_coord` via the anchor-tested Python mirror of
+        the C++ `compute_grav_factor` (QCR-5 closure: the GRAVITY_WELL leg
+        of the computed regime is now plumbed)."""
+        return compute_grav_factor(self.bh_list, self.astra_coord)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def regime(self) -> Regime:
         """Composite Regime per spec §3.3, derived from underlying state.
 
         Algorithm in `astra.core.detect_regime.detect_regime`. Never
         settable — the schema cannot construct an incoherent state.
         """
-        # grav_factor defaults to 1.0 here; the bh_list + position →
-        # Schwarzschild composition is computed by C++ astra_nexus.
-        # Follow-up commit will plumb the computed grav_factor through.
         return detect_regime(
             rapidity_zeta=self.time.rapidity_zeta,
             warp=self.warp,
             cryosleep_active=self.cryosleep_active,
+            grav_factor=self.grav_factor,
+        )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def ship_kinematics(self) -> ShipKinematicState:
+        """Derived kinematic view per §4.2 (QCR-6 closure): computed from
+        ζ⃗ + warp + grav context; serialized as an echo, re-derived on
+        load. γ_kinematic ≡ 1 during warp for the dilation leg (§3.3)."""
+        return derive_ship_kinematics(
+            rapidity_zeta=self.time.rapidity_zeta,
+            grav_factor=self.grav_factor,
+            warp_active=self.warp is not None,
+            warp_w=self.warp.W if self.warp is not None else 0.0,
         )

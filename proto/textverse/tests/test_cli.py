@@ -19,7 +19,7 @@ def test_version_subcommand() -> None:
     result = runner.invoke(app_main, ["version"])
     assert result.exit_code == 0
     assert "astra-textverse" in result.output
-    assert "spec: docs/spec-v0.128.md" in result.output
+    assert "spec: docs/spec-v0.129.md" in result.output
 
 
 def test_list_scenarios_includes_watch_47() -> None:

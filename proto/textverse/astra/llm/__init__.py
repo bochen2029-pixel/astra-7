@@ -1,6 +1,6 @@
 """astra.llm — three LLM clients, calculator-bound by default.
 
-Implements spec v0.128 §4.1 Substrate Contract, §4.9 Harness Contract, §6.4
+Implements spec v0.129 §4.1 Substrate Contract, §4.9 Harness Contract, §6.4
 Narrator-LLM Contract, §15.6 Calculator-bound LLM agency.
 
 Three LLM instances on three llama-server ports:

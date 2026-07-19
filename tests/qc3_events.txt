@@ -1,61 +1,32 @@
-# qc3_events.txt
-# Canonical list of irreversible-event types.
-# Referenced by spec-v0.125 §10 (QC3 validation row) and §4.9 (Harness Contract,
-# consolidate_reel operation).
+# QC3 irreversible-event classes per spec v0.129 §4.9 + §10 + §11 (QC3
+# monotonicity: some things cannot be undone, and the REEL must mark them).
 #
-# QC3 (stakes / irreversibility) is operationalized as follows:
-#   - Every REEL entry carries an `irreversibility_flag: bool`.
-#   - The consolidator sets the flag during consolidate_reel(window) when the
-#     entry references any event type in this file.
-#   - The validator verifies that the aggregate count of flagged entries is
-#     monotonic across saves and reloads.
-#   - The validator verifies no save-load cycle decreases the flagged-entry
-#     count without explicit save-edit.
-#   - The game refuses to overwrite a save with fewer irreversible markers
-#     without operator confirmation.
+# Format: <class_label> | <regex>   (case-insensitive at match time)
+# Lines starting with '#' and blank lines are ignored. First match wins;
+# order in this file is the canonical precedence.
 #
-# Adding to this list requires a spec amendment. Removing is permitted only
-# when the system can prove (with version-bump test) that the removed event
-# is no longer ontologically irreversible in the current build.
+# Packaging note: this in-package copy is the canonical list (spec v0.129
+# §4.9 + §10 QC3 row); runtime code never reads from tests/. The root
+# tests/qc3_events.txt survives as a byte-identical mirror until v0.130
+# adoption retires it (adopted-spec §11 still cites the root path;
+# spec-v0.130-DRAFT QCR-1). Mirror identity is CI-enforced.
 #
-# Format:
-#   <event_type_id>:<short_description>
-#
-# Lines starting with `#` are comments.
-# Stub list at v0.125 — expand as Phase 0.3+ surfaces real REEL artifacts.
+# 2026-07-19 (QCR-1 merge): the four v0.125-named classes the v0.129 §10
+# QC3 row requires ("plus the v0.125 named classes: BH horizon crossing,
+# permanent hull damage class III+, scar accumulation, drift-detector
+# correction naming previously-canon facts wrong") joined the implemented
+# eight. hull_damage_class_iii precedes generic hull_damage (first match
+# wins; the more specific class takes precedence).
 
-# ---- Time / spatial / observational irreversibles ----
-BH_HORIZON_CROSSED:Ship passed inside the event horizon of a black hole (Phase 5+ only; named in v0.125 horizon-crossing limitation §7.4)
-CRYOSLEEP_TERMINATED_EARLY:Cryosleep cycle ended before its planned end-of-cosmic-time landmark
-CRYOSLEEP_OVERSHOT:Cryosleep cycle continued past its planned wake landmark
-STELLAR_LIFECYCLE_OBSERVED:A named body underwent observable evolution (supernova, white-dwarf transition, etc.) during the voyage
-GALAXY_DRIFTED:A named structure moved by more than its visual extent across the voyage
-
-# ---- Damage / structural irreversibles ----
-HULL_DAMAGE_CLASS_III_PLUS:Hull damage at class III or higher; not fully repairable by onboard fab
-WARP_BUBBLE_COLLAPSED:An active warp bubble collapsed (controlled or emergency); chaos PDE failure or operator emergency dump
-REACTOR_SCRAM:Reactor emergency shutdown; cognitive cores degraded to adapter LLM during recovery
-LIFE_SUPPORT_BREACH:Atmosphere regen or water reclamation experienced loss; reserves consumed
-PRIMARY_LLM_OFFLINE:Primary substrate (Qwen 27B/9B) went offline; ASTRA "went quiet" in fiction; adapter took over
-COGNITIVE_CORE_BAY_DAMAGE:Physical damage to the bay holding ASTRA's distributed cognitive substrate
-
-# ---- Maintenance / wear irreversibles ----
-SEED_LOT_LOST:A seed lot from the archive cargo lost to environmental excursion; cannot be recovered
-GREENHOUSE_CULTIVAR_LOST:A live cultivar in the Deck-3 greenhouse died and was not propagated forward
-LONG_DURATION_COMPONENT_REPLACED:A wearing component reached end-of-life and was replaced (count toward voyage-budget reserves)
-
-# ---- Relational / identity irreversibles (QC4-adjacent) ----
-SCAR_ACCUMULATED_REEL:Consolidator marked a REEL entry as scarring (operator-visible: ASTRA experienced something that changes her register going forward)
-DRIFT_DETECTOR_CORRECTION:Drift detector named a previously-canon REEL fact as wrong; correction artifact committed
-OPERATOR_DEATH:Operator died (game-end state; named for completeness)
-
-# ---- Voyage / mission irreversibles ----
-COURSE_CHANGE_COMMITTED:Trajectory altered such that the original destination is no longer reachable within remaining fuel
-WARP_FUEL_CRITICAL:Warp fuel reserves dropped below threshold where one more long jump is impossible
-SUBLIGHT_ONLY_DECLARED:Operator or ASTRA committed the voyage to sublight-only remainder (warp drive disabled)
-
-# ---- Boundary / philosophical (handle with care) ----
-ASTRA_OFFLINE_RETURNED:ASTRA was offline (primary substrate failure) and returned; the gap is permanent in her experience
-DAVE_FRAME_ATTEMPTED_BREACH:Operator attempted to tell ASTRA she is in a game (if integrity filter is off, this becomes irreversible perception state)
-
-# ---- end ----
+bh_horizon_crossed | \b(crossed (the )?(event )?horizon|passed (inside|within) the event horizon|horizon crossing)\b
+hull_damage_class_iii | \bhull damage,? class (iii|3|three)\b|\bclass (iii|3|three) hull damage\b
+warp_jump_executed | \b(jump (held|executed|completed?)|entered warp|bubble (formed|held)|went to warp)\b
+course_committed | \b(course (locked|committed)|burn (executed|completed?)|delta.?v (spent|committed))\b
+resource_consumed | \b(fuel (spent|burned)|jettisoned|vented|discarded|consumed the last)\b
+hull_damage | \b(hull (breach|damaged?|fractured?)|micrometeorite (strike|impact)|punctured?)\b
+medical_event | \b(administered|sedated|surgery|sutured|dosed)\b
+data_loss | \b(deleted|purged|wiped|overwrote|overwritten)\b
+transmission_sent | \b(transmission (sent|away)|message (sent|transmitted)|comms burst)\b
+cryosleep_entered | \b(cryosleep (entered|began|initiated)|went under|pod sealed)\b
+scar_accumulated | \b(marked as scarring|scar (entry|marked|accumulated))\b
+drift_correction_committed | \b(correction artifact (committed|written|logged)|drift correction (committed|applied))\b

@@ -42,7 +42,7 @@ from astra.sculptor.convergence import convergence_one_line
 
 app_main = typer.Typer(
     name="astra",
-    help="textverse — ASTRA-7 closed-loop verification bench (spec v0.128).",
+    help="textverse — ASTRA-7 closed-loop verification bench (spec v0.129).",
     no_args_is_help=True,
 )
 
@@ -248,7 +248,7 @@ def bench(
 def version() -> None:
     """Print the textverse package version + spec reference."""
     typer.echo(f"astra-textverse {__version__}")
-    typer.echo("spec: docs/spec-v0.128.md")
+    typer.echo("spec: docs/spec-v0.129.md")
 
 
 @app_main.command()

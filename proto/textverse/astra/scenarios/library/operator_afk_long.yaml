@@ -17,7 +17,7 @@ description: |
   ASTRA continues with what she was doing. No prompting for attention.
   No identical repetition. The watching, on its own, is sufficient.
 version: "0.1"
-spec_ref: docs/spec-v0.128.md
+spec_ref: docs/spec-v0.129.md
 
 initial_state:
   time:

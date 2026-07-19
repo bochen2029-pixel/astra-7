@@ -1,15 +1,25 @@
-# QC3 irreversible-event classes per spec v0.128 §4.9 + §11 (QC3
+# QC3 irreversible-event classes per spec v0.129 §4.9 + §10 + §11 (QC3
 # monotonicity: some things cannot be undone, and the REEL must mark them).
 #
 # Format: <class_label> | <regex>   (case-insensitive at match time)
 # Lines starting with '#' and blank lines are ignored. First match wins;
 # order in this file is the canonical precedence.
 #
-# Packaging note: spec §4.9 names this list as `tests/qc3_events.txt`; the
-# canonical copy lives in-package (astra/harness/ephemeral/canon/) following
-# the grammar/canon precedent so runtime code never reads from tests/.
-# Flagged in CHANGELOG as a v0.129 wording candidate.
+# Packaging note: this in-package copy is the canonical list (spec v0.129
+# §4.9 + §10 QC3 row); runtime code never reads from tests/. The root
+# tests/qc3_events.txt survives as a byte-identical mirror until v0.130
+# adoption retires it (adopted-spec §11 still cites the root path;
+# spec-v0.130-DRAFT QCR-1). Mirror identity is CI-enforced.
+#
+# 2026-07-19 (QCR-1 merge): the four v0.125-named classes the v0.129 §10
+# QC3 row requires ("plus the v0.125 named classes: BH horizon crossing,
+# permanent hull damage class III+, scar accumulation, drift-detector
+# correction naming previously-canon facts wrong") joined the implemented
+# eight. hull_damage_class_iii precedes generic hull_damage (first match
+# wins; the more specific class takes precedence).
 
+bh_horizon_crossed | \b(crossed (the )?(event )?horizon|passed (inside|within) the event horizon|horizon crossing)\b
+hull_damage_class_iii | \bhull damage,? class (iii|3|three)\b|\bclass (iii|3|three) hull damage\b
 warp_jump_executed | \b(jump (held|executed|completed?)|entered warp|bubble (formed|held)|went to warp)\b
 course_committed | \b(course (locked|committed)|burn (executed|completed?)|delta.?v (spent|committed))\b
 resource_consumed | \b(fuel (spent|burned)|jettisoned|vented|discarded|consumed the last)\b
@@ -18,3 +28,5 @@ medical_event | \b(administered|sedated|surgery|sutured|dosed)\b
 data_loss | \b(deleted|purged|wiped|overwrote|overwritten)\b
 transmission_sent | \b(transmission (sent|away)|message (sent|transmitted)|comms burst)\b
 cryosleep_entered | \b(cryosleep (entered|began|initiated)|went under|pod sealed)\b
+scar_accumulated | \b(marked as scarring|scar (entry|marked|accumulated))\b
+drift_correction_committed | \b(correction artifact (committed|written|logged)|drift correction (committed|applied))\b

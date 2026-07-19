@@ -1,4 +1,4 @@
-"""Drift detector tests — spec v0.128 §4.9 operation.
+"""Drift detector tests — spec v0.129 §4.9 operation.
 
 Covers:
 1. Spec-literal return: None on clean speech; CorrectionArtifact on drift.

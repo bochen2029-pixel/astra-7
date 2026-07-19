@@ -6,6 +6,91 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### QC-to-parity vs spec v0.129 (spec-v0.130-DRAFT groundwork) — 2026-07-19
+
+Bring-to-parity turn executed in the order specified by
+`docs/spec-v0.130-DRAFT-2026-07-19.md` §4.2. Gates: **750 → 774 pytest**,
+ruff clean, mypy strict clean, `astra_nexus.exe` exit 0 (verified before and
+after).
+
+**1 — Canon unification (QCR-1) + citation sweep (QCR-16).**
+- The root `tests/{wall_clock_patterns,qc3_events}.txt` and their in-package
+  copies had **diverged** (measured by hash; they were different documents:
+  the root pair was the v0.125 stub, the package pair the curated runtime
+  canon, each holding content the other lacked). Resolution: in-package is
+  canonical; a **curated merge** brought in the spec-named categories the
+  runtime canon lacked — §5.7's Unix epochs + system-clock API references,
+  the unambiguous Earth-diurnal/calendar-unit relative idioms
+  (yesterday/tomorrow/tonight; week/month forms), §3.9's metabolic-clock
+  patterns — while deliberately keeping out the stub's false-positive
+  classes (geography that names the bench's own bodies, "May"/"March" bare
+  words, substrate terms that live in `astra_substrate_patterns.txt`,
+  duration idioms with legitimate τ_ship readings). `qc3_events.txt` gained
+  the four v0.125-named classes the v0.129 §10 QC3 row requires
+  (bh_horizon_crossed, hull_damage_class_iii — ordered before generic
+  hull_damage for first-match precedence — scar_accumulated,
+  drift_correction_committed): 8 → 12 classes.
+- Root copies re-mirrored byte-identical; **`tests/test_canon_mirrors.py`**
+  added (gun R-6). Witness recorded: the test ran RED against the measured
+  divergence before the sync, green after.
+- Envelope-citation sweep v0.128 → v0.129 across astra/, tests/, scripts/,
+  and all 20 scenario `spec_ref`s (69 files + 3 residual `Per v0.128`
+  citations). Historical attributions ("the v0.128 corrected strip rule")
+  deliberately kept — they name which revision introduced a rule.
+- `tuning/scope.yaml`: `spec_ref` → v0.129; `locked` now names the current
+  envelope AND the v0.130 draft while keeping the superseded v0.128
+  (Sculptor may never edit any spec-lineage file).
+
+**2 — Epoch-zero bound + forbidden-path KAT (QCR-3).**
+- `TimeState` gains `T_COSMIC_MAX = 2^39 s` and an epoch-bound validator:
+  §4.2's former "seconds since Big Bang (or epoch zero)" wording permitted
+  a configuration where §5.3's replay tolerance (ε < 1e-4 s) is violated by
+  float64 ULP alone (64 s granularity at the cosmological epoch). Deep-time
+  mechanics beyond the bound trigger the TimeCoord representation +
+  SaveFile v4 instead of silent precision collapse.
+- **`tests/test_time_epoch_kat.py`** — permanent KAT (the cosh-discipline
+  pattern): demonstrates the 64 s ULP wall, the vanishing `t += dt`
+  increment, and the legal domain holding tolerance everywhere.
+- `test_savefile.py` hypothesis strategy bounded to the legal domain
+  (it had been generating t_cosmic up to ~1e12; hypothesis immediately
+  shrank to exactly 2^39 — the gate works).
+
+**3 — GRAVITY_WELL plumb (QCR-5) + ShipKinematicState view (QCR-6).**
+- New `astra/core/grav.py`: Python mirror of the §3.2 Schwarzschild-
+  dominant composition (C++ `compute_grav_factor`), anchor-tested at the
+  same values the C++ suite asserts (r = 100·r_s → √0.99; far → 1; empty
+  → 1). `astra_distance` added to `astra/core/astra_coord.py` (sector-first
+  difference, mirrors C++).
+- `StateBus.grav_factor` is now a **computed field** feeding
+  `detect_regime` — the GRAVITY_WELL bit can finally compose at the bus
+  root (before this, it could never fire: the leg was unplumbed).
+- `ShipKinematicState` brought to the v0.129 §4.2 field set
+  (v_local_cmb, γ, β, grav_factor, dτ/dt — the v0.128-era `regime` slot
+  removed so a second regime copy cannot drift) and **wired** as the
+  `StateBus.ship_kinematics` computed field via `derive_ship_kinematics`
+  (+ `f_warp_canon` / `dtau_dt_cosmic` mirrors, anchor-tested against the
+  C++ §10 identity cases; γ_kinematic ≡ 1 during warp per §3.3).
+- **`tests/test_grav_and_kinematics.py`** — the anchor battery + end-to-end
+  StateBus composition tests (BH at 10·r_s → GW bit set; far BH → clear;
+  dump/validate round-trip re-derives echoes).
+
+**Canon-doc parity (same turn):** CLAUDE.md + BOOTSTRAP.md receipts
+corrected (48 → 71 assertions; envelope pointers v0.128 → v0.129; mirror
+annotations; findings-path guidance), STARTUP.md rewritten from the
+pre-loop Day-picker era to post-loop reality (QCR-12).
+
+**Deliberately deferred (named):** nexus version-string bump +
+QCR-8 horizon-comment fix + `compute_grav_factor` stdio op (dedicated
+Track C micro-turn with rebuild + 71-assertion rerun); orchestrator
+ephemeral triggers (ride the §4.3.1 heartbeat, forward work);
+trace/replay driver + asynchrony scenarios + Frame Drill (forward
+implementation toward v0.130 per the draft's queue).
+
+**Spec findings surfaced by this turn** (routed to the draft's register):
+the §5.7-named pattern categories were absent from the runtime canon
+(closed by the merge above); the scope.yaml envelope pointer had gone
+stale with adoption (closed); everything else was already in QCR-1…19.
+
 ### Scenario library 12 → 20 + library-wide validation gate — 2026-06-10
 
 Eight new scenarios closing named coverage gaps (none of these registers

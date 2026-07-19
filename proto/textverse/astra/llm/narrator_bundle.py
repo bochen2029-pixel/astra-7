@@ -1,6 +1,6 @@
 """Narrator-LLM bundle — calculator-bound perception renderer.
 
-Spec v0.128 §6.4: the Narrator turns State Bus + operator input into the
+spec v0.129 §6.4: the Narrator turns State Bus + operator input into the
 four-section perception bundle ASTRA reads. Every numeric in its output
 must trace to a tool result observed in its input (calculator-bound).
 

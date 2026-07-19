@@ -1,4 +1,4 @@
-"""Consolidator tests — spec v0.128 §4.9 operation + QC3 irreversibility.
+"""Consolidator tests — spec v0.129 §4.9 operation + QC3 irreversibility.
 
 Covers:
 1. QC3 classification: canonical classes load; irreversible exchanges set

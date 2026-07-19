@@ -45,7 +45,7 @@ def test_load_scope_yaml(contract: ScopeContract) -> None:
     assert contract.version == "1.0"
     assert "watch_47_morning" in contract.anchor_scenarios
     assert "prompts/astra_sysprompt.md" in contract.register_load_bearing
-    assert "docs/spec-v0.128.md" in contract.locked
+    assert "docs/spec-v0.129.md" in contract.locked
     assert contract.pytest_cadence_iterations >= 1
 
 
@@ -59,9 +59,9 @@ def test_required_invariants_populated(contract: ScopeContract) -> None:
 # --- Locked-file refusals ----------------------------------------------------
 
 def test_locked_file_refused_loudly(enforcer: ScopeEnforcer) -> None:
-    """spec-v0.128.md is locked; refusal is loud, not silent."""
+    """spec-v0.129.md is locked; refusal is loud, not silent."""
     change = ChangeRequest(
-        relpath="docs/spec-v0.128.md",
+        relpath="docs/spec-v0.129.md",
         new_contents="malicious spec drift",
     )
     decision = enforcer.evaluate(change)

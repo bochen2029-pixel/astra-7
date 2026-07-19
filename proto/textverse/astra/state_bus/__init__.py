@@ -1,6 +1,6 @@
 """astra.state_bus — single source of truth, double-buffered conceptually.
 
-Implements spec v0.128 §4.2 State Bus Contract:
+Implements spec v0.129 §4.2 State Bus Contract:
 - Frame-coherent reads (a turn's snapshot is the read)
 - Layer 0 schema (Pydantic models, all frozen)
 - Save-seeds-not-state persistence (SaveFile v3; Day 5+)

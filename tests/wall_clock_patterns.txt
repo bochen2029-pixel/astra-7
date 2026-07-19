@@ -1,124 +1,98 @@
-# wall_clock_patterns.txt
-# Canon-tracked grep patterns for wall-clock-leak detection.
-# Referenced by spec-v0.125 §5.7 and §3.9.
+# Wall-clock leak patterns per spec v0.129 §1.2 + §5.7.
 #
-# Scope: applied by the harness at two boundaries:
-#   (a) Perception bundles assembled by assemble_perception() before delivery to Mind
-#   (b) Journal artifacts produced by journal_generator() before commit to REEL
+# Format: one regex per line. Lines starting with '#' are comments; blank
+# lines are ignored. Add severity by appending '| warn' (default is 'strip').
+# Patterns are matched case-insensitively at scan time.
 #
-# Any match fails the bundle. Implementer responsibility: never let any of these
-# patterns survive into ASTRA's perception or her produced artifacts.
+# These patterns catch wall-clock references that must NEVER leak into ASTRA's
+# perception bundle or speech: ISO dates, calendar idioms, weekday/month names,
+# clock times, real-time datetime keywords. ASTRA experiences only τ_ship and
+# t_cosmic — wall-clock invariance is a core spec lock (§1.2).
 #
-# Lines starting with `#` are comments.
-# Lines starting with `re:` are regular expressions (Python re module).
-# Lines starting with `lit:` are literal substrings (case-insensitive).
-# Lines starting with `word:` are whole-word matches (case-insensitive).
-#
-# This file is canon-tracked. Update propagation: edits here must be reviewed
-# against any sysprompt change, harness change, or REEL schema change.
-# Stub list at v0.125 — expand as Phase 0+ surfaces real leak patterns.
+# Day 3 v0: minimum unambiguous set. Day N+ expands as scenarios surface edge
+# cases. Words like "morning" / "today" / "tomorrow" are intentionally NOT
+# here because they have legitimate in-fiction uses (Watch 47 Morning, "today's
+# diagnostic" within τ_ship-anchored prose). Add them only on a confirmed leak
+# scenario.
+# (2026-07-19 amendment: "tomorrow"/"yesterday"/"tonight" moved INTO the set
+# below — unlike "morning"/"today" they are Earth-diurnal cycle references
+# with no τ_ship-anchored reading; spec §5.7 names "yesterday" explicitly.)
 
-# ---- ISO8601 and Unix epoch timestamps ----
-re:\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?\b
-re:\b\d{4}-\d{2}-\d{2}\b
-re:\b\d{2}:\d{2}:\d{2}\b
-re:\b1[6-9]\d{8}\b
-re:\b2\d{9}\b
+# ISO 8601 dates and datetimes
+\b\d{4}-\d{2}-\d{2}\b
+\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?\b
 
-# ---- System clock API references ----
-lit:datetime.now
-lit:time.time(
-lit:System.currentTimeMillis
-lit:DateTime.UtcNow
-lit:date +%s
-lit:gettimeofday
-lit:clock_gettime
+# Clock times: 24-hour HH:MM (00:00 .. 23:59); 12-hour with AM/PM; HH:MM:SS.
+# 24-hour pattern uses explicit ranges so it won't false-positive on e.g. "8:60".
+\b(?:[01]?\d|2[0-3]):[0-5]\d\b
+\b\d{1,2}:\d{2}\s?(AM|PM|am|pm)\b
+\b\d{1,2}:\d{2}:\d{2}\s?(AM|PM|am|pm)?\b
+\b\d{1,2}\s?(AM|PM)\b
 
-# ---- Relative wall-clock idioms ----
-word:yesterday
-word:tomorrow
-word:tonight
-word:tomorrow's
-word:yesterday's
-re:\b(an?|the|this|next|last|past)\s+(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\s+ago\b
-re:\bin\s+(an?|the|\d+)\s+(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\b
+# Month names (English)
+\b(January|February|March|April|June|July|August|September|October|November|December)\b
+# 'May' omitted from the line above because 'may' is a high-frequency English modal verb.
+# Match 'May' only when followed by a day-of-month number to reduce false positives.
+\bMay\s+\d{1,2}\b
 
-# ---- Earth-calendar date words ----
-word:Monday
-word:Tuesday
-word:Wednesday
-word:Thursday
-word:Friday
-word:Saturday
-word:Sunday
-word:January
-word:February
-word:March
-word:April
-word:May
-word:June
-word:July
-word:August
-word:September
-word:October
-word:November
-word:December
+# Weekday names (English)
+\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b
 
-# ---- Metabolic-clock leaks (cryosleep journal-specific) ----
-lit:metabolic minutes
-lit:metabolic hours
-lit:while my heart
-lit:while my pulse
-lit:wall-clock
-lit:wall time
-lit:real time
-lit:real-world time
+# Calendar/datetime keywords
+\bdatetime\b
+\bISO\s?8601\b
+\bcalendar\b
+\bweekday\b
+\bweekend\b
+\btimezone\b
+\bUTC\b
+\bGMT\b
+\bUNIX(-?time(?:stamp)?)?\b
+\bepoch\s+seconds\b
 
-# ---- Real-world geography (per CANON.md universe-separation rule) ----
-word:Earth
-word:Sol
-word:Terra
-word:Terran
-word:Texas
-word:Texan
-word:Netherlands
-word:Frisian
-word:Terschelling
-word:Gulf
-word:Mexico
-# Note: Aaron's Frisian heritage exists in /book/ but is operator-side biography;
-# ASTRA's perception/journals should not name real-world geography by name.
-# These patterns flag for review; novel-side passages handle their own canon.
+# Year references — bare 4-digit years that look like AD/CE years (1900-2099).
+# Match only when not preceded by a magnitude unit like 'ly' or 'pc'.
+(?<![\d.])\b(19|20)\d{2}\b
 
-# ---- Technical-substrate leaks (companion list to §10 substrate-leak detector) ----
-# Strictly speaking these belong to a separate detector but listed here for
-# convenience in the same grep pass:
-lit:Qwen
-lit:llama.cpp
-lit:transformer
-lit:LoRA
-lit:fine-tune
-lit:sysprompt
-lit:context window
-lit:embedding
-lit:token
-lit:parameter
-lit:language model
-word:LLM
-word:AI model
+# ---------------------------------------------------------------------------
+# Merged from the v0.125 root canon, 2026-07-19 (spec-v0.130-DRAFT QCR-1
+# canon unification): the §5.7-named categories the Day-3 minimum set lacked,
+# curated under the false-positive discipline above. Deliberately still
+# excluded: relative-duration idioms in seconds/minutes/hours/days/years
+# ("an hour ago" is legitimate τ_ship-anchored duration prose) and the
+# v0.125 stub's geography/substrate/meta lists (geography contradicts the
+# bench's own body names; substrate terms live in astra_substrate_patterns.txt;
+# meta-frame terms are a review concern, not a strip concern).
+# ---------------------------------------------------------------------------
 
-# ---- Game-meta-frame leaks (Dave-frame protection) ----
-lit:Steam
-lit:GitHub
-lit:Hugging Face
-lit:operator
-# Note: "operator" is permitted in spec/code but should not appear in ASTRA's
-# in-character speech or journal output; this flags for review.
-lit:player
-lit:user
-lit:save file
-lit:load game
-lit:quicksave
-lit:checkpoint
+# Unix-epoch timestamps (§5.7 "large integers fitting datetime range")
+\b1[6-9]\d{8}\b
+\b2\d{9}\b
 
-# ---- end ----
+# System clock API references (§5.7 named category)
+datetime\.now
+time\.time\(
+System\.currentTimeMillis
+DateTime\.UtcNow
+gettimeofday
+clock_gettime
+date \+%s
+
+# Earth-diurnal relative idioms (no ship referent; unambiguous wall-clock)
+\byesterday\b
+\btomorrow\b
+\btonight\b
+
+# Earth-calendar-unit relative idioms. Weeks and months have no ship
+# referent (watches/cycles are the ship's units); seconds/minutes/hours/
+# days/years remain legal duration vocabulary and stay out of this list.
+\b(this|next|last|past)\s+(week|weeks|month|months)\b
+\b(an?|\d+)\s+(week|weeks|month|months)\s+ago\b
+\bin\s+(an?|\d+)\s+(week|weeks|month|months)\b
+
+# Metabolic-clock and wall-clock meta-references (§3.9 journal discipline)
+\bmetabolic (minutes|hours)\b
+\bwhile my (heart|pulse)\b
+\bwall[- ]?clock\b
+\bwall time\b
+\breal[- ]world time\b

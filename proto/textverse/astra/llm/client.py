@@ -1,6 +1,6 @@
 """OpenAI-compat HTTP+SSE client for llama-server instances.
 
-This is the substrate-portable Surface 1 implementation (spec v0.128 §4.1):
+This is the substrate-portable Surface 1 implementation (spec v0.129 §4.1):
 chat completions endpoint, SSE streaming, sampling parameter modulation,
 sysprompt grounding. Used by the three bundles (ASTRA / Narrator / Adapter)
 against three independent llama-server instances on three ports.

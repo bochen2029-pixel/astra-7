@@ -1,4 +1,4 @@
-"""STAGE protocol parser per spec v0.128 §4.3 + §6.2.
+"""STAGE protocol parser per spec v0.129 §4.3 + §6.2.
 
 Parses ASTRA-LLM's raw output into the four STAGE channels:
 - `think_blocks`:  contents of each closed `<think>...</think>` block.

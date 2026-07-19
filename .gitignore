@@ -182,3 +182,6 @@ book/production/outputs/**/_preview*
 
 # Superseded visualizer V1 build tree (CMake out-of-source)
 ASTRA_VISUALIZER/build/
+
+# Chunker read-artifacts (generated from docs/*.md for large-file reads)
+docs/*.chunks/

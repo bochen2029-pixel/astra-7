@@ -1,7 +1,7 @@
 """Day 1 tests for astra.core + astra.state_bus.
 
 Verifies:
-- Pydantic types validate per spec v0.128 §1, §3.3, §3.7, §4.2.
+- Pydantic types validate per spec v0.129 §1, §3.3, §3.7, §4.2.
 - StateBus and sub-models roundtrip through model_dump → model_validate.
 - StateBus is frozen (mutations rejected).
 - The watch_47_morning fixture YAML loads into a StateBus.
@@ -81,7 +81,7 @@ def test_astra_coord_frozen() -> None:
 # --- Regime -------------------------------------------------------------------
 
 def test_regime_canonical_hex_values() -> None:
-    """Spec v0.128 §3.3 — values locked as part of save-file wire format."""
+    """spec v0.129 §3.3 — values locked as part of save-file wire format."""
     assert Regime.REST.value == 0x00
     assert Regime.STL_NONREL.value == 0x01
     assert Regime.STL_REL.value == 0x02
@@ -194,11 +194,15 @@ def test_time_state_frozen() -> None:
 # --- ShipKinematicState -------------------------------------------------------
 
 def test_ship_kinematic_defaults() -> None:
+    # v0.129 §4.2 field set: (v_local_cmb, γ, β, grav_factor, dτ/dt).
+    # The v0.128-era `regime` slot is gone (QCR-6): regime lives solely as
+    # the StateBus computed field, so a second copy cannot drift.
     sk = ShipKinematicState()
     assert sk.gamma == 1.0
+    assert sk.beta == 0.0
     assert sk.grav_factor == 1.0
     assert sk.dilation_ratio == 1.0
-    assert sk.regime == Regime.REST
+    assert not hasattr(sk, "regime")
 
 
 def test_ship_kinematic_dilation_ratio_bounded() -> None:
@@ -369,7 +373,7 @@ def test_state_bus_roundtrip_fixture(textverse_root: str) -> None:
 # --- Subsystem list -----------------------------------------------------------
 
 def test_subsystems_locked_set() -> None:
-    """Spec v0.128 §1.4 — locked subsystem list. New entries require amendment."""
+    """spec v0.129 §1.4 — locked subsystem list. New entries require amendment."""
     expected = {
         "warp",
         "life_support",

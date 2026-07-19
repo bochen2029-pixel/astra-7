@@ -1,6 +1,6 @@
 """ASTRA-LLM bundle — in-character cognition + STAGE emission.
 
-Spec v0.128 §4.9 + §6.4: the bundle is the composition of substrate
+spec v0.129 §4.9 + §6.4: the bundle is the composition of substrate
 (LLM client) + persona (sysprompt + STAGE addendum) + discipline
 (CalculatorBoundValidator). The bundle is what the orchestrator talks to.
 

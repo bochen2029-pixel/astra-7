@@ -1,4 +1,4 @@
-"""Ephemeral instance shared surface per spec v0.128 §4.9 Harness Contract.
+"""Ephemeral instance shared surface per spec v0.129 §4.9 Harness Contract.
 
 The HarnessState schema (§4.9) tracks ephemeral instances as
 `{role, status, work_queue, last_artifact}` records. This module carries

@@ -1,4 +1,4 @@
-"""REEL — Reactor of Episodic Lifelong memory per spec v0.128 §4.6.
+"""REEL — Reactor of Episodic Lifelong memory per spec v0.129 §4.6.
 
 In-memory v0 implementation: list of entries indexed by τ_ship timestamp,
 keyword retrieval. Day 5 ships the minimum surface; Day N+ swaps the

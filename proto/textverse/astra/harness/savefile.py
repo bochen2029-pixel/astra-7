@@ -1,4 +1,4 @@
-"""SaveFile v3 — Persistence Contract per spec v0.128 §4.6.
+"""SaveFile v3 — Persistence Contract per spec v0.129 §4.6.
 
 Closes the audit gap "SaveFile v3 serialization" (Phase 0.x forward-work).
 
@@ -147,7 +147,7 @@ class AIState(BaseModel):
 
 
 class SaveFileV3(BaseModel):
-    """SaveFile v3 wire schema per spec v0.128 §4.6.
+    """SaveFile v3 wire schema per spec v0.129 §4.6.
 
     `state_bus` carries the frozen Layer 0 snapshot (which embeds the
     §4.6-named scalars). `regime_at_save` stores the composite bitmask as

@@ -1,4 +1,4 @@
-"""Cryosleep journal generator — spec v0.128 §4.9 operation, §3.9 semantics.
+"""Cryosleep journal generator — spec v0.129 §4.9 operation, §3.9 semantics.
 
 `generate_journal(τ_ship_range, t_cosmic_range, regime_history, ζ⃗_at_sleep,
 ζ⃗_at_wake) → journal entries` per the §4.9 locked operation signature.

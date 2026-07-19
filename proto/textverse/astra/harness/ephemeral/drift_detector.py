@@ -1,4 +1,4 @@
-"""Drift detector ephemeral — spec v0.128 §4.9 operation.
+"""Drift detector ephemeral — spec v0.129 §4.9 operation.
 
 `detect_drift(recent_turns) → correction artifact or None` per the §4.9
 locked signature. Scans ASTRA's recent SPEECH (operator-facing text only;

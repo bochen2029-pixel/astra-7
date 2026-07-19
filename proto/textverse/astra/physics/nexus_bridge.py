@@ -2,7 +2,7 @@
 
 Spawns the C++ binary in --stdio-server mode and exchanges line-delimited
 JSON requests/responses. The bridge is the calculator-bound SDK boundary
-(spec v0.128 §15.6): every numeric value used in operator-facing speech
+(spec v0.129 §15.6): every numeric value used in operator-facing speech
 must trace to a result returned by this bridge.
 
 Lifecycle:

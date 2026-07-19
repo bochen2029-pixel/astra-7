@@ -1,6 +1,6 @@
 """astra.operator — input sources for the operator role.
 
-Implements spec v0.128 §4.10 Console UI / Text Input Contract.
+Implements spec v0.129 §4.10 Console UI / Text Input Contract.
 
 Three input modes, swappable via runtime config:
 - interactive.py: REPL — you type (the default for manual scenario play)

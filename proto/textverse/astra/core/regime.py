@@ -1,4 +1,4 @@
-"""Regime bitmask — canonical hex values per spec v0.128 §3.3.
+"""Regime bitmask — canonical hex values per spec v0.129 §3.3.
 
 The propulsion regime is a composable bitmask. GRAVITY_WELL composes with any
 propulsion regime; WARP and STL_REL are mutually exclusive at the physics
@@ -14,7 +14,7 @@ from enum import IntFlag
 
 
 class Regime(IntFlag):
-    """Propulsion regime per spec v0.128 §3.3."""
+    """Propulsion regime per spec v0.129 §3.3."""
 
     REST          = 0x00
     STL_NONREL    = 0x01

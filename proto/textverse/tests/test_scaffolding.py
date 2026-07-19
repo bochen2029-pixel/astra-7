@@ -54,7 +54,7 @@ def test_all_submodules_importable() -> None:
 
 
 def test_no_wall_clock_imports_in_scaffolding() -> None:
-    """Per v0.128 §1.2: no module imports datetime, time, or other wall-clock
+    """Per v0.129 §1.2: no module imports datetime, time, or other wall-clock
     sources, with three narrow exceptions:
 
     - astra/judge/        — measures real-time iteration cost (LCP timing).
@@ -91,6 +91,6 @@ def test_no_wall_clock_imports_in_scaffolding() -> None:
                 violations.append(f"{py_file}: contains '{pattern.strip()}'")
 
     assert not violations, (
-        "Wall-clock imports forbidden outside infrastructure paths per v0.128 §1.2:\n"
+        "Wall-clock imports forbidden outside infrastructure paths per v0.129 §1.2:\n"
         + "\n".join(violations)
     )

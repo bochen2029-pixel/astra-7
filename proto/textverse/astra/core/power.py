@@ -1,4 +1,4 @@
-"""Power network — locked subsystem list per spec v0.128 §1.4.
+"""Power network — locked subsystem list per spec v0.129 §1.4.
 
 Reactor produces finite power. Every consumer draws from it. Allocation is
 zero-sum. The cognitive_cores slot binds to substrate envelope (reduced

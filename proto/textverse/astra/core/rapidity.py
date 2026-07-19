@@ -1,4 +1,4 @@
-"""Rapidity ζ⃗ constants and helpers per spec v0.128 §3.7.
+"""Rapidity ζ⃗ constants and helpers per spec v0.129 §3.7.
 
 The 3-vector rapidity ζ⃗ is the primary kinematic state variable. Its scalar
 magnitude ω = |ζ⃗| is clamped at ω_max ≈ 16.811, giving γ_max = cosh(ω_max)
@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from math import sqrt
 
-OMEGA_MAX: float = 16.811  # spec v0.128 §3.7 locked clamp (γ_max ≈ 10⁷)
+OMEGA_MAX: float = 16.811  # spec v0.129 §3.7 locked clamp (γ_max ≈ 10⁷)
 
 
 def rapidity_magnitude(zeta: tuple[float, float, float]) -> float:

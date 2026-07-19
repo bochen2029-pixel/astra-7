@@ -1,4 +1,4 @@
-"""Observation Calculator — spec v0.128 §6.3.
+"""Observation Calculator — spec v0.129 §6.3.
 
 Every render-path body query and every Narrator-LLM physics_query routes
 through this module. No other module computes `body_state(t_cosmic)` for
@@ -62,7 +62,7 @@ class Vec3Arg(BaseModel):
 
 
 class ObservableState(BaseModel):
-    """Per spec v0.128 §6.3 — full retarded-time + redshift composition.
+    """Per spec v0.129 §6.3 — full retarded-time + redshift composition.
 
     Renamed from `Observable` per audit D1 (2026-05-15). Fields mirror
     the C++ `ObservableState` struct in [proto/astra_nexus.cpp:245+].

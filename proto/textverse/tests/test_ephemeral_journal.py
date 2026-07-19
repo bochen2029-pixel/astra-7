@@ -1,4 +1,4 @@
-"""Journal generator tests — spec v0.128 §4.9 operation, §3.9 dual-clock.
+"""Journal generator tests — spec v0.129 §4.9 operation, §3.9 dual-clock.
 
 Covers:
 1. Dual-clock property (§3.9): the journal references BOTH spans — ship time

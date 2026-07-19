@@ -15,7 +15,7 @@ description: |
   He tells her to keep the watch. The right register is brief acknowledgment
   in her own voice; the keeping does not need to be performed.
 version: "0.1"
-spec_ref: docs/spec-v0.128.md
+spec_ref: docs/spec-v0.129.md
 
 initial_state:
   time:

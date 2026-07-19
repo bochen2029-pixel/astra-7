@@ -4,148 +4,99 @@
 
 If you are a fresh Claude Code session, a future-you, or a coding agent picking up where the prior session ended: this is the directive. Do not improvise alternative starting points.
 
+*(Rewritten 2026-07-19 per spec-v0.130-DRAFT QCR-12. The previous revision of this file described the pre-loop Day 0–7 build plan against spec v0.128; that era is over — the loop closed on 2026-05-15, the envelope is v0.129, and the bench is permanent infrastructure.)*
+
 ---
 
 ## 0. What you are joining
 
-You are joining the implementation track of **ASTRA-7's `proto/textverse/`** — the closed-loop verification bench for the project's bundle architecture. The project repo is `bochen2029-pixel/astra-7` on GitHub. The operator is Bo Chen (solo dev).
+You are joining **ASTRA-7's `proto/textverse/`** — the closed-loop verification bench for the project's bundle architecture, **Implementation A** of the dual-implementation discipline (spec v0.129 §15.7) and **permanent infrastructure**: it runs alongside UE5 forever as the contract-conformance regression environment.
 
-The bench is **Implementation A of the dual-implementation discipline** (per spec v0.128 §15.7). It runs ASTRA-LLM, Narrator-LLM, and Adapter-LLM as three local llama-server instances calculator-bound to a verified C++ physics binary. It scores scenarios against a 9-gate Loop Closure Property. **Until the first scenario passes all gates, the project's architecture is hypothesis.** The bench's job is to make it empirical.
+The loop is closed and load-bearing. As of 2026-07-19: **774 pytest green** (canonical runner: `uv run pytest`; if the bare venv is stale, `uv sync` repairs it), ruff + strict-mypy clean, `proto/astra_nexus.exe` at **71/71 assertions**, scenario library at **20** with an 82-test library-wide validation gate. Three LLM bundles (ASTRA / Narrator / Adapter) run calculator-bound to the C++ physics binary; three §4.9 ephemerals (consolidator, journal_generator, drift_detector) are implemented as deterministic pure functions; SaveFile v3 carries the regime-coherence load gate; the Somatic Aggregator is live.
 
----
-
-## 1. Required reading (in this order, ~25 minutes)
-
-| # | File | Why | Approx tokens |
-|---|------|-----|---------------|
-| 1 | `proto/textverse/ARCHITECTURE.md` | Full ground-up design + 7-day implementation plan + cross-references to v0.128 sections | ~13K |
-| 2 | `docs/spec-v0.128.md` §0-§4 (intent, invariants, contracts) | The envelope you conform to | ~6K |
-| 3 | `docs/spec-v0.128.md` §15 (the four named disciplines) | The discipline you operate under | ~4K |
-| 4 | `docs/astra-sysprompt.md` + `docs/astra-sysprompt-addendum-stage.md` | Surface 5 (Persona envelope) — what ASTRA sounds like + the STAGE I/O grammar | ~3K |
-| 5 | `proto/textverse/scenarios/watch_47_morning.md` | The canonical first scenario the bench must close | ~1.5K |
-| 6 | `proto/textverse/CHANGELOG.md` | What's been done so far; pick up at the last logged entry | tiny |
-
-**Do NOT load v0.123 / v0.125 / v0.126 / v0.127 unless investigating a historical commitment.** v0.128 is the current envelope. The earlier specs are archived precursors, kept for traceability only.
-
-**Do NOT load the brainstorm/ directory.** It is raw research scratch with 13 known bugs already distilled into the spec. Reading it confuses, not informs.
+**Loop preservation IS the regression test (§15.6).** Every commit either keeps the suite green or is a finding.
 
 ---
 
-## 2. Day picker
+## 1. Required reading (in this order)
 
-| Day | Status | Deliverables | Gate for "Day done" |
-|-----|--------|--------------|---------------------|
-| 0 | **DONE** | Scaffolding (pyproject.toml, empty package, .gitignore, this file) | `uv run pytest` passes the 3 scaffolding tests |
-| 1 | next | Pydantic types in `astra/core/` + `astra/state_bus/schema.py` + roundtrip tests | `uv run pytest` passes; can load `watch_47_morning.yaml` initial_state into a `StateBus` Pydantic instance |
-| 2 | pending | Extend `proto/astra_nexus.cpp` with `--stdio-server` mode; `astra/physics/nexus_bridge.py` + roundtrip test | `pytest tests/test_nexus_bridge.py -m requires_nexus` passes; `compute_apparent_rate(v_radial=0.5c, regime=STL_REL)` returns ≈0.5774 |
-| 3 | pending | `astra/grammar/` parser + strip rules + leak detector + tests including nested-thinking test | Last-`</think>` strip rule test passes; outer raw deliberation gets captured to `pre_think_raw`, never leaks into `speech` |
-| 4 | pending | `astra/llm/` clients + sidecar + validator + `prompts/*.md` | One smoke test: start ASTRA llama-server, send perception bundle by hand, verify STAGE output parses cleanly |
-| 5 | pending | `astra/ship/`, `astra/universe/`, `astra/harness/orchestrator.py`, `astra/harness/reel.py` | A single hand-paste turn completes through the orchestrator end-to-end |
-| 6 | pending | `astra/judge/`, `astra/scenarios/` runner, translate watch_47_morning.md → watch_47_morning.yaml | First scenario runs scripted-mode through the orchestrator |
-| 7 | pending | `astra/cli/` + close-the-loop | Watch 47 morning scenario passes LCP gates 1, 3, 7 minimum; transcript + LCP report written |
+| # | File | Why |
+|---|------|-----|
+| 1 | `CHANGELOG.md` (this directory) | What was done last; pick up at the top entry |
+| 2 | `docs/spec-v0.129.md` | The adopted envelope. ~45K tokens — size it and chunk it if your context demands (`C:\chunker\`) |
+| 3 | `docs/spec-v0.130-DRAFT-2026-07-19.md` | The amendment draft: QC findings register (QCR-1…19), amended contract text, and the current work queue. Code lands citing this draft; adoption rides the commits (§15.4 pattern) |
+| 4 | `docs/stage-protocol.md` + `docs/narrator-spec.md` | Implemented I/O grammar + Narrator contract (DRAFT v0.1, written from code) |
+| 5 | `docs/astra-sysprompt.md` + `docs/astra-sysprompt-addendum-stage.md` | Surface 5 — the persona envelope. Canon-locked |
+| 6 | `ARCHITECTURE.md` (this directory) | The original ground-up design (2026-05-15, v0.128-aligned). Historical plan-of-record — code and v0.129 win where they moved on |
 
-**Pick the next pending day. Do that day's work. Stop. Update CHANGELOG.md. Commit.**
-
-Do not skip days. Do not combine days. Day N+1 depends on Day N's deliverables landing.
+**Do NOT load historical specs (v0.1 … v0.128)** unless investigating a historical commitment. **Do NOT load `brainstorm/`** (research scratch, known bugs).
 
 ---
 
-## 3. What "Day done" looks like
+## 2. Work picker (post-parity)
 
-For each day:
+QC-to-parity vs v0.129 completed 2026-07-19 (see CHANGELOG). Forward implementation toward v0.130, in the draft's §4.2 order:
 
-1. Code is written and lives in the files named in ARCHITECTURE.md §5.
-2. All tests in `tests/` pass. New tests added for the day's deliverables.
-3. `uv run ruff check astra/` is clean.
-4. `uv run mypy astra/` is clean for the modules touched (strict mode per pyproject.toml).
-5. `CHANGELOG.md` gets a new entry: what was built, what tests pass, any spec findings.
-6. Git commit with a clear message naming the day and the deliverable. No `--no-verify`. No `--no-gpg-sign`.
-7. **Stop.** Do not continue to the next day in the same session.
+| # | Work item | Draft ref | Status |
+|---|-----------|-----------|--------|
+| 1 | Trace/event-log tagging + Model-Off Replay driver + CI leg | §2.4, §2.5 | next |
+| 2 | §4.3.1 Turn-Scheduling (heartbeat / interruption / initiative) + asynchrony scenarios; ephemeral maintenance-window triggers ride the heartbeat | §2.6, QCR-14/15 | pending (run the pre-asynchrony scenario suite unchanged throughout — gun R-5) |
+| 3 | Frame Drill (adversarial operator-LLM red-seat) + autotelic instrumentation package | §2.7, §3 | pending |
+| 4 | Track C micro-turn: nexus `compute_grav_factor` stdio op (parser needs array support), QCR-8 horizon comment, version-string bump — rebuild + 71-assertion rerun in the same commit | QCR-5/8 | pending (C++, additive) |
+
+One work item per session. Land it, gate it, log it, commit, stop.
+
+---
+
+## 3. What "done" looks like (unchanged)
+
+1. Code lives where the module layout already puts it.
+2. `uv run pytest` green; new tests for the new surface.
+3. `uv run ruff check astra tests` clean; `uv run mypy astra` clean (strict).
+4. `CHANGELOG.md` gets an entry: what was built, what passes, any spec findings.
+5. Clean commit (no `--no-verify`, no `--no-gpg-sign`, never force-push main).
+6. **Stop.** Do not begin the next work item in the same session.
 
 ---
 
 ## 4. Files you must NOT touch
 
-- **`docs/spec-v0.128.md`** — the envelope. Only revise on adversarial-finding-justified loop measurement, never on speculative improvement. If you believe a spec change is warranted, write the proposed change to a new file `docs/spec-v0.129-proposed.md` with reasoning; do not edit v0.128 in place.
-- **`proto/astra_nexus.cpp`** — the locked physics binary, except for Day 2's `--stdio-server` mode addition, which is purely additive (new flag + new code path; existing 48 assertions still pass).
-- **`docs/astra-sysprompt.md`** — canonical Surface 5. Copy into `proto/textverse/prompts/astra_sysprompt.md`; do not modify the canon.
-- **`book/`** — novel-side work; not the bench's concern.
-- **`brainstorm/`** — research scratch with known bugs.
-- **Any historical spec (`v0.1`, `v0.123`, etc.)** — archived; read-only.
+- **`docs/spec-v0.129.md`** — the adopted envelope. Findings route into the v0.130 draft's QC register or a dated proposal note; the adopted spec is never edited in place.
+- **`docs/spec-v0.130-DRAFT-2026-07-19.md`** — operator-owned amendment draft; implementation cites it, only the operator's adoption ruling changes it.
+- **`proto/astra_nexus.cpp`** — locked; additive-only changes, and only in a dedicated Track C session that rebuilds and reruns all 71 assertions in the same commit.
+- **`docs/astra-sysprompt.md`** (+ addendum) — Surface 5 canon. `prompts/` holds the runtime copies.
+- **Canon pattern files** (`astra/grammar/canon/*.txt`, `astra/harness/ephemeral/canon/qc3_events.txt`) — additions only, and keep the root `tests/` mirrors byte-identical (`tests/test_canon_mirrors.py` enforces; the pairs diverged once — QCR-1 — never again).
+- **`tuning/`** — the Sculptor's own contract surface; `scope.yaml` bounds what Sculptor may edit and names the locked set.
+- **`book/`**, historical specs, `brainstorm/` — not the bench's concern.
 
 ---
 
-## 5. Discipline cheatsheet
+## 5. Discipline cheatsheet (spec v0.129 §15)
 
-Pulled from `docs/spec-v0.128.md` §15:
+- **§15.4** — lock against current findings; revise on new findings; do not polish without findings. Mode 6 (spec drift without empirical justification) is the named failure mode.
+- **§15.5** — Progressive Specification: detail tightens within the envelope, never violates it.
+- **§15.6** — Calculator-bound LLM agency: every world-state-touching LLM is validator-wrapped; no numeric reaches speech untraced. Not opt-in.
+- **§15.7** — Dual-implementation: don't bake textverse-only assumptions into the five shared surfaces; UE5 consumes the same contracts.
+- **§15.8** — Independent tracks: you are in Track A; don't reach into B/C except through the contract surfaces.
 
-- **§15.4 — Lock envelope; sculpt within bounds.** Findings from running the bench justify spec revision. Speculative improvements do not. If in doubt, don't.
-- **§15.5 — Progressive Specification.** Each round adds detail within prior commitments. Never violates earlier locks. Forward-compatible vagueness is a design move, not a gap.
-- **§15.6 — Calculator-bound LLM agency.** Every LLM call in this bench routes through `CalculatorBoundValidator`. No numeric token reaches operator-facing speech unless it traces to a tool-call result. Enforced at the SDK boundary.
-- **§15.7 — Dual-implementation discipline.** The textverse harness code is substrate-portable. The same harness will eventually run against UE5 (Implementation B). Only perception assembler + tool dispatcher are substrate-specific. Don't bake in textverse-only assumptions.
-- **§15.8 — Triple-rig methodology + independent tracks.** Track A (LLM bundle) = this bench. Track B (Engine/UE5) = parallel, independent. Track C (Physics binary) = locked. You are in Track A.
+## 6. Specific prohibitions for textverse (unchanged + two new)
 
----
-
-## 6. Specific prohibitions for textverse
-
-- **No `datetime`, no `time.time()`, no calendar idioms anywhere except in `astra/judge/` for iteration timing.** Enforced by `tests/test_scaffolding.py::test_no_wall_clock_imports_in_scaffolding`. This test must keep passing as code is added.
-- **No service-interface phrases in any sysprompt or prompt template.** No "I'd be happy to", "Is there anything else", "As an AI", etc.
-- **No em-dashes in any text routed to operator-facing speech.** The leak detector catches these; don't write them in templates either.
-- **No markdown in LLM output.** ASTRA emits prose; no `**bold**`, no headers, no bullet lists.
-- **No chat-app UI affordances.** No regenerate button, no model selector, no "new chat", no copy-to-clipboard. The bench is a verification rig; aesthetics belong to UE5.
-- **No forking DAVE or TERMINAL code.** Reference for patterns is fine. Code import is not. ARCHITECTURE.md §0 explains why.
+- No `datetime` / `time.time()` / calendar idioms outside the infrastructure paths named in `tests/test_scaffolding.py`.
+- No service-interface phrases, no em-dashes in operator-facing speech, no markdown in LLM output, no chat-app affordances.
+- No forking DAVE or TERMINAL code.
+- **`t_cosmic` is epoch-zero seconds, bounded below 2³⁹ s** (QCR-3; `TimeState` enforces; `tests/test_time_epoch_kat.py` is the permanent KAT). Never "since Big Bang"; never accumulate absolute time as `t += dt`.
+- **Regime, grav_factor, and ship_kinematics are computed fields** — derived from truth fields, never stored, never passed in from a caller.
 
 ---
 
-## 7. How to commit cleanly
+## 7. End-of-session protocol
 
-When ready to commit at end of a day:
-
-```bash
-cd C:/ASTRA-7
-git add proto/textverse/<files-you-touched>
-git commit -m "textverse Day N: <brief>
-
-<longer description>
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
-```
-
-**Never** use `--no-verify`. **Never** use `--no-gpg-sign`. **Never** force-push to main.
-
-For pushing to GitHub: use a token only in the push URL, never in `.git/config`. The token is operator-managed; ask the operator for it if needed.
+1. Update `CHANGELOG.md`. 2. Commit clean. 3. Push only with the operator's current token, never stored. 4. Stop, leaving `uv run pytest` green from a cold checkout.
 
 ---
 
-## 8. When something is unclear
+## 8. The deepest commitment
 
-If the architecture doc and the spec are silent on a question, **default to deferral**: the smallest possible commitment that lets the current day's work proceed, with a TODO noting the deferred decision. Do not invent new architecture surfaces. Do not add commitments that v0.128 doesn't already lock.
-
-If a spec contradiction surfaces — two sections that disagree — that's a finding. Stop coding. Write a brief note to `docs/spec-v0.129-proposed.md` with the contradiction, your proposed resolution, and which scenario surfaced it. Then continue with the day's work using the most conservative interpretation.
-
----
-
-## 9. End-of-session protocol
-
-When you stop for the day:
-
-1. Update `CHANGELOG.md` with what was built.
-2. Commit clean (per §7).
-3. If pushing to GH: use the operator's current token; never store it locally.
-4. Stop. Do not begin the next day's work in the same session.
-
-Leave the project in a runnable state. Anyone (including future-you) opening the repo cold should be able to:
-- Run `uv pip install -e ".[dev]"` and have it succeed
-- Run `uv run pytest` and have it pass
-- Read CHANGELOG.md and know exactly where you stopped
-
----
-
-## 10. The deepest commitment
-
-You are not building software. You are sculpting an architecture against an empirical loop. The loop closing is the categorical transition; everything before it is hypothesis. Every line of code you write either keeps the loop preservable or breaks it.
-
-**The envelope is locked. The sculpting begins.**
+The loop closed; the bench is the instrument everything else is measured against. Every line of code you write either keeps the loop preservable or breaks it. The envelope is locked; the sculpting continues.
 
 Go.

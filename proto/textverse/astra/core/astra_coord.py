@@ -1,4 +1,4 @@
-"""AstraCoord — 128-bit hierarchical floating origin per spec v0.128 §1.1.
+"""AstraCoord — 128-bit hierarchical floating origin per spec v0.129 §1.1.
 
 The ship is anchored at sector (0,0,0), local (0,0,0) in her own frame.
 The universe moves backward around her. Renormalization rolls integer
@@ -48,7 +48,21 @@ class AstraCoord(BaseModel):
         if mag > LOCAL_OFFSET_MAX_M:
             raise ValueError(
                 f"AstraCoord local offset magnitude {mag:.3f} m exceeds the "
-                f"{LOCAL_OFFSET_MAX_M} m bound (spec v0.128 §1.1). "
+                f"{LOCAL_OFFSET_MAX_M} m bound (spec v0.129 §1.1). "
                 f"Renormalize sector indices before constructing."
             )
         return self
+
+
+def astra_distance(a: AstraCoord, b: AstraCoord) -> float:
+    """Euclidean separation in meters, sector-first.
+
+    Mirrors the C++ `astra_distance` in proto/astra_nexus.cpp (§1.1): the
+    int64 sector delta is exact and the local delta is clean — positions
+    are never flattened into a single float64 before differencing, so
+    nearby pairs are exact to double and far pairs are relatively precise.
+    """
+    dx = (a.sx - b.sx) * SECTOR_SIZE_M + (a.lx - b.lx)
+    dy = (a.sy - b.sy) * SECTOR_SIZE_M + (a.ly - b.ly)
+    dz = (a.sz - b.sz) * SECTOR_SIZE_M + (a.lz - b.lz)
+    return sqrt(dx * dx + dy * dy + dz * dz)

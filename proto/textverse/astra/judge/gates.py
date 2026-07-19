@@ -1,4 +1,4 @@
-"""LCP gate implementations per spec v0.128 §10.
+"""LCP gate implementations per spec v0.129 §10.
 
 Each gate is a pure function that takes a structured input (TurnInput) and
 returns a GateResult. Gates do not mutate state; they describe pass/fail
@@ -256,7 +256,7 @@ def gate_no_leak(
     """Spec §10: no wall-clock leak, no technical-substrate leak.
 
     Strip-severity events trigger a fail; warn-severity events log but don't
-    fail. Per v0.128 §5.7 the detector returns events; this gate is the
+    fail. Per v0.129 §5.7 the detector returns events; this gate is the
     pass/fail predicate over them.
     """
     strip_perc = [e for e in perception_leaks if e.severity == "strip"]

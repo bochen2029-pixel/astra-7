@@ -1,4 +1,4 @@
-"""CalculatorBoundValidator — spec v0.128 §15.6 made operational.
+"""CalculatorBoundValidator — spec v0.129 §15.6 made operational.
 
 Every numerical claim in operator-facing speech must trace to a tool-call
 result observed in the same turn or in the perception bundle. Numbers that

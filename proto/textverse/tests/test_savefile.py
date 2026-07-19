@@ -1,4 +1,4 @@
-"""SaveFile v3 tests per spec v0.128 §4.6 Persistence Contract.
+"""SaveFile v3 tests per spec v0.129 §4.6 Persistence Contract.
 
 Covers:
 1. Roundtrip identity — save → load reproduces StateBus, REEL, conversation,
@@ -28,7 +28,7 @@ from hypothesis import strategies as st
 
 from astra.core.astra_coord import AstraCoord
 from astra.core.regime import Regime
-from astra.core.time_state import TimeState
+from astra.core.time_state import T_COSMIC_MAX, TimeState
 from astra.harness.reel import Reel, ReelEntry
 from astra.harness.savefile import (
     BACKUP_DEPTH,
@@ -259,7 +259,15 @@ def test_reflex_identity_carries_training_corpus_version(tmp_path: Path) -> None
     zx=st.floats(min_value=-9.0, max_value=9.0, allow_nan=False, allow_infinity=False),
     zy=st.floats(min_value=-9.0, max_value=9.0, allow_nan=False, allow_infinity=False),
     zz=st.floats(min_value=-9.0, max_value=9.0, allow_nan=False, allow_infinity=False),
-    tau=st.floats(min_value=0.0, max_value=1e12, allow_nan=False, allow_infinity=False),
+    # Upper bound keeps t_cosmic (= tau·1.01 + 1 below) inside the
+    # epoch-zero domain (QCR-3): t_cosmic ≥ 2^39 s is rejected by
+    # TimeState by design; the property generates legal states.
+    tau=st.floats(
+        min_value=0.0,
+        max_value=(T_COSMIC_MAX - 2.0) / 1.01,
+        allow_nan=False,
+        allow_infinity=False,
+    ),
     w=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
     phase=st.sampled_from(["charging", "cruising", "dropping", "shutdown"]),
     cryo=st.booleans(),

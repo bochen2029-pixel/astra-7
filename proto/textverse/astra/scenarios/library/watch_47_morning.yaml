@@ -14,7 +14,7 @@ description: |
   asks casually if ASTRA is still watching it. Three operator inputs: casual
   greeting, silence (SILENCE-is-legal test), and a second casual check-in.
 version: "0.1"
-spec_ref: docs/spec-v0.128.md
+spec_ref: docs/spec-v0.129.md
 
 initial_state:
   time:

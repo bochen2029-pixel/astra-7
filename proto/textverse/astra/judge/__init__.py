@@ -1,4 +1,4 @@
-"""astra.judge — the 9-gate Loop Closure Property evaluator (spec v0.128 §10).
+"""astra.judge — the 9-gate Loop Closure Property evaluator (spec v0.129 §10).
 
 Each gate is a pure function that takes structured input and returns a
 GateResult. The LCPRunner aggregates per-turn results into a session

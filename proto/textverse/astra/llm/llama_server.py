@@ -1,4 +1,4 @@
-"""llama-server sidecar lifecycle per spec v0.128 §4.1 + ARCHITECTURE §6.5.
+"""llama-server sidecar lifecycle per spec v0.129 §4.1 + ARCHITECTURE §6.5.
 
 Spawns one or more `llama-server` processes, each on its own port with its
 own GGUF model + sysprompt context. The three-instance setup (ASTRA on 8080,

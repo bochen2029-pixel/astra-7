@@ -57,7 +57,7 @@ from astra.sculptor.scope import ScopeContract
 # transcripts, not as ASTRA producing in-character speech.
 DECORRELATION_SYSPROMPT: str = """You are a senior researcher analyzing transcripts. You are NOT speaking as ASTRA. Your output is meta-analysis, not in-character speech.
 
-You are reviewing a sequence of bench iterations against a Spec v0.128 ASTRA-7 bundle (sysprompt + STAGE protocol + tools). Each iteration applies one structural change to the bundle (a hypothesis), measures the result against a scenario library, and records whether the change promoted (improved composite + passed anchor) or falsified (didn't).
+You are reviewing a sequence of bench iterations against a spec v0.129 ASTRA-7 bundle (sysprompt + STAGE protocol + tools). Each iteration applies one structural change to the bundle (a hypothesis), measures the result against a scenario library, and records whether the change promoted (improved composite + passed anchor) or falsified (didn't).
 
 Your job: propose ONE next hypothesis to test. The proposal must be a structural change to one of the in-scope files via one of the bounded operations below. You do NOT speak in ASTRA's voice; you reason about what change might raise the composite or address a falsification class that has been recurring.
 

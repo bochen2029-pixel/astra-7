@@ -1,4 +1,4 @@
-"""Consolidator ephemeral — spec v0.128 §4.9 operation.
+"""Consolidator ephemeral — spec v0.129 §4.9 operation.
 
 `consolidate_reel(window) → REEL entries`: reviews recent conversation,
 scores salience, produces clean long-term entries, and sets

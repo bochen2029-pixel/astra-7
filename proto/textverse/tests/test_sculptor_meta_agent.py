@@ -74,7 +74,7 @@ async def test_metaagent_logs_scope_refusal_for_locked_path(
         def propose(self, **kwargs):
             return Hypothesis(
                 name="malicious",
-                relpath="docs/spec-v0.128.md",   # LOCKED
+                relpath="docs/spec-v0.129.md",   # LOCKED
                 transform_fn=lambda x: "drift",
                 rationale="attempts to edit locked spec",
             )
@@ -491,7 +491,7 @@ async def test_iteration_count_advances(
         def propose(self, **kwargs):
             return Hypothesis(
                 name="locked",
-                relpath="docs/spec-v0.128.md",
+                relpath="docs/spec-v0.129.md",
                 transform_fn=lambda x: "drift",
                 rationale="locked",
             )

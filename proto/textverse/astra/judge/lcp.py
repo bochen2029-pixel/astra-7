@@ -1,6 +1,6 @@
 """Loop Closure Property — gate enum, per-turn + session result shapes, runner.
 
-Spec v0.128 §10. Implementation per ARCHITECTURE.md §6.8.
+spec v0.129 §10. Implementation per ARCHITECTURE.md §6.8.
 
 A scenario is **loop-closed** iff every per-turn gate (1-8) holds for every
 turn AND the session-level gate 9 holds. Pass-rate < 1.0 surfaces findings;

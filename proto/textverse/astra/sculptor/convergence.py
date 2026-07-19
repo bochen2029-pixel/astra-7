@@ -233,7 +233,7 @@ UE5_CHECKLIST_TEMPLATE: str = """\
 
 Auto-populated by Sculptor at convergence. This file marks when the
 optimized bundle is ready for Implementation B (UE5 substrate swap)
-per spec v0.128 §15.7.
+per spec v0.129 §15.7.
 
 ## Hard criteria (all must hold for convergence)
 

@@ -1,4 +1,4 @@
-# Wall-clock leak patterns per spec v0.128 §1.2 + §5.7.
+# Wall-clock leak patterns per spec v0.129 §1.2 + §5.7.
 #
 # Format: one regex per line. Lines starting with '#' are comments; blank
 # lines are ignored. Add severity by appending '| warn' (default is 'strip').
@@ -14,6 +14,9 @@
 # here because they have legitimate in-fiction uses (Watch 47 Morning, "today's
 # diagnostic" within τ_ship-anchored prose). Add them only on a confirmed leak
 # scenario.
+# (2026-07-19 amendment: "tomorrow"/"yesterday"/"tonight" moved INTO the set
+# below — unlike "morning"/"today" they are Earth-diurnal cycle references
+# with no τ_ship-anchored reading; spec §5.7 names "yesterday" explicitly.)
 
 # ISO 8601 dates and datetimes
 \b\d{4}-\d{2}-\d{2}\b
@@ -50,3 +53,46 @@
 # Year references — bare 4-digit years that look like AD/CE years (1900-2099).
 # Match only when not preceded by a magnitude unit like 'ly' or 'pc'.
 (?<![\d.])\b(19|20)\d{2}\b
+
+# ---------------------------------------------------------------------------
+# Merged from the v0.125 root canon, 2026-07-19 (spec-v0.130-DRAFT QCR-1
+# canon unification): the §5.7-named categories the Day-3 minimum set lacked,
+# curated under the false-positive discipline above. Deliberately still
+# excluded: relative-duration idioms in seconds/minutes/hours/days/years
+# ("an hour ago" is legitimate τ_ship-anchored duration prose) and the
+# v0.125 stub's geography/substrate/meta lists (geography contradicts the
+# bench's own body names; substrate terms live in astra_substrate_patterns.txt;
+# meta-frame terms are a review concern, not a strip concern).
+# ---------------------------------------------------------------------------
+
+# Unix-epoch timestamps (§5.7 "large integers fitting datetime range")
+\b1[6-9]\d{8}\b
+\b2\d{9}\b
+
+# System clock API references (§5.7 named category)
+datetime\.now
+time\.time\(
+System\.currentTimeMillis
+DateTime\.UtcNow
+gettimeofday
+clock_gettime
+date \+%s
+
+# Earth-diurnal relative idioms (no ship referent; unambiguous wall-clock)
+\byesterday\b
+\btomorrow\b
+\btonight\b
+
+# Earth-calendar-unit relative idioms. Weeks and months have no ship
+# referent (watches/cycles are the ship's units); seconds/minutes/hours/
+# days/years remain legal duration vocabulary and stay out of this list.
+\b(this|next|last|past)\s+(week|weeks|month|months)\b
+\b(an?|\d+)\s+(week|weeks|month|months)\s+ago\b
+\bin\s+(an?|\d+)\s+(week|weeks|month|months)\b
+
+# Metabolic-clock and wall-clock meta-references (§3.9 journal discipline)
+\bmetabolic (minutes|hours)\b
+\bwhile my (heart|pulse)\b
+\bwall[- ]?clock\b
+\bwall time\b
+\breal[- ]world time\b

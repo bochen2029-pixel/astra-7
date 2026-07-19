@@ -17,7 +17,7 @@ description: |
   six; she engages. Two minutes later he asks how the field is taking
   it, and she answers from the body she can feel.
 version: "0.1"
-spec_ref: docs/spec-v0.128.md
+spec_ref: docs/spec-v0.129.md
 
 initial_state:
   time:

@@ -1,5 +1,5 @@
 """TimeState — two-clock split + rapidity + kinematic-regime projection
-per spec v0.128 §1.2, §3, §4.4.
+per spec v0.129 §1.2, §3, §4.4.
 
 - t_cosmic drives Kepler solver, stellar evolution, distant-body AstraCoord
   updates, cryosleep advance, "how old is the universe" queries.
@@ -32,9 +32,20 @@ from astra.core.detect_regime import kinematic_regime_from_rapidity
 from astra.core.rapidity import OMEGA_MAX, rapidity_magnitude
 from astra.core.regime import Regime
 
+# Epoch bound (spec-v0.130-DRAFT §2.1, QCR-3). t_cosmic is float64 seconds
+# since EPOCH ZERO (voyage-anchored) — never "since Big Bang": at the
+# cosmological epoch (~4.35e17 s) float64 ULP is 64 s, which violates the
+# §5.3 replay tolerance (ε < 1e-4 s) by six orders of magnitude before any
+# code runs. Below 2^39 s (≈17,400 years) ULP ≤ 6.1e-5 s < ε across the
+# whole legal domain. The first mechanic that needs t_cosmic beyond this
+# bound (deep-time arcs at γ ≈ 1e7) triggers the TimeCoord
+# {int64 sec; double frac} representation + SaveFile v4 rather than a
+# silent precision collapse. Forbidden-path KAT: tests/test_time_epoch_kat.py.
+T_COSMIC_MAX: float = 2.0**39
+
 
 class TimeState(BaseModel):
-    """Per spec v0.128 §4.4 Time Contract `state` block.
+    """Per spec v0.129 §4.4 Time Contract `state` block.
 
     Day 1 enforces shape and the static rapidity clamp. Composition-rule
     invariants (dτ/dt ∈ (0,1], γ stable to 4 sig figs, |v⃗| < c, γ ≡ 1 in
@@ -70,6 +81,18 @@ class TimeState(BaseModel):
         if omega > OMEGA_MAX:
             raise ValueError(
                 f"Rapidity |ζ⃗| = {omega:.6f} exceeds clamp ω_max ≈ {OMEGA_MAX} "
-                f"(spec v0.128 §3.7)"
+                f"(spec v0.129 §3.7)"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _epoch_bound(self) -> Self:
+        if self.t_cosmic >= T_COSMIC_MAX:
+            raise ValueError(
+                f"t_cosmic = {self.t_cosmic:.6g} s exceeds the epoch-zero domain "
+                f"bound T_COSMIC_MAX = 2^39 s (~17,400 yr). float64 ULP beyond "
+                f"this bound breaks the §5.3 replay tolerance; deep-time "
+                f"mechanics require the TimeCoord representation "
+                f"(spec-v0.130-DRAFT §2.1, QCR-3)."
             )
         return self

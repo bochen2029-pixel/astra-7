@@ -1,4 +1,4 @@
-"""Turn orchestrator per spec v0.128 §4.9 + ARCHITECTURE.md §9.
+"""Turn orchestrator per spec v0.129 §4.9 + ARCHITECTURE.md §9.
 
 One turn = one operator input + one ASTRA response + state mutations.
 The orchestrator coordinates: assemble perception → leak-scan → ASTRA

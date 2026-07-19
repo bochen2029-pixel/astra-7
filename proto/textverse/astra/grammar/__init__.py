@@ -1,6 +1,6 @@
 """astra.grammar — STAGE protocol parser + leak detection.
 
-Implements spec v0.128 §4.3 Master Contract STAGE channels (Surface 4):
+Implements spec v0.129 §4.3 Master Contract STAGE channels (Surface 4):
 - THINK / TOOL / SPEECH-as-default + SILENCE
 - v0.128 corrected strip rule: SPEECH is text AFTER the LAST `</think>` close,
   not just text outside `<think>...</think>` tags. This handles Qwen 3.6's

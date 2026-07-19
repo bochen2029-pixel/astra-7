@@ -1,4 +1,4 @@
-"""Leak detector per spec v0.128 §5.7 + §4.3 Master Contract invariants.
+"""Leak detector per spec v0.129 §5.7 + §4.3 Master Contract invariants.
 
 Two-boundary defense-in-depth: scan perception bundles BEFORE delivery to
 ASTRA-LLM, and scan speech output BEFORE delivery to operator/TTS. Also

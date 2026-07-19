@@ -1,6 +1,6 @@
 """Adapter-LLM bundle — loose-form TOOL normalizer.
 
-Spec v0.128 §4.9: the Adapter takes ASTRA's `<tool>` body (which may be
+spec v0.129 §4.9: the Adapter takes ASTRA's `<tool>` body (which may be
 JSON, key=value, or natural language) and emits a single JSON object the
 dispatcher can execute. v0 may use a rules-based parser instead of an
 actual LLM if scenarios don't surface need for ML flexibility.

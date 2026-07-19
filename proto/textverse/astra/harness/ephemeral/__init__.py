@@ -1,6 +1,6 @@
 """astra.harness.ephemeral — background instances spawned during maintenance.
 
-Implements spec v0.128 §4.9 ephemeral instance roles:
+Implements spec v0.129 §4.9 ephemeral instance roles:
 - consolidator: reviews recent conversation, scores salience, produces clean
                 long-term REEL entries (calculator-bound for any numerics)
 - journal_generator: §3.9 dual-clock journal output during cryosleep regimes

@@ -61,11 +61,11 @@ def test_falsified_entry_builder() -> None:
 def test_scope_refused_entry_builder() -> None:
     e = build_scope_refused_entry(
         iteration=9,
-        relpath="docs/spec-v0.128.md",
+        relpath="docs/spec-v0.129.md",
         rationale="file is locked",
     )
     assert e.decision == "scope_refused"
-    assert e.scope_refusal_path == "docs/spec-v0.128.md"
+    assert e.scope_refusal_path == "docs/spec-v0.129.md"
 
 
 def test_bench_regression_entry_builder() -> None:

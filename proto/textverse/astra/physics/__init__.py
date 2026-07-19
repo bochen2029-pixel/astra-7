@@ -1,6 +1,6 @@
 """astra.physics — bridge to the verified C++ physics core.
 
-Implements spec v0.128 §3 (Time Architecture) and §6 (Unified Sampler) by
+Implements spec v0.129 §3 (Time Architecture) and §6 (Unified Sampler) by
 querying `proto/astra_nexus` via JSON-over-stdio. No physics math implemented
 here — this is the thin adapter that respects the Calculator-bound LLM Agency
 primitive (§15.6): every LLM that needs a number routes through this module.

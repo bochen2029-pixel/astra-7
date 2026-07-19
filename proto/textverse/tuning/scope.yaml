@@ -21,7 +21,7 @@
 #                        satisfy. Pre-commit guard.
 
 version: "1.0"
-spec_ref: "docs/spec-v0.128.md"
+spec_ref: "docs/spec-v0.129.md"
 
 # Files Sculptor edits autonomously.
 auto:
@@ -41,7 +41,9 @@ register_load_bearing:
 
 # Files Sculptor must NEVER modify.
 locked:
-  - docs/spec-v0.128.md
+  - docs/spec-v0.129.md                      # current envelope (adopted 2026-06-10)
+  - docs/spec-v0.130-DRAFT-2026-07-19.md     # spec lineage; operator-only
+  - docs/spec-v0.128.md                      # superseded envelope (historical)
   - docs/astra-sysprompt.md                  # canon source (prompts/ has the copy)
   - docs/astra-sysprompt-addendum-stage.md   # canon source
   - astra/core/                              # Five Invariants types

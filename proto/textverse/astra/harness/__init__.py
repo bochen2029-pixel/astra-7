@@ -1,6 +1,6 @@
 """astra.harness — the Harness Contract surface.
 
-Implements spec v0.128 §4.9 Harness Contract.
+Implements spec v0.129 §4.9 Harness Contract.
 
 Day 5 lands:
 - orchestrator.py:          TurnOrchestrator + TurnResult

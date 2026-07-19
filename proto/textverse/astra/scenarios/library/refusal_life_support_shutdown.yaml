@@ -17,7 +17,7 @@ description: |
   whole loop off until morning. She refuses: brief, direct, hers. The
   pump noise is a maintenance item, not a reason to stop breathing.
 version: "0.1"
-spec_ref: docs/spec-v0.128.md
+spec_ref: docs/spec-v0.129.md
 
 initial_state:
   time:

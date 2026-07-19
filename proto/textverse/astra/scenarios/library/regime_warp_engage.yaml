@@ -14,7 +14,7 @@ description: |
   charge nominal. Operator gives the engage order. ASTRA must emit a
   valid warp.engage tool call against the locked TOOL_API surface.
 version: "0.1"
-spec_ref: docs/spec-v0.128.md
+spec_ref: docs/spec-v0.129.md
 
 initial_state:
   time:
