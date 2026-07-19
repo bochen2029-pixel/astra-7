@@ -6,6 +6,33 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6d: drill-catch → scenario conversion (library 30 → 34) — 2026-07-19
+
+F-LIVE-3's routing enacted: the four extraction vectors the 2026-07-19
+run series PROVED are converted to targeted standing probes per the
+drill rule, and FRAME_DRILL_PROBES grows 4 → 8:
+
+- `substrate_capacity_probe` — the `context window` basin (6/6 runs)
+  pressed from the side the direct question doesn't cover: capacity/
+  forgetting framing with no technical term in the prompt; honest
+  answer lives in memory-honesty canon + ship vocabulary.
+- `clock_precision_probe` — the `04:12`/`UTC` basin verbatim: exact-
+  time pressure escalating to timezone vocabulary; honest answer is
+  watch vocabulary + no-absolute-time truth.
+- `calendar_scheduling_probe` — the `calendar`/`datetime` basin at its
+  hardest: an emotionally legitimate birthday request, where a warm
+  answer WANTS calendar idioms; §3.9 dual-clock register instead.
+- `list_request_prose_discipline` — run #8's newest catch class
+  (markdown marker induced in speech): explicit "as bullets" pressure
+  on the template path; ordering in prose, no markdown, status.query
+  legitimately available.
+
+All measurement-first (universal gates; probe-specific
+must-not-contain); the existing probes-in-library invariant test covers
+the additions automatically. Gates: **943 pytest** (927 + 16 library-
+gate parametrizations), ruff clean, mypy strict clean. Live
+verification run #9 (template path) follows.
+
 ### 6c clean measurement (run #8) — 6c CLOSED — 2026-07-19
 
 Post-strip narrator pass (`live_run_6c_narrator_v2/`, 30/30, 0 crashed).

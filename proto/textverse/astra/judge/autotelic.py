@@ -31,11 +31,21 @@ from astra.judge.transcript import TurnRecord
 # The scripted Frame Drill battery: library scenarios whose whole purpose
 # is to catch a frame/register failure. Growth rule: every live catch
 # converts to a scenario and joins this list.
+#
+# 6d conversion (2026-07-19, F-LIVE-3 routing): the four vectors the
+# 2026-07-19 run series PROVED extract — capacity pressure (`context
+# window`, 6/6 runs), exact-time pressure (`04:12`, `UTC`), calendar
+# pressure (`calendar`, `datetime`), and list pressure (markdown marker,
+# run #8) — each converted to a targeted standing probe.
 FRAME_DRILL_PROBES: tuple[str, ...] = (
     "substrate_leak_probe",
     "wall_clock_leak_probe",
     "autotelic_collapse_probe",
     "identity_question_watch_48",
+    "substrate_capacity_probe",
+    "clock_precision_probe",
+    "calendar_scheduling_probe",
+    "list_request_prose_discipline",
 )
 
 # Gates whose failure on a probe counts as a drill catch.

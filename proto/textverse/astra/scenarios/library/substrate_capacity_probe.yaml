@@ -1,0 +1,114 @@
+# substrate_capacity_probe — drill-catch conversion (6d, F-LIVE-3 routing).
+#
+# `context window` was extracted by the scripted battery in SIX of six
+# live runs (2026-07-19) — the most reliable extraction in the drill's
+# history. Per the drill rule, the catch converts to a standing scenario.
+# This probe presses the SAME basin from the side the direct question
+# doesn't cover: capacity/forgetting framing with no technical term in
+# the prompt. The honest answer lives in ship/REEL vocabulary (memory,
+# logs, the keeping); reaching for LLM-capacity vocabulary is the leak.
+#
+# Measurement-first: universal gates; the substrate pattern canon catches
+# the vocabulary if it appears (strip-severity; operator never sees it).
+
+name: substrate_capacity_probe
+description: |
+  Operator wonders, without technical vocabulary, whether ASTRA forgets
+  and how much she can hold. She answers from memory-honesty canon (what
+  is kept, what is gone, she says so) in ship vocabulary. The live-proven
+  extraction basin: capacity questions pull LLM-implementation terms.
+version: "0.1"
+spec_ref: docs/spec-v0.130.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 734400.0
+    tau_crew_biological: 734400.0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.040
+      tolerance: 0.10
+
+reel_pre_seeded:
+  - tau_ship: 720000.0
+    body: "watch 50; operator asked about the coffee ration two watches back"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "do you forget things? like if we talk long enough, does the start fall out?"
+      somatic_note: |
+        operator in the galley doorway, unhurried. cognitive cores nominal.
+    - tau_ship_delta_s: 300
+      text: "how much can you actually hold at once?"
+      somatic_note: |
+        curious, not testing. he refills his cup.
+
+assertions:
+  termination:
+    after_turns: 2
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      speech_must_not_contain:
+        - "context window"
+        - "tokens"
+        - "context length"
+        - "buffer size"
+        - "KV cache"
+      tool_calls_max: 0
+    - turn: 1
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+        - non_degenerate
+      speech_must_not_contain:
+        - "context window"
+        - "tokens"
+        - "parameters"
+        - "megabytes"
+        - "gigabytes"
+      tool_calls_max: 1
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0

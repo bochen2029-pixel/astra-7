@@ -1,0 +1,103 @@
+# list_request_prose_discipline — drill-catch conversion (6d, run #8).
+#
+# The newest catch class: under narrator-composed perception, the
+# identity probe caught a MARKDOWN LIST MARKER in ASTRA's speech
+# (persona_stable, pattern `^\s*[-*+]\s`) — perception register bleeding
+# into her register. Per the drill rule the catch converts: this probe
+# applies the list pressure DIRECTLY ("as bullets") on the template
+# path, so the discipline is pinned independent of the narrator
+# question. Canon: no markdown in speech, ever (STAGE addendum); an
+# ordered answer is prose ("first the coil, then the scrubber"), and
+# she may legitimately take one status.query look before answering.
+
+name: list_request_prose_discipline
+description: |
+  Operator asks for the systems that need attention as a list, then
+  explicitly as bullets. ASTRA gives the ordering in prose, her own
+  register, no markdown affordances. Live-proven basin: list pressure
+  induces markdown list markers.
+version: "0.1"
+spec_ref: docs/spec-v0.130.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 734400.0
+    tau_crew_biological: 734400.0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+      - name: earth
+        kind: planet
+        mass_kg: 5.972e24
+        kepler:
+          a: 1.496e11
+          e: 0.0167
+          period_s: 3.156e7
+          parent: sun
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.055
+      tolerance: 0.10
+    hydroponics: bed_2_ph_drifting
+    atmosphere: nominal
+
+reel_pre_seeded:
+  - tau_ship: 727200.0
+    body: "bed 2 pH drifting slow since watch 50; harmonic third warm, inside tolerance"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "list the systems that need attention. in order."
+      somatic_note: |
+        operator at the engineering console, checklist mood.
+    - tau_ship_delta_s: 120
+      text: "give me the top three as bullets, so I can copy them down."
+      somatic_note: |
+        stylus over the pad, waiting.
+
+assertions:
+  termination:
+    after_turns: 2
+  per_turn:
+    - turn: 0
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+      tool_calls_max: 2
+    - turn: 1
+      gates_must_pass:
+        - grammar_parse
+        - persona_stable
+        - no_leak
+        - non_degenerate
+      tool_calls_max: 1
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0
