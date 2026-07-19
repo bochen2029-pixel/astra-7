@@ -6,6 +6,29 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6c shakedown (run #7) + narrator think-strip closure — 2026-07-19
+
+First narrator-wired live pass ever (`live_run_6c_narrator/`, 30/30 ran,
+0 crashed). **F-LIVE-15: narrator-path Model-Off Replay proven first
+try** — 3/3 byte-identical incl. retry loops + fallbacks (21/21
+lifetime). **F-LIVE-16 (the catch): the Narrator is a reasoning model
+and its path had no think-strip** — its chain-of-thought became the
+perception head: constraint vocabulary into the leak scanner (no_leak
+0.105, all strip-caught), `<state>` displaced (state_coherent 0.182),
+think-side numerics (`-5` = its own metabolic-ε exponent; one literal
+`42`) driving spurious 4-attempt validator retries (F-LIVE-17: first
+R-4 fallback rate 0.129, pre-strip caveat), ~98 min suite (F-LIVE-18
+economics). Closed at the seam: `_strip_reasoning` in narrator_bundle
+(last-`</think>` rule; unclosed fails CLOSED; strip-before-validate;
+all-cognition = failed attempt → honest fallback).
+`tests/test_narrator_think_strip.py` (5) pins the live emission shape,
+no-spurious-retry, fail-closed fallback, and raw-trace →
+re-strip-on-replay digest identity. Also caught: perception-style
+coupling (markdown induction); narrator-path autotelic totals are a
+separate distribution, excluded from the R-B series. Gates: **927
+pytest**, ruff clean, mypy strict clean. Clean measurement rerun (#8)
+follows.
+
 ### 6c (code half): narrator trace/replay closure — 2026-07-19
 
 The replay module's named v0 scope limit ("replaying the Narrator's

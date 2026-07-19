@@ -17,11 +17,33 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 
+from astra.grammar.strip_rules import count_think_open_close, find_speech_start
 from astra.llm.client import LLMClient, SamplingParams
 from astra.llm.validator import (
     CalculatorBoundValidator,
     ValidationReport,
 )
+
+
+def _strip_reasoning(raw: str) -> str:
+    """Surface-4 discipline at the narrator seam (6c live catch,
+    run #7): the Narrator is a reasoning model too, and its cognition
+    must never enter ASTRA's perception. Live, the un-stripped path
+    delivered the narrator's whole chain-of-thought as the bundle head —
+    meta-vocabulary (`wall-clock`, `LLM`, `system prompt`) straight into
+    the leak scanner, the `<state>` section displaced (state_coherent
+    0.18), and think-side numerics (`-5`) tripping the calculator-bound
+    validator into retry loops.
+
+    Same rules as the ASTRA path: everything before the LAST `</think>`
+    is cognition (v0.128 strip rule); an UNCLOSED `<think>` fails CLOSED
+    (the whole emission is cognition; an empty delivery is a failed
+    attempt, never a delivered bundle).
+    """
+    opens, closes = count_think_open_close(raw)
+    if opens > closes:
+        return ""
+    return raw[find_speech_start(raw):].strip()
 
 
 class NarratorValidationError(RuntimeError):
@@ -104,22 +126,30 @@ class NarratorBundle:
         calling validate_output() separately if needed.
         """
         if trace_pool is None:
-            return await self.client.chat_complete(composition_request, self.sampling)
+            return _strip_reasoning(
+                await self.client.chat_complete(composition_request, self.sampling),
+            )
 
         pool_list = list(trace_pool)
         current_sampling = self.sampling
         max_attempts = max(1, self.validator.max_retries + 1)
-        last_output = ""
         last_report: ValidationReport | None = None
         for attempt in range(max_attempts):
-            last_output = await self.client.chat_complete(composition_request, current_sampling)
-            last_report = self.validator.validate(last_output, pool_list)
-            if last_report.passed:
-                return last_output
-            if self.validator.severity == "soft":
-                # Soft: log drift via the report; return the output.
-                return last_output
-            # Hard + failed: retry with reduced temperature if attempts remain.
+            raw = await self.client.chat_complete(composition_request, current_sampling)
+            # Strip BEFORE validation: cognition is never delivered and its
+            # numerics are not the bundle's numerics (6c: think-side "-5"s
+            # were driving spurious retry loops). Empty delivery (all
+            # cognition / unclosed think) is a failed attempt.
+            delivered = _strip_reasoning(raw)
+            if delivered:
+                last_report = self.validator.validate(delivered, pool_list)
+                if last_report.passed:
+                    return delivered
+                if self.validator.severity == "soft":
+                    # Soft: log drift via the report; return the output.
+                    return delivered
+            # Hard + failed (or nothing deliverable): retry with reduced
+            # temperature if attempts remain.
             if attempt + 1 < max_attempts:
                 next_temp = self.validator.next_temperature(
                     current_sampling.temperature, attempt + 1,
@@ -127,8 +157,10 @@ class NarratorBundle:
                 current_sampling = current_sampling.model_copy(
                     update={"temperature": next_temp},
                 )
-        # Exhausted retries; raise with the final report.
-        assert last_report is not None  # by loop construction
+        if last_report is None:
+            # Every attempt was all-cognition: nothing was ever deliverable.
+            # Report over the empty delivery so the fallback reason is honest.
+            last_report = self.validator.validate("", pool_list)
         raise NarratorValidationError(last_report, attempts=max_attempts)
 
     def validate_output(
