@@ -6,6 +6,26 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6c clean measurement (run #8) — 6c CLOSED — 2026-07-19
+
+Post-strip narrator pass (`live_run_6c_narrator_v2/`, 30/30, 0 crashed).
+Strip recovery: no_leak 0.105 → 0.885 (drill back to genuine probe
+extractions; series 5/2/4/9/3/8/6), persona 0.967, grammar 0.978,
+state_coherent 0.182 → 0.493. Five PASS under full narrator perception
+incl. cryosleep_wake_journal. **Replay 3/3 — 24/24 lifetime across
+eight live runs.** **F-LIVE-19: honest R-4 baseline at the 9B floor =
+0.506 fallback rate, dominant class = all-cognition emission**
+(reasoning truncated by token budget → unclosed think → fails CLOSED →
+template takes over; fails safe, never delivers cognition or invented
+numerics). Fallback reasons now name the class distinctly
+(truncation vs invention) — one legibility touch to
+NarratorValidationError. **F-LIVE-20:** delivered bundles still fail
+coherence ~half the time → narrator sysprompt tuning (Sculptor-auto
+surface) + the carried `<somatic_signals>` §13 item. 6c verdict:
+mechanism fully closed + live-proven twice; the 9B narrator bundle is
+measured and not production-shaped; levers are tuning-tier. Gates:
+**927 pytest**, ruff clean, mypy strict clean.
+
 ### 6c shakedown (run #7) + narrator think-strip closure — 2026-07-19
 
 First narrator-wired live pass ever (`live_run_6c_narrator/`, 30/30 ran,

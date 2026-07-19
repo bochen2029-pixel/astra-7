@@ -54,13 +54,23 @@ class NarratorValidationError(RuntimeError):
     re-running.
     """
 
-    def __init__(self, report: ValidationReport, attempts: int) -> None:
+    def __init__(
+        self, report: ValidationReport, attempts: int, note: str = "",
+    ) -> None:
         ungrounded = ", ".join(u.token for u in report.ungrounded[:5])
-        super().__init__(
+        message = (
             f"Narrator output failed calculator-bound validation after "
             f"{attempts} attempt(s); {len(report.ungrounded)} ungrounded "
-            f"numeric token(s): [{ungrounded}{'...' if len(report.ungrounded) > 5 else ''}]",
+            f"numeric token(s): [{ungrounded}{'...' if len(report.ungrounded) > 5 else ''}]"
         )
+        if note:
+            # Distinct failure classes keep gun R-4's channel legible:
+            # "ungrounded numerics" and "nothing deliverable" are different
+            # narrator problems with different levers (run #8 finding: the
+            # dominant live class at the 9B floor is all-cognition /
+            # reasoning-truncation, not invention).
+            message = f"{message}; {note}"
+        super().__init__(message)
         self.report = report
         self.attempts = attempts
 
@@ -159,8 +169,19 @@ class NarratorBundle:
                 )
         if last_report is None:
             # Every attempt was all-cognition: nothing was ever deliverable.
-            # Report over the empty delivery so the fallback reason is honest.
+            # Report over the empty delivery, with the distinct class named
+            # (unclosed/never-exited reasoning — typically the model running
+            # past its token budget inside <think>; fails CLOSED by design).
             last_report = self.validator.validate("", pool_list)
+            raise NarratorValidationError(
+                last_report,
+                attempts=max_attempts,
+                note=(
+                    "no deliverable bundle: every attempt was cognition-only "
+                    "(unclosed or all-<think> emission; reasoning likely "
+                    "truncated by the token budget)"
+                ),
+            )
         raise NarratorValidationError(last_report, attempts=max_attempts)
 
     def validate_output(

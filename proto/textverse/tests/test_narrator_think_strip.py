@@ -94,7 +94,7 @@ async def test_all_cognition_attempts_raise_and_fall_back() -> None:
     """Unclosed think on every attempt: nothing deliverable → error → the
     orchestrator falls back to the template path with the reason recorded."""
     nb = _narrator([UNCLOSED])
-    with pytest.raises(NarratorValidationError):
+    with pytest.raises(NarratorValidationError, match="no deliverable bundle"):
         await nb.compose("compose.", trace_pool=["pool"])
 
     astra = AstraBundle(base_url="http://stub", sysprompt="stub")
