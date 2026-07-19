@@ -24,7 +24,7 @@ The loop is closed and load-bearing. As of 2026-07-19: **774 pytest green** (can
 |---|------|-----|
 | 1 | `CHANGELOG.md` (this directory) | What was done last; pick up at the top entry |
 | 2 | `docs/spec-v0.129.md` | The adopted envelope. ~45K tokens — size it and chunk it if your context demands (`C:\chunker\`) |
-| 3 | `docs/spec-v0.130-DRAFT-2026-07-19.md` | The amendment draft: QC findings register (QCR-1…19), amended contract text, and the current work queue. Code lands citing this draft; adoption rides the commits (§15.4 pattern) |
+| 3 | `docs/spec-v0.130-DRAFT-2026-07-19.md` | The amendment draft: QC findings register (QCR-1…19), amended contract text, and the current work queue. Code lands citing this draft; adoption rides the commits (§15.4 pattern). **Finalization packet assembled 2026-07-19** (`docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md`) — awaiting operator ruling; rulings R-A…R-D live there |
 | 4 | `docs/stage-protocol.md` + `docs/narrator-spec.md` | Implemented I/O grammar + Narrator contract (DRAFT v0.1, written from code) |
 | 5 | `docs/astra-sysprompt.md` + `docs/astra-sysprompt-addendum-stage.md` | Surface 5 — the persona envelope. Canon-locked |
 | 6 | `ARCHITECTURE.md` (this directory) | The original ground-up design (2026-05-15, v0.128-aligned). Historical plan-of-record — code and v0.129 win where they moved on |

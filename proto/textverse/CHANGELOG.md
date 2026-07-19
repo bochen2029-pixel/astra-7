@@ -6,6 +6,23 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### v0.130 finalization packet assembled — 2026-07-19
+
+`docs/spec-v0.130-FINALIZATION-PACKET-2026-07-19.md` (v0.129-packet
+pattern): per-item verdicts for QCR-1…19 + the draft's ten amendment
+blocks + four post-draft closures (adapter wording, F-LIVE-11/12
+instrument rules, τ-derivation rule), each bound to its commit in the
+`d83007f…e9d4698` arc and its gate receipt; §15.4 test applied per item;
+§15.11 rule 1 self-applied (floor re-verified cold at packet time:
+885 pytest / 82 C++ exit 0 / mirrors hash-identical / nexus stdio
+reports v0.129 / 29 library YAMLs / five live-run artifact sets).
+Four open rulings routed to the operator: R-A status.query op
+(F-LIVE-9, Surface 3), R-B threshold slate (record-not-gate
+recommended), R-C watch-length canon (14,400 s), R-D heartbeat framing
+line (Surface 5, ADOPT-TENTATIVE with the 6c live A/B as receipt).
+Adoption mechanics enumerated (est. 2–3 h implementing pass). No spec
+file edited; the draft remains operator-owned. Adoption awaits ruling.
+
 ### Item 7: τ unit re-authoring (F-LIVE-14 closed) — 2026-07-19
 
 τ_ship is SECONDS (spec §1.2); watches are DERIVED labels, never
