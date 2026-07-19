@@ -220,7 +220,7 @@ The LLM track table is unchanged except Phase 0.x, which now names its next axis
 | §12 E3/E4 reference outputs | ASTRA_VISUALIZER_02 (12 goldens); ASTRA_AUDIO PoC | golden-diff 0.0; build green | GREEN\* (S05 sign-off + ear-pass = operator gates, pending) |
 | §5.3 Model-Off Replay | `astra/harness/{trace,replay}.py` | `test_model_off_replay.py` (record→replay digest; planted witnesses) | GREEN (landed 2026-07-19; narrator-path replay documented future work) |
 | §4.3.1 Turn-Scheduling | `astra/state_bus/advance.py` + orchestrator/runner/schema | `test_turn_scheduling.py` + 3 asynchrony scenarios | GREEN (landed 2026-07-19; gun R-5 witness held) |
-| §2.7/§3 instrumentation (measurement half) | `astra/judge/autotelic.py` | `test_autotelic_instrumentation.py` | GREEN (metrics + drill aggregation; thresholds/negative-space/red-seat OPEN by design) |
+| §2.7/§3 instrumentation (measurement half) | `astra/judge/autotelic.py` | `test_autotelic_instrumentation.py` + `LIVE_RUN_2026-07-19.md` | GREEN — first live distributions measured 2026-07-19 (heartbeat silence 0/5; drill catch-count 5; n too small for thresholds by design — expansion pass queued). Thresholds/negative-space/red-seat OPEN. |
 | Bench floor | whole tree | `uv run pytest` | **GREEN — 814 passed, 2026-07-19 (was 750 at drafting)** |
 | Physics floor | `astra_nexus.exe` | assertion suite | **GREEN — 82/82, rebuilt from main source via the fixed build.bat, 2026-07-19 (was 71 at drafting)** |
 

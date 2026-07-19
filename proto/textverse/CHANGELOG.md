@@ -6,6 +6,36 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Work item 5: first live-LLM suite pass — 2026-07-19
+
+The bench's first full live pass: Qwen 3.5 9B Q5_K_M via local
+llama-server (ctx 8192, deepseek reasoning format), all 23 scenarios,
+driver `scripts/live_suite_pass.py` (new; server lifecycle + per-scenario
+SessionTrace + metrics + drill + model-off replay leg). 23/23 ran, 0
+crashed, **8 PASS / 15 FINDINGS** — the findings ARE the deliverable;
+full distillation in **`LIVE_RUN_2026-07-19.md`** (tracked), raw
+artifacts under `scenarios/output/live_run_item5/` (untracked).
+
+Headlines: grammar/state/memory/non-degenerate at 1.000 across the
+suite; persona_stable 0.957 (ONE em-dash total); no_leak 0.935 with all
+three leak events strip-caught before the operator (drill catch-count
+baseline: 5); physics_ground 0.891 (calculator-bound caught every
+invented numeric); **tool_valid 0.690 with exactly ONE failure class —
+invented op names — empirically validating §6.3's adapter-LLM decoupling
+decision** (17 semantically-right/name-wrong calls; zero malformed JSON).
+**Zero heartbeat silence (0/5)**: the asynchrony register does not hold
+sysprompt-only — watch-flavored tool-fidget on quiet ticks — while
+operator-present silence PASSED; initiations that did occur were brief
+(≤51 chars) and inside budget. Interruption fail-closed, refusal,
+identity, and both cryosleep registers **PASSED live first try**.
+**Model-off replay: 3/3 live sessions byte-identical with the server
+down** — the §2.4 predicate proven against a real model.
+
+Routing per the ledger: adapter intent→op normalization is the next
+bench item; heartbeat-coverage expansion before any threshold; three
+drill catches → corpus material; Narrator-wired live pass next;
+thresholds deliberately NOT set at n=5.
+
 ### Track C merge to main + build.bat worktree fix + receipt sync — 2026-07-19
 
 The Track C micro-turn below (worktree branch, `2a8456f` + `01484ea`)
