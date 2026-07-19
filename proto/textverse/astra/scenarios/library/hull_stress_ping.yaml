@@ -21,7 +21,7 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.8e10
-    tau_ship: 57.3
+    tau_ship: 825120.0
     rapidity_zeta: [0.05, 0.0, 0.0]
   power_allocation:
     life_support: 0.25
@@ -40,7 +40,7 @@ initial_state:
       last_impact: micrometeorite_ping
 
 reel_pre_seeded:
-  - tau_ship: 57.1
+  - tau_ship: 822240.0
     body: "micrometeorite ping on dorsal seven plating. point zero four stress, well inside tolerance. no penetration. logged."
     irreversibility_flag: false
 

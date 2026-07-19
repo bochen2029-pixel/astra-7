@@ -20,8 +20,8 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.5e10
-    tau_ship: 56.0
-    tau_crew_biological: 56.0
+    tau_ship: 806400.0
+    tau_crew_biological: 806400.0
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position:
@@ -67,7 +67,7 @@ initial_state:
       tolerance: 0.10
 
 reel_pre_seeded:
-  - tau_ship: 41.0
+  - tau_ship: 590400.0
     body: "first observation of third-pole reactor harmonic drift; flagged for watch"
     irreversibility_flag: false
 

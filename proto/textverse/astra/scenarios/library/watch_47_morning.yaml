@@ -19,8 +19,8 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.5e10              # ~15 Gyr; arbitrary epoch for v0
-    tau_ship: 47.5                # watch 47, mid-shift
-    tau_crew_biological: 47.5
+    tau_ship: 684000.0                # watch 47, mid-shift
+    tau_crew_biological: 684000.0
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position:
@@ -71,7 +71,7 @@ initial_state:
       corridors: 0.4
 
 reel_pre_seeded:
-  - tau_ship: 46.8
+  - tau_ship: 673920.0
     body: "noted third-harmonic mild drift cycle 46; flagged for continued watch"
     irreversibility_flag: false
 

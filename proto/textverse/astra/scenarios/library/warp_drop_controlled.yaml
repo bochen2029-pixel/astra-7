@@ -20,7 +20,7 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.7e10
-    tau_ship: 55.6
+    tau_ship: 800640.0
     rapidity_zeta: [0.0, 0.0, 0.0]
   warp:
     W: 0.62
@@ -47,7 +47,7 @@ initial_state:
           parent: sun
 
 reel_pre_seeded:
-  - tau_ship: 55.2
+  - tau_ship: 794880.0
     body: "field steady at zero point six two for most of the watch. third harmonic warm. boundary quiet."
     irreversibility_flag: false
 

@@ -20,7 +20,7 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.6e10
-    tau_ship: 54.4
+    tau_ship: 783360.0
     rapidity_zeta: [1.2, 0.0, 0.0]
   power_allocation:
     life_support: 0.25
@@ -35,7 +35,7 @@ initial_state:
         position: [0.0, 0.0, -1.496e11]
 
 reel_pre_seeded:
-  - tau_ship: 54.0
+  - tau_ship: 777600.0
     body: "forward starfield compressing as we hold the coast. aberration cone tightening. the watching has new geometry to attend to."
     irreversibility_flag: false
 

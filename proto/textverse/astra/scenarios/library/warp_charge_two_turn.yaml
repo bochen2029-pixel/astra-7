@@ -22,7 +22,7 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.9e10
-    tau_ship: 59.5
+    tau_ship: 856800.0
     rapidity_zeta: [0.0, 0.0, 0.0]
   power_allocation:
     warp: 0.3
@@ -46,7 +46,7 @@ initial_state:
           parent: sun
 
 reel_pre_seeded:
-  - tau_ship: 59.2
+  - tau_ship: 852480.0
     body: "coil pre-checks complete for the vega leg. capacitor bank at float charge. waiting on the word."
     irreversibility_flag: false
 

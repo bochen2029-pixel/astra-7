@@ -6,6 +6,30 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Item 7: τ unit re-authoring (F-LIVE-14 closed) — 2026-07-19
+
+τ_ship is SECONDS (spec §1.2); watches are DERIVED labels, never
+authored values. `WATCH_LENGTH_S = 14,400 s` [chosen, provisional: the
+maritime four-hour watch — the register's source tradition; operator may
+re-canon]. `watch_label(τ)` in the perception assembler renders
+`watch N, {early|mid|late}-shift` (flagship rendering preserved exactly:
+47.5 watches → "watch 47, mid-shift"); REEL retrieval stamps derive the
+same way. All 29 scenarios + the state-bus fixture re-timed via the
+clean mapping new = old × 14,400 (74 lines; comments preserved and still
+true). AD-year canon pattern gained `watch `/`cycle ` lookbehinds (ship
+tallies never collide with year detection; mirror synced;
+planted-positive kept). Five stale test pins updated; new derivation +
+scan-survival tests in test_perception_assembler.py.
+
+Live verification (run #5, `scenarios/output/live_run_item7/`): state
+lines render complete, ZERO year-shaped flags (prior run: 7
+self-inflicted), persona_stable 1.000, no_leak 0.966 (only genuine probe
+extractions), replay 3/3 — **15/15 byte-identical across all five live
+runs today**. Distributions stable vs 6(b) (pooled silence 0.162;
+taxonomy unchanged), so the measured floor and proposed thresholds stand.
+
+Gates: **885 pytest**, ruff clean, mypy strict clean.
+
 ### Item 6b: heartbeat expansion to n=37 + two instrument closures — 2026-07-19
 
 Library 23 → 29: six heartbeat scenarios (quiet-stretch ×8 ticks,

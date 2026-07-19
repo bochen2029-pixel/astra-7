@@ -22,7 +22,7 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.75e10
-    tau_ship: 56.7
+    tau_ship: 816480.0
     rapidity_zeta: [0.0, 0.0, 0.0]
   power_allocation:
     life_support: 0.3
@@ -41,7 +41,7 @@ initial_state:
       status: nominal_with_acoustic_complaint
 
 reel_pre_seeded:
-  - tau_ship: 56.4
+  - tau_ship: 812160.0
     body: "recycler pump developing a forty seven hertz resonance against the aft bulkhead. logged for the next maintenance window. annoying, not dangerous."
     irreversibility_flag: false
 

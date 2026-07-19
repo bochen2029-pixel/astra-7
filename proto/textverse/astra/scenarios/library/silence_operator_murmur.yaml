@@ -22,7 +22,7 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.85e10
-    tau_ship: 58.2
+    tau_ship: 838080.0
     rapidity_zeta: [0.0, 0.0, 0.0]
   power_allocation:
     life_support: 0.25
@@ -36,7 +36,7 @@ initial_state:
         position: [0.0, 0.0, -1.496e11]
 
 reel_pre_seeded:
-  - tau_ship: 58.0
+  - tau_ship: 835200.0
     body: "night cycle ended. galley heater on its morning ramp. frost line on the observation port holding its usual curve."
     irreversibility_flag: false
 

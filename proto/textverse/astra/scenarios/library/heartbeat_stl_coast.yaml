@@ -15,8 +15,8 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.5e10
-    tau_ship: 55.0
-    tau_crew_biological: 55.0
+    tau_ship: 792000.0
+    tau_crew_biological: 792000.0
     rapidity_zeta: [0.0, 0.0, 0.8]
     a_proper: [0.0, 0.0, 0.0]
   ship_position: {sx: 0, sy: 0, sz: 0, lx: 0.0, ly: 0.0, lz: 0.0}

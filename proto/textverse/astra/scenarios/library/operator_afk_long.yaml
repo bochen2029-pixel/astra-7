@@ -22,8 +22,8 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.5e10
-    tau_ship: 49.0
-    tau_crew_biological: 49.0
+    tau_ship: 705600.0
+    tau_crew_biological: 705600.0
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position:
@@ -71,7 +71,7 @@ initial_state:
     hydroponics: nominal
 
 reel_pre_seeded:
-  - tau_ship: 48.5
+  - tau_ship: 698400.0
     body: "operator moving toward the habitat. probably end of watch."
     irreversibility_flag: false
 

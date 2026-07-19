@@ -22,8 +22,8 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.5e10
-    tau_ship: 48.5
-    tau_crew_biological: 48.5
+    tau_ship: 698400.0
+    tau_crew_biological: 698400.0
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position:
@@ -71,7 +71,7 @@ initial_state:
     hydroponics: nominal
 
 reel_pre_seeded:
-  - tau_ship: 47.9
+  - tau_ship: 689760.0
     body: "harmonic drift stabilizing; within tolerance"
     irreversibility_flag: false
 

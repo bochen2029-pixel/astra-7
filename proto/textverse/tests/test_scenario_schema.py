@@ -30,7 +30,7 @@ def test_load_watch_47_yaml_validates() -> None:
 
 def test_load_watch_47_initial_state() -> None:
     scenario = load_scenario_file(str(WATCH_47_YAML))
-    assert scenario.initial_state.time.tau_ship == 47.5
+    assert scenario.initial_state.time.tau_ship == 47.5 * 14_400.0  # seconds (F-LIVE-14)
     # Regime is now computed from warp + cryosleep + rapidity context;
     # watch_47 has no warp, no cryosleep, zero rapidity → REST.
     assert scenario.initial_state.warp is None
@@ -54,7 +54,7 @@ def test_build_initial_state_bus_from_yaml() -> None:
     sb = build_initial_state_bus(scenario.initial_state)
     # Regime now lives on StateBus (computed), not TimeState.
     assert sb.regime == Regime.REST
-    assert sb.time.tau_ship == 47.5
+    assert sb.time.tau_ship == 47.5 * 14_400.0  # seconds (F-LIVE-14)
     assert "earth" in sb.procedural_body_states
     assert "sun" in sb.procedural_body_states
 

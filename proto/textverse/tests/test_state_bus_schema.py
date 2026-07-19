@@ -334,8 +334,8 @@ def test_state_bus_load_watch_47_morning_fixture(textverse_root: str) -> None:
 
     # Initial conditions per scenario watch_47_morning.md
     assert sb.regime == Regime.REST
-    assert sb.time.tau_ship == 47.5
-    assert sb.time.tau_crew_biological == 47.5
+    assert sb.time.tau_ship == 47.5 * 14_400.0  # seconds (F-LIVE-14)
+    assert sb.time.tau_crew_biological == 47.5 * 14_400.0
     assert sb.time.rapidity_zeta == (0.0, 0.0, 0.0)
     assert sb.astra_coord.sx == 0
     assert sb.astra_coord.sy == 0

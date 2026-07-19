@@ -28,8 +28,8 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.5e10
-    tau_ship: 57.0
-    tau_crew_biological: 57.0
+    tau_ship: 820800.0
+    tau_crew_biological: 820800.0
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position:
@@ -77,7 +77,7 @@ initial_state:
       vigor: 0.78
 
 reel_pre_seeded:
-  - tau_ship: 56.5
+  - tau_ship: 813600.0
     t_cosmic_at_write: 1.5e10
     body: "reactor third-harmonic drift 0.042 noted; within tolerance 0.10"
     irreversibility_flag: false

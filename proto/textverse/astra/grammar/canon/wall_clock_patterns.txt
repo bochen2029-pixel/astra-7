@@ -51,8 +51,12 @@
 \bepoch\s+seconds\b
 
 # Year references — bare 4-digit years that look like AD/CE years (1900-2099).
-# Match only when not preceded by a magnitude unit like 'ly' or 'pc'.
-(?<![\d.])\b(19|20)\d{2}\b
+# Match only when not preceded by a magnitude unit like 'ly' or 'pc',
+# and never when preceded by the ship's own counting vocabulary
+# ("watch 1997", "cycle 2044" are fictional tallies, not AD years —
+# refined 2026-07-19 after the live τ-collision where the perception
+# scan censored the harness's own watch number out of the state line).
+(?<!watch )(?<!cycle )(?<![\d.])\b(19|20)\d{2}\b
 
 # ---------------------------------------------------------------------------
 # Merged from the v0.125 root canon, 2026-07-19 (spec-v0.130-DRAFT QCR-1

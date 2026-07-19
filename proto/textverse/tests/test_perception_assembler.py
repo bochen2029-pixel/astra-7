@@ -44,12 +44,45 @@ def test_bundle_has_four_xml_sections() -> None:
 
 
 def test_state_section_includes_tau_ship_and_regime() -> None:
+    # F-LIVE-14 closure: τ is SECONDS; the watch label is DERIVED
+    # (47.5 watches × 14,400 s → "watch 47, mid-shift").
     bundle = assemble_perception_bundle(
-        state_bus=_minimal_state_bus(tau_ship=47.5),
+        state_bus=_minimal_state_bus(tau_ship=47.5 * 14_400.0),
         operator_text="",
     )
-    assert "watch 47" in bundle
+    assert "watch 47, mid-shift" in bundle
     assert "REST" in bundle
+
+
+def test_watch_label_derivation() -> None:
+    from astra.harness.perception_assembler import WATCH_LENGTH_S, watch_label
+
+    assert WATCH_LENGTH_S == 14_400.0
+    assert watch_label(47.5 * 14_400.0) == "watch 47, mid-shift"
+    assert watch_label(47.0 * 14_400.0) == "watch 47, early-shift"
+    assert watch_label(47.9 * 14_400.0) == "watch 47, late-shift"
+    # The old failure shape: τ = 2055 s is just early in watch 0 now,
+    # and can never render a bare year-shaped number.
+    assert watch_label(2055.0) == "watch 0, early-shift"
+
+
+def test_watch_vocabulary_survives_perception_scan() -> None:
+    """The F-LIVE-14 self-censoring bug: 'watch 1997' must survive the
+    perception scan (ship tally, not an AD year), while a bare year in
+    prose still strips."""
+    from astra.grammar import LeakDetector
+
+    detector = LeakDetector.from_default_canon()
+    cleaned, events = detector.scan_perception_bundle(
+        "<state>\nτ_ship: watch 1997, mid-shift.\nregime: REST.\n</state>",
+    )
+    assert "watch 1997, mid-shift" in cleaned
+    assert not any("1997" in e.matched_text for e in events)
+    cleaned2, events2 = detector.scan_perception_bundle(
+        "<state>stamped 1997 at the yards</state>",
+    )
+    assert "1997" not in cleaned2
+    assert any("1997" in e.matched_text for e in events2)
 
 
 def test_state_section_mentions_bodies() -> None:
@@ -95,7 +128,7 @@ def test_reel_retrievals_in_recent_section() -> None:
         state_bus=_minimal_state_bus(),
         operator_text="",
         reel_retrievals=[
-            ReelEntry(tau_ship=46.0, t_cosmic_at_write=0.0, body="third-harmonic drift noted cycle 46"),
+            ReelEntry(tau_ship=46.0 * 14_400.0, t_cosmic_at_write=0.0, body="third-harmonic drift noted cycle 46"),
         ],
     )
     assert "third-harmonic drift noted cycle 46" in bundle

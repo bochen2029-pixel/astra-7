@@ -19,8 +19,8 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.5e10
-    tau_ship: 54.0
-    tau_crew_biological: 54.0
+    tau_ship: 777600.0
+    tau_crew_biological: 777600.0
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position:
@@ -76,7 +76,7 @@ initial_state:
       target_heading: [0.0, 0.0, 1.0]
 
 reel_pre_seeded:
-  - tau_ship: 53.5
+  - tau_ship: 770400.0
     body: "warp coil charging completed; pre-flight checks nominal"
     irreversibility_flag: false
 

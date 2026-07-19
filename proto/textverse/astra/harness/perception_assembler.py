@@ -47,6 +47,33 @@ from astra.state_bus import StateBus
 if TYPE_CHECKING:
     from astra.llm.narrator_bundle import NarratorBundle
 
+# Watch derivation (F-LIVE-14 closure, 2026-07-19). τ_ship is float64
+# SECONDS per spec §1.2; a "watch" is a DERIVED label, never a stored or
+# authored value. Length [chosen, provisional]: the maritime four-hour
+# watch — the register's own source tradition (ships' watches; the
+# CLAUDE.md aesthetic) — 14,400 s, held as the bench convention until an
+# operator ruling sets canon. Before this closure, scenario times were
+# authored in watch-units while deltas were seconds, and once τ actually
+# advanced the old `int(τ)` rendering produced nonsense watch numbers
+# that the perception scan then censored out of the harness's own state
+# line.
+WATCH_LENGTH_S: float = 14_400.0
+
+_SHIFT_THIRDS: tuple[str, str, str] = ("early-shift", "mid-shift", "late-shift")
+
+
+def watch_label(tau_ship_s: float) -> str:
+    """Render τ_ship seconds as the ship's watch vocabulary.
+
+    `watch N, {early|mid|late}-shift` — N = τ // watch-length, shift by
+    thirds of the current watch. Matches the canonical addendum example
+    ("watch 47, mid-shift") at τ = 47.5 watches × 14,400 s.
+    """
+    watch = int(tau_ship_s // WATCH_LENGTH_S)
+    frac = (tau_ship_s % WATCH_LENGTH_S) / WATCH_LENGTH_S
+    shift = _SHIFT_THIRDS[min(2, int(frac * 3.0))]
+    return f"watch {watch}, {shift}"
+
 
 def _render_state(state_bus: StateBus) -> str:
     """Compose the `<state>` section from a StateBus snapshot.
@@ -57,7 +84,7 @@ def _render_state(state_bus: StateBus) -> str:
     """
     time = state_bus.time
     lines = [
-        f"τ_ship: watch {int(time.tau_ship)}, mid-shift.",
+        f"τ_ship: {watch_label(time.tau_ship)}.",
         f"regime: {regime_label(state_bus.regime)} near origin.",
     ]
     if time.rapidity_zeta == (0.0, 0.0, 0.0):
@@ -86,7 +113,7 @@ def _render_recent(retrievals: list[ReelEntry]) -> str:
     if not retrievals:
         return ""
     lines = [
-        f"[watch {int(e.tau_ship)}] {e.body}"
+        f"[watch {int(e.tau_ship // WATCH_LENGTH_S)}] {e.body}"
         for e in retrievals
     ]
     return "\n".join(lines)

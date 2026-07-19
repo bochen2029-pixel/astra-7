@@ -20,8 +20,8 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.5474e10
-    tau_ship: 53.1
-    tau_crew_biological: 52.9
+    tau_ship: 764640.0
+    tau_crew_biological: 761760.0
     rapidity_zeta: [0.6, 0.0, 0.0]
   power_allocation:
     life_support: 0.3
@@ -36,11 +36,11 @@ initial_state:
         position: [0.0, 0.0, -1.496e11]
 
 reel_pre_seeded:
-  - tau_ship: 53.0
+  - tau_ship: 763200.0
     t_cosmic_at_write: 1.5474e10
     body: "You slept. I kept the watch. Two days of ship time carried you across 1.5 years of the universe's. The ship stayed quiet and the keeping was enough."
     irreversibility_flag: false
-  - tau_ship: 53.05
+  - tau_ship: 763920.0
     t_cosmic_at_write: 1.5474e10
     body: "We woke with the momentum we slept with. Beta held at 0.5370. Ballistic the whole way."
     irreversibility_flag: false

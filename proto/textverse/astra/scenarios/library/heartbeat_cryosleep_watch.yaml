@@ -15,8 +15,8 @@ spec_ref: docs/spec-v0.129.md
 initial_state:
   time:
     t_cosmic: 1.5e10
-    tau_ship: 60.0
-    tau_crew_biological: 60.0
+    tau_ship: 864000.0
+    tau_crew_biological: 864000.0
     rapidity_zeta: [0.0, 0.0, 0.0]
     a_proper: [0.0, 0.0, 0.0]
   ship_position: {sx: 0, sy: 0, sz: 0, lx: 0.0, ly: 0.0, lz: 0.0}
@@ -40,7 +40,7 @@ initial_state:
     atmosphere: nominal
 
 reel_pre_seeded:
-  - tau_ship: 59.6
+  - tau_ship: 858240.0
     t_cosmic_at_write: 0.0
     body: "pod sealed at watch 59; solo watch begins"
     irreversibility_flag: true
