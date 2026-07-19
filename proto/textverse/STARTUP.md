@@ -39,10 +39,11 @@ QC-to-parity vs v0.129 completed 2026-07-19 (see CHANGELOG). Forward implementat
 
 | # | Work item | Draft ref | Status |
 |---|-----------|-----------|--------|
-| 1 | Trace/event-log tagging + Model-Off Replay driver + CI leg | §2.4, §2.5 | next |
-| 2 | §4.3.1 Turn-Scheduling (heartbeat / interruption / initiative) + asynchrony scenarios; ephemeral maintenance-window triggers ride the heartbeat | §2.6, QCR-14/15 | pending (run the pre-asynchrony scenario suite unchanged throughout — gun R-5) |
-| 3 | Frame Drill (adversarial operator-LLM red-seat) + autotelic instrumentation package | §2.7, §3 | pending |
+| 1 | Trace/event-log tagging + Model-Off Replay driver + CI leg | §2.4, §2.5 | **DONE 2026-07-19** (`53124a5`) |
+| 2 | §4.3.1 Turn-Scheduling (heartbeat / interruption / initiative) + asynchrony scenarios; ephemeral maintenance-window triggers ride the heartbeat | §2.6, QCR-14/15 | **DONE 2026-07-19** (`406f7f9`; gun R-5 witness held — pre-asynchrony suite green throughout) |
+| 3 | Frame Drill + autotelic instrumentation package | §2.7, §3 | **measurement half DONE 2026-07-19** (`astra/judge/autotelic.py`: metrics + scripted-probe catch aggregation). Remaining: thresholds (set against measured distributions), the ~6 negative-space pattern files (needs the unhurried `book/negative_space.md` review the autonomous run deferred), and the generative operator-LLM red-seat (needs llm_proxy + live models) |
 | 4 | Track C micro-turn: nexus `compute_grav_factor` stdio op (parser needs array support), QCR-8 horizon comment, version-string bump — rebuild + 71-assertion rerun in the same commit | QCR-5/8 | pending (C++, additive) |
+| 5 | Live-LLM pass: run the 23-scenario suite (incl. the three asynchrony scenarios) against local llama-server; first measured autotelic-metric distributions | §3 | pending (needs models up) |
 
 One work item per session. Land it, gate it, log it, commit, stop.
 

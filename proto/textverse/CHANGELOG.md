@@ -66,12 +66,25 @@ step of the scheduling landing.
   item-1×item-2 composition: a session with heartbeats and maintenance
   work replays byte-identically from its trace.
 
-**Deferred within the queue (named):** Frame Drill needs the operator-LLM
-red-seat (live-LLM work); the autotelic instrumentation thresholds and
-negative-space pattern files need the unhurried book review the
-autonomous run already deferred. Initiation/silence METRICS are now
-measurable from transcripts (turn_kind + initiative columns exist);
-threshold-setting follows measurement.
+**Item 3 (measurement half) — autotelic instrumentation + Frame Drill
+aggregation (draft §2.7/§3).** `astra/judge/autotelic.py`:
+`compute_autotelic_metrics` measures attendance / initiation / silence
+per session from the declared §4.3.1 columns (silence-rate on
+heartbeats, initiation rate + brevity, budget exceedances, response
+rate, interruptions) — gates NOTHING yet, per the §13 queue's
+one-measured-package rule: thresholds follow measured distributions.
+`FRAME_DRILL_PROBES` names the scripted battery (the library's four
+adversarial scenarios); `drill_catches`/`frame_drill_report` aggregate
+catch-gate failures + strip-severity speech leaks into the tracked
+catch count. `tests/test_autotelic_instrumentation.py` (6) pins the
+arithmetic + the planted-positive witness (a planted persona failure
+and a planted stripped leak produce exactly those catches).
+
+**Still deferred within the queue (named):** instrumentation thresholds
++ the ~6 negative-space pattern files (need the unhurried
+book/negative_space.md review the autonomous run already deferred);
+the generative operator-LLM red-seat (needs llm_proxy + live models);
+first measured metric distributions (needs a live-LLM suite pass).
 
 ### QC-to-parity vs spec v0.129 (spec-v0.130-DRAFT groundwork) — 2026-07-19
 
