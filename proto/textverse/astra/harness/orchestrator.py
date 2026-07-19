@@ -159,6 +159,21 @@ class TurnOrchestrator:
         # with calculator-bound auto-validation. Falls back to the
         # template path on NarratorValidationError (exhausted retries).
         self.narrator_bundle = narrator_bundle
+        # 6c (2026-07-19): narrator utterances are oracle events — every
+        # compose() call (retry attempts included) is receipted into the
+        # trace so Model-Off Replay covers the narrator path. The wrap
+        # mutates the bundle's client, so a traced narrator bundle is
+        # PER-SESSION (drivers construct a fresh one per scenario).
+        if trace is not None and narrator_bundle is not None:
+            from astra.harness.trace import TracingLLMClient
+
+            if not isinstance(narrator_bundle.client, TracingLLMClient):
+                narrator_bundle.client = TracingLLMClient(
+                    narrator_bundle.client,
+                    trace,
+                    role="narrator",
+                    turn_index_fn=lambda: self._turn_index,
+                )
         self._turn_index: int = 0
         # §4.3.1 scheduling state (spec-v0.130-DRAFT §2.6): the
         # conversation buffer feeds the §4.9 ephemerals their windows; the

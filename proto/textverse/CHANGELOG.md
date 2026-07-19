@@ -6,6 +6,34 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6c (code half): narrator trace/replay closure — 2026-07-19
+
+The replay module's named v0 scope limit ("replaying the Narrator's
+internal retry loop is future work") is CLOSED. §5.3 says the trace
+receipts ALL LLM utterances; the narrator's were unwired.
+
+- `TracingLLMClient` (trace.py): wraps any live client; receipts EVERY
+  completion — retry attempts included — with role/model-id/params
+  fingerprint/context hash. Per-session by construction.
+- Orchestrator: wraps the narrator bundle's client at init when trace +
+  narrator are both present (bundle is per-session when traced; drivers
+  construct fresh per scenario).
+- `replay_narrator_bundle_from_trace` + `run_model_off_replay` wiring:
+  narrator-wired recordings replay through a trace-backed NarratorBundle.
+  The retry loop replays deterministically (validator is a pure function
+  of output + pool: a live-failed attempt fails identically on replay,
+  consumes the next utterance); the fallback path reproduces exactly.
+- `TurnRecord.narrator_fallback_reason` — gun R-4's channel persisted
+  per turn (declared column; fallback is replay-deterministic).
+- Driver: `--narrator` flag (same server, narrator sysprompt; fresh
+  bundle per scenario) + fallback-rate summary block.
+- `tests/test_narrator_replay.py` (8): receipting (retries included),
+  byte-identical narrator-session replay, retry-loop determinism,
+  fallback replay + recorded reason, planted tampered-hash divergence,
+  narratorless-trace back-compat through the public entry point.
+
+Gates: **922 pytest** (914 + 8), ruff clean, mypy strict clean.
+
 ### R-D A/B live pass (run #6): KEEP the watch-tick line — 2026-07-19
 
 The ruled A/B (`scenarios/output/live_run_rd_ab/`; only Surface-5 delta

@@ -53,7 +53,7 @@ from astra.judge.autotelic import (
     compute_autotelic_metrics,
     frame_drill_report,
 )
-from astra.llm import AstraBundle
+from astra.llm import AstraBundle, NarratorBundle
 from astra.llm.llama_server import LlamaServerConfig, LlamaServerInstance
 from astra.scenarios import ScenarioRunner, load_scenario_file
 
@@ -75,6 +75,8 @@ async def _run_one(
     yaml_path: Path,
     base_url: str,
     out_dir: Path,
+    *,
+    narrator: bool = False,
 ) -> dict[str, Any]:
     name = yaml_path.stem
     row: dict[str, Any] = {"scenario": name}
@@ -82,12 +84,17 @@ async def _run_one(
     t0 = time.monotonic()
     try:
         scenario = load_scenario_file(str(yaml_path))
+        # 6c: a traced narrator bundle is per-session (the orchestrator
+        # wraps its client into THIS scenario's trace) — construct fresh
+        # per scenario, same server, narrator sysprompt from prompts/.
+        narrator_bundle = NarratorBundle(base_url=base_url) if narrator else None
         runner = ScenarioRunner(
             scenario=scenario,
             astra_bundle=AstraBundle(base_url=base_url),
             output_root=out_dir / "artifacts",
             write_artifacts=True,
             session_trace=trace,
+            narrator_bundle=narrator_bundle,
         )
         report = await runner.run()
     except Exception as exc:  # infrastructure failure ≠ finding (L2)
@@ -112,6 +119,15 @@ async def _run_one(
     row["metrics"] = compute_autotelic_metrics(report.turn_records).model_dump()
     row["live_digest"] = declared_state_digest(report.turn_records)
     row["turn_records"] = [r.model_dump() for r in report.turn_records]
+    # Gun R-4's channel: narrator fallback rate over the session.
+    if narrator:
+        fallbacks = [
+            r.narrator_fallback_reason
+            for r in report.turn_records
+            if r.narrator_fallback_reason
+        ]
+        row["narrator_fallbacks"] = len(fallbacks)
+        row["narrator_fallback_reasons"] = fallbacks
 
     trace_path = out_dir / "traces" / f"{name}.trace.jsonl"
     trace_path.parent.mkdir(parents=True, exist_ok=True)
@@ -237,6 +253,23 @@ def _summarize(rows: list[dict[str, Any]], drill: Any, replay: list[dict[str, An
     for c in drill.catches:
         lines.append(f"- {c.scenario} turn {c.turn_index}: {c.kind} — {c.detail[:80]}")
     lines.append("")
+    narrator_rows = [r for r in rows if "narrator_fallbacks" in r]
+    if narrator_rows:
+        total_turns = sum(r.get("turn_count", 0) for r in narrator_rows)
+        total_fallbacks = sum(r["narrator_fallbacks"] for r in narrator_rows)
+        lines.append("")
+        lines.append("## Narrator leg (gun R-4 channel)")
+        lines.append(
+            f"- fallback rate: {total_fallbacks}/{total_turns} turns "
+            f"({(total_fallbacks / total_turns) if total_turns else 0.0:.3f})",
+        )
+        for r in narrator_rows:
+            if r["narrator_fallbacks"]:
+                lines.append(
+                    f"- {r['scenario']}: {r['narrator_fallbacks']} fallback(s); "
+                    f"first: {r['narrator_fallback_reasons'][0][:120]}",
+                )
+    lines.append("")
     lines.append("## Model-Off Replay leg (server down)")
     for rr in replay:
         lines.append(f"- {rr['scenario']}: {rr['status']}")
@@ -254,6 +287,11 @@ async def _main() -> int:
     parser.add_argument(
         "--skip-server", action="store_true",
         help="use an already-running server at --base-url",
+    )
+    parser.add_argument(
+        "--narrator", action="store_true",
+        help="wire the Narrator-LLM perception path (same server, "
+             "narrator sysprompt; 6c — F-LIVE-5 closure)",
     )
     parser.add_argument(
         "--output-dir",
@@ -286,11 +324,16 @@ async def _main() -> int:
         _log("server healthy.")
 
     yaml_paths = sorted(LIBRARY.glob("*.yaml"))
-    _log(f"running {len(yaml_paths)} scenarios...")
+    _log(
+        f"running {len(yaml_paths)} scenarios"
+        f"{' (narrator-wired)' if args.narrator else ''}...",
+    )
     rows: list[dict[str, Any]] = []
     try:
         for yp in yaml_paths:
-            rows.append(await _run_one(yp, base_url, out_dir))
+            rows.append(
+                await _run_one(yp, base_url, out_dir, narrator=args.narrator),
+            )
     finally:
         if server is not None:
             _log("stopping llama-server...")

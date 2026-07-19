@@ -59,6 +59,12 @@ class TurnRecord(BaseModel):
     initiative_budget_exceeded: bool = False
     ephemeral_runs: list[str] = Field(default_factory=list)
     adapter_mappings: list[str] = Field(default_factory=list)
+    # Gun R-4's channel (6c, 2026-07-19): the narrator fallback reason,
+    # persisted per turn so the fallback RATE is measurable over a suite.
+    # Empty = narrator succeeded, or the template path ran by config.
+    # Declared column: fallback is deterministic under Model-Off Replay
+    # (the validator is a pure function of recorded output + pool).
+    narrator_fallback_reason: str = ""
 
 
 def _leak_event_dict(e: LeakEvent) -> dict[str, Any]:
@@ -121,6 +127,7 @@ def build_turn_record(
         initiative_budget_exceeded=turn.initiative_budget_exceeded,
         ephemeral_runs=list(turn.ephemeral_runs),
         adapter_mappings=list(turn.adapter_mappings),
+        narrator_fallback_reason=turn.narrator_fallback_reason,
     )
 
 

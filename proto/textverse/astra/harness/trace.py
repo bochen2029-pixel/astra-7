@@ -28,10 +28,13 @@ replay bit-identical with the model unreachable).
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from hashlib import sha256
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from astra.llm.client import LLMClient, SamplingParams
 
 
 def text_sha256(text: str) -> str:
@@ -113,3 +116,59 @@ class SessionTrace:
             if line.strip()
         ]
         return cls(records)
+
+
+class TracingLLMClient(LLMClient):
+    """Wraps a live client; receipts EVERY completion into the trace.
+
+    The narrator-path recording mechanism (6c, closes the replay module's
+    named v0 scope limit): NarratorBundle.compose() may call the client
+    several times per turn (the hard-severity retry loop), and every one
+    of those calls is an oracle event the §5.3 trace column must receipt
+    verbatim — retries included, else replay cannot reproduce the loop.
+    Wrap-at-construction in the orchestrator; one wrapper per session
+    (a bundle shared across sessions would cross-contaminate traces, so
+    live drivers construct a fresh bundle per scenario).
+    """
+
+    def __init__(
+        self,
+        inner: LLMClient,
+        trace: SessionTrace,
+        *,
+        role: str,
+        turn_index_fn: Callable[[], int],
+    ) -> None:
+        super().__init__(
+            base_url=inner.base_url,
+            sysprompt=inner.sysprompt,
+            model_name=inner.model_name,
+        )
+        self._inner = inner
+        self._trace = trace
+        self._role = role
+        self._turn_index_fn = turn_index_fn
+
+    async def chat_complete(
+        self,
+        user_text: str,
+        params: SamplingParams | None = None,
+    ) -> str:
+        out = await self._inner.chat_complete(user_text, params)
+        fingerprint = (
+            text_sha256(json.dumps(params.model_dump(), sort_keys=True))
+            if params is not None
+            else ""
+        )
+        self._trace.record_utterance(
+            self._turn_index_fn(),
+            role=self._role,
+            payload=out,
+            context=user_text,
+            model_id=self._inner.model_name,
+            params_fingerprint=fingerprint,
+        )
+        return out
+
+    async def health(self) -> bool:
+        return await self._inner.health()

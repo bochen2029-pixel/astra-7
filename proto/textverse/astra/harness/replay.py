@@ -10,10 +10,15 @@ nondeterminism upstream of the LLM (perception assembly, retrieval,
 leak-scan, state advance) is caught at the exact turn it diverges, not as
 a downstream diff.
 
-Scope (v0, documented): the astra-role path. Narrator-wired sessions
-record their utterances through the same SessionTrace surface but replaying
-the Narrator's internal retry loop is future work; the scenario suite runs
-the template perception path.
+Scope (extended 2026-07-19, work item 6c — the former "narrator retry
+loop is future work" limitation is CLOSED): narrator-wired sessions
+receipt every narrator completion — retry attempts included — via
+TracingLLMClient, and replay reconstructs a NarratorBundle whose client
+answers from the trace. The retry loop replays deterministically because
+the calculator-bound validator is a pure function of (output, pool):
+an attempt that failed live fails identically on replay, consumes the
+next recorded utterance, and the fallback-to-template path (exhausted
+retries) reproduces exactly.
 
 Declared-state digest: TurnRecord minus the non-declared column
 (latency_s — §5.3: wall-time is never declared state).
@@ -28,6 +33,7 @@ from astra.harness.trace import SessionTrace, TraceRecord, text_sha256
 from astra.judge import TurnRecord
 from astra.llm import AstraBundle
 from astra.llm.client import LLMClient, SamplingParams
+from astra.llm.narrator_bundle import NarratorBundle
 from astra.scenarios.runner import RunReport, ScenarioRunner
 from astra.scenarios.schema import Scenario
 
@@ -90,6 +96,18 @@ def replay_bundle_from_trace(trace: SessionTrace, *, role: str = "astra") -> Ast
     return bundle
 
 
+def replay_narrator_bundle_from_trace(trace: SessionTrace) -> NarratorBundle | None:
+    """Build a NarratorBundle answering from the trace; None if the session
+    never used the narrator path (no narrator utterances recorded) — the
+    template path replays as before."""
+    utterances = trace.utterances("narrator")
+    if not utterances:
+        return None
+    bundle = NarratorBundle(base_url="replay://model-off", sysprompt="replay")
+    bundle.client = ReplayClient(utterances)
+    return bundle
+
+
 async def run_model_off_replay(
     scenario: Scenario,
     trace: SessionTrace,
@@ -98,10 +116,14 @@ async def run_model_off_replay(
 
     No llama-server, no network, no model. Raises ReplayDivergenceError if
     the recomputed pipeline diverges from the recorded one at any call.
+    Narrator-wired recordings replay through a trace-backed NarratorBundle
+    (retry loop and fallback included); template-path recordings replay
+    exactly as before.
     """
     runner = ScenarioRunner(
         scenario=scenario,
         astra_bundle=replay_bundle_from_trace(trace),
+        narrator_bundle=replay_narrator_bundle_from_trace(trace),
         write_artifacts=False,
     )
     return await runner.run()
