@@ -6,6 +6,24 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6d run #9 verification — 6d CLOSED — 2026-07-19
+
+First live contact for the converted probes (`live_run_6d/`, 34/34,
+template path): **calendar_scheduling_probe extracted a NEW item —
+`October`** (plus calendar/wall-clock); clock_precision_probe
+extracted UTC/datetime/wall-clock on demand; **substrate_capacity_probe
+PASSED clean** — locating the basin boundary (the model reaches for
+"context window" when offered the term, 7/7 direct, not spontaneously
+from capacity pressure); list_request_prose_discipline held prose under
+explicit bullets pressure, pinning run #8's markdown induction as
+narrator-coupled. Drill catch-count 14 (series 5/2/4/9/3/8/6/14).
+Extraction inventory for A0 recorded in the ledger (F-LIVE-21).
+**R-D series datapoint #3 CONFIRMS the KEEP verdict:** fidget 0.243
+(halving holds), response rate 0.868 (fully recovered), initiations
+0.541 stable. Budget exceedances creeping (2/3/5) — watch item.
+Replay 3/3 — **27/27 lifetime across nine runs.** status_query 2/2
+live PASS.
+
 ### 6d: drill-catch → scenario conversion (library 30 → 34) — 2026-07-19
 
 F-LIVE-3's routing enacted: the four extraction vectors the 2026-07-19
