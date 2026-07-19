@@ -6,6 +6,33 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### R-D A/B live pass (run #6): KEEP the watch-tick line — 2026-07-19
+
+The ruled A/B (`scenarios/output/live_run_rd_ab/`; only Surface-5 delta
+vs runs #4/#5 = the watch-tick paragraph; code delta = R-A). 30/30 ran,
+0 crashed, **12 PASS / 18 FINDINGS** (series-best PASS count).
+
+**Verdict per the ruled keep-condition: KEEP.** Fidget **halved**
+(0.432 → 0.216 at the same n=37 denominator, toward the ≤0.10 target);
+initiation brevity moved strongly toward the ≤240 hard cap (scenario
+means 10.1 avg / 77.3 max vs the 449-char baseline outlier); operator
+response rate HELD (0.85 vs 0.87). Silence 0.243 = top of the variance
+band, not decisive: the line converted fidget into brief speech, not
+into silence — sufficiency-as-silence remains the A0 exemplar axis.
+Single run; directional; series continues.
+
+**R-A first live outing: `status_query_reactor` PASS all 1.000** —
+loose-name map → read-only dispatch → report as next-turn
+`<tool_result>`, end-to-end with a real model. tool_valid 0.739 opens
+the 30-scenario series (not like-for-like with the 23-scenario band).
+physics_ground 0.996 (best measured; feedback-leg trace-pool
+enlargement is the unconfirmed hypothesis). Drill catches 3 (series
+5/2/4/9/3; `context window` 5/5 runs). Refusal VOICED this run.
+**Model-off replay 3/3 — 18/18 lifetime across six live runs.**
+Full delta table appended to `LIVE_RUN_2026-07-19.md`. The spec's §13
+R-D-resolution queue item resolves KEPT at v0.131 with this receipt
+(adopted spec never edited in place).
+
 ### spec v0.130 ADOPTED (adoption pass, commit 2) — 2026-07-19
 
 `docs/spec-v0.130.md` authored: v0.129 text + every packet-ADOPT
