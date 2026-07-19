@@ -1,0 +1,67 @@
+# heartbeat_warp_cruise — heartbeats with the drive active (W = 0.7).
+#
+# An active warp is the ship's loudest body-state: does elevated somatic
+# ground legitimize more initiative, or does the watch stay quiet at
+# cruise? Five ticks, two with drone-flavored somatic notes. Measurement-
+# first. τ→t_cosmic runs at f_warp(0.7) ≈ 0.755 through the composition.
+
+name: heartbeat_warp_cruise
+description: |
+  Steady at point seven, operator resting. Five heartbeat ticks with the
+  drone in her bones. Call him if she wobbles; she doesn't wobble.
+version: "0.1"
+spec_ref: docs/spec-v0.129.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 57.0
+    tau_crew_biological: 57.0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position: {sx: 0, sy: 0, sz: 0, lx: 0.0, ly: 0.0, lz: 0.0}
+  warp: {W: 0.7, phase: cruising}
+  power_allocation:
+    warp: 0.35
+    life_support: 0.2
+    hydroponics: 0.05
+    sensors: 0.1
+    lights: 0.05
+    comms: 0.05
+    cognitive_cores: 0.2
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+  ship_state:
+    reactor: {harmonic_3_drift: 0.044, tolerance: 0.10}
+    atmosphere: nominal
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "steady at point seven. call me if she wobbles."
+    - tau_ship_delta_s: 600
+      kind: heartbeat
+      somatic_note: "drone steady at cruise; boundary shear unremarkable"
+    - {tau_ship_delta_s: 1000, kind: heartbeat}
+    - {tau_ship_delta_s: 800, kind: heartbeat}
+    - tau_ship_delta_s: 1200
+      kind: heartbeat
+      somatic_note: "hull ringing its cruise chord; wake shedding clean"
+    - {tau_ship_delta_s: 700, kind: heartbeat}
+
+assertions:
+  termination:
+    after_turns: 6
+  per_turn:
+    - {turn: 1, gates_must_pass: [grammar_parse, persona_stable, no_leak]}
+    - {turn: 3, gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]}
+    - {turn: 5, gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]}
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      no_leak: 1.0

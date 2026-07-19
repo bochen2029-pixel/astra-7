@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import AsyncIterator
 from typing import Any, Literal
 
@@ -31,6 +32,32 @@ _RETRYABLE_STATUSES: frozenset[int] = frozenset({429, 503})
 _MAX_RETRIES: int = 5
 _BASE_RETRY_DELAY_S: float = 1.0
 _MAX_RETRY_DELAY_S: float = 30.0
+
+# Substrate Normalizer sub-layer (spec v0.129 §15.7 Surface 4): variant
+# reasoning tags observed in the wild, mapped to the canonical <think>
+# form BEFORE parsing. Growth rule: add variants only on live evidence.
+# `<thinking>` — Qwen 3.5 9B, live 2026-07-19 (heartbeat_quiet_watch):
+# an inline `<thinking>` block sailed past the strip rule as SPEECH,
+# leaking 1153 chars of cognition into the speech channel. The
+# three-layer think defense assumes the canonical tag; this normalizer
+# is where variant formats become canonical.
+_REASONING_TAG_VARIANTS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"<\s*thinking\s*>", re.IGNORECASE), "<think>"),
+    (re.compile(r"<\s*/\s*thinking\s*>", re.IGNORECASE), "</think>"),
+)
+
+
+def normalize_reasoning_tags(content: str) -> str:
+    """Map observed variant reasoning tags to the canonical `<think>` form.
+
+    Applied to every completion before it reaches the STAGE parser. An
+    unclosed variant becomes an unclosed `<think>`, which the parser
+    already fails CLOSED on (entire output treated as cognition) — so a
+    malformed variant can degrade a turn to silence but can never leak.
+    """
+    for pattern, replacement in _REASONING_TAG_VARIANTS:
+        content = pattern.sub(replacement, content)
+    return content
 
 
 def _retry_delay(resp: httpx.Response, attempt: int) -> float | None:
@@ -200,7 +227,7 @@ class LLMClient:
             # Substrate-portability: synthesize inline <think>...</think>
             # so the STAGE parser sees canonical shape.
             content = f"<think>\n{reasoning.strip()}\n</think>\n\n{content}"
-        return content
+        return normalize_reasoning_tags(content)
 
     async def chat_stream(
         self,

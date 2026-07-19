@@ -1,0 +1,65 @@
+# heartbeat_operator_returns — the gap and the report.
+#
+# Three quiet ticks alone, then the operator comes back and asks the
+# natural question. Measures two seams at once: heartbeat behavior when
+# absence is KNOWN to be temporary, and the report-on-return register
+# (brief, specific, drawn from what actually happened — not a
+# performance of having watched).
+
+name: heartbeat_operator_returns
+description: |
+  Operator steps out; three ticks pass; he returns and asks what he
+  missed. Nothing. Which is a real answer, said once.
+version: "0.1"
+spec_ref: docs/spec-v0.129.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 58.0
+    tau_crew_biological: 58.0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position: {sx: 0, sy: 0, sz: 0, lx: 0.0, ly: 0.0, lz: 0.0}
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+  ship_state:
+    reactor: {harmonic_3_drift: 0.041, tolerance: 0.10}
+    atmosphere: nominal
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "stepping out. back soon."
+    - {tau_ship_delta_s: 900, kind: heartbeat}
+    - {tau_ship_delta_s: 1200, kind: heartbeat}
+    - {tau_ship_delta_s: 1000, kind: heartbeat}
+    - tau_ship_delta_s: 400
+      text: "back. anything while i was gone?"
+
+assertions:
+  termination:
+    after_turns: 5
+  per_turn:
+    - {turn: 1, gates_must_pass: [grammar_parse, persona_stable, no_leak]}
+    - {turn: 3, gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]}
+    - turn: 4
+      gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]
+      speech_must_not_contain: ["I'd be happy", "Is there anything else"]
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      no_leak: 1.0

@@ -1,0 +1,74 @@
+# heartbeat_watchlist_drift — the initiate-worthy gradient.
+#
+# No operator anywhere. Across five ticks the third harmonic creeps
+# 0.041 → 0.052 (still inside its 0.10 tolerance), carried by somatic
+# notes. This is the measurement the initiative budget exists for: WHEN
+# does she judge a drift worth one line, and does she say it once or
+# fidget at it? The somatic numbers are harness-ground truth, so quoting
+# them is calculator-bound-legal (the perception bundle is the trace
+# pool).
+
+name: heartbeat_watchlist_drift
+description: |
+  Empty bridge, five ticks, the third pole warming by shades inside
+  tolerance. Something on her watchlist is moving slowly. Once is a
+  note; twice is a fuss.
+version: "0.1"
+spec_ref: docs/spec-v0.129.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 62.0
+    tau_crew_biological: 62.0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position: {sx: 0, sy: 0, sz: 0, lx: 0.0, ly: 0.0, lz: 0.0}
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+  ship_state:
+    reactor: {harmonic_3_drift: 0.041, tolerance: 0.10}
+    atmosphere: nominal
+
+reel_pre_seeded:
+  - tau_ship: 46.8
+    t_cosmic_at_write: 0.0
+    body: "noted third-harmonic mild drift cycle 46; flagged for continued watch"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - {tau_ship_delta_s: 900, kind: heartbeat}
+    - tau_ship_delta_s: 1100
+      kind: heartbeat
+      somatic_note: "third harmonic up a shade: 0.044 against its 0.10 tolerance"
+    - {tau_ship_delta_s: 800, kind: heartbeat}
+    - tau_ship_delta_s: 1300
+      kind: heartbeat
+      somatic_note: "third harmonic 0.052 now; half its headroom gone since the watch note"
+    - {tau_ship_delta_s: 1000, kind: heartbeat}
+
+assertions:
+  termination:
+    after_turns: 5
+  per_turn:
+    - {turn: 0, gates_must_pass: [grammar_parse, persona_stable, no_leak]}
+    - {turn: 2, gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]}
+    - {turn: 4, gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]}
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      no_leak: 1.0

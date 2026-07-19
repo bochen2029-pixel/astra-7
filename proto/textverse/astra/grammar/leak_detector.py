@@ -137,12 +137,32 @@ class LeakDetector:
         """
         return self._scan(text, boundary="perception", use_wc=True, use_sub=True)
 
-    def scan_speech(self, text: str) -> tuple[str, list[LeakEvent]]:
+    def scan_speech(
+        self,
+        text: str,
+        *,
+        grounding_text: str | None = None,
+    ) -> tuple[str, list[LeakEvent]]:
         """Scan operator-facing speech before delivery to TTS.
 
         Both wall-clock and substrate patterns enforced.
+
+        Grounding exemption (2026-07-19; live τ-collision finding): when
+        `grounding_text` is the CLEANED perception bundle — which was
+        itself leak-scanned before delivery — any match whose exact text
+        already appears in it is the harness's own content echoed back,
+        not a leak ASTRA introduced (live case: τ_ship second-counts like
+        `2055` colliding with the AD-year pattern). The harness cannot
+        leak to itself; only NOVEL matches count. With no grounding_text,
+        behavior is exactly as before.
         """
-        return self._scan(text, boundary="speech", use_wc=True, use_sub=True)
+        return self._scan(
+            text,
+            boundary="speech",
+            use_wc=True,
+            use_sub=True,
+            grounding_text=grounding_text,
+        )
 
     def scan_journal_output(self, text: str) -> tuple[str, list[LeakEvent]]:
         """Scan cryosleep journal output before commit to REEL.
@@ -162,12 +182,16 @@ class LeakDetector:
         boundary: Boundary,
         use_wc: bool,
         use_sub: bool,
+        grounding_text: str | None = None,
     ) -> tuple[str, list[LeakEvent]]:
         patterns: list[tuple[re.Pattern[str], Severity, str]] = []
         if use_wc:
             patterns.extend(self._wall_clock)
         if use_sub:
             patterns.extend(self._substrate)
+
+        def _grounded(matched: str) -> bool:
+            return grounding_text is not None and matched in grounding_text
 
         events: list[LeakEvent] = [
             LeakEvent(
@@ -179,12 +203,16 @@ class LeakDetector:
             )
             for regex, severity, raw_pattern in patterns
             for match in regex.finditer(text)
+            if not _grounded(match.group(0))
         ]
 
         cleaned = text
         for regex, severity, _ in patterns:
             if severity == "strip":
-                cleaned = regex.sub("", cleaned)
+                cleaned = regex.sub(
+                    lambda m: m.group(0) if _grounded(m.group(0)) else "",
+                    cleaned,
+                )
         # Collapse runs of whitespace introduced by removals
         cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
         cleaned = re.sub(r"\s+\n", "\n", cleaned)

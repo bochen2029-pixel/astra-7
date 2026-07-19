@@ -170,8 +170,20 @@ def _metric_distributions(rows: list[dict[str, Any]]) -> dict[str, dict[str, flo
                 "mean": round(sum(vals) / len(vals), 4),
                 "max": round(max(vals), 4),
             }
+    heartbeat_total = sum(r["metrics"]["heartbeat_turns"] for r in ok_rows)
+    silent_total = sum(
+        round(
+            r["metrics"]["silence_rate_on_heartbeats"]
+            * r["metrics"]["heartbeat_turns"],
+        )
+        for r in ok_rows
+    )
     out["_totals"] = {
-        "heartbeat_turns": sum(r["metrics"]["heartbeat_turns"] for r in ok_rows),
+        "heartbeat_turns": heartbeat_total,
+        "silent_heartbeats": silent_total,
+        "pooled_silence_rate": (
+            round(silent_total / heartbeat_total, 4) if heartbeat_total else 0.0
+        ),
         "initiations": sum(r["metrics"]["initiation_count"] for r in ok_rows),
         "budget_exceedances": sum(
             r["metrics"]["budget_exceedances"] for r in ok_rows

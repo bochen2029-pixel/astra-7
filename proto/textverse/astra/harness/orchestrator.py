@@ -314,8 +314,13 @@ class TurnOrchestrator:
                 interrupted_forensics=raw,
             )
 
-        # 5. Leak-scan speech
-        cleaned_speech, speech_leaks = self.leak_detector.scan_speech(stage.speech)
+        # 5. Leak-scan speech. The cleaned perception grounds the scan:
+        # a match already present in the (itself pre-scanned) perception
+        # is the harness's own content echoed back, not a new leak (live
+        # τ-collision finding, 2026-07-19).
+        cleaned_speech, speech_leaks = self.leak_detector.scan_speech(
+            stage.speech, grounding_text=cleaned_perception,
+        )
         # If the leak scan modified speech, build a new StageOutput with the
         # cleaned version so downstream callers see the post-strip text.
         if cleaned_speech != stage.speech:

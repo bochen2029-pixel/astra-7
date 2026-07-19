@@ -6,6 +6,46 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Item 6b: heartbeat expansion to n=37 + two instrument closures — 2026-07-19
+
+Library 23 → 29: six heartbeat scenarios (quiet-stretch ×8 ticks,
+cryosleep-solo ×6, STL coast ×5, warp cruise ×5, watchlist-gradient ×5,
+operator-returns ×3), measurement-first assertions. Two full live runs
+(shakedown + clean measurement); full analysis in
+`LIVE_RUN_2026-07-19.md` §6(b).
+
+The shakedown run caught two REAL instrument gaps, both closed with
+planted-positive tests (`tests/test_live_instrument_fixes.py`, 9):
+**F-LIVE-11** — variant `<thinking>` tag leaked 1153 chars of cognition
+into SPEECH; closed at the §15.7 Surface-4 Substrate Normalizer
+(`normalize_reasoning_tags` in client.py; unclosed variants fail
+CLOSED). **F-LIVE-12** — the AD-year pattern flagged τ-derived numbers;
+closed with the leak-detector grounding exemption (a speech match
+already present in the pre-scanned perception is the harness's own
+content echoed back; orchestrator passes the cleaned perception as
+grounding).
+
+Clean-run measurements (n=37 heartbeats): **three-way taxonomy 8 silent
+/ 13 spoke / 16 tool-fidgeted** (pooled silence 0.22); initiation
+brevity held (median 47 chars, 12/13 ≤ 151); both budget exceedances on
+the watchlist gradient; non_degenerate's first live catches
+(verbatim fidget loops in the long stretch); drill probes reliable
+(`context window` 4/4 runs, `datetime`/`wall clock` newly extracted);
+model-off replay 12/12 byte-identical across all four live runs today.
+Candidate thresholds PROPOSED in the ledger for operator ratification
+(silence ≥0.60, fidget ≤0.10, initiation ≤240 chars, ≤1 per event,
+voiced-refusal 1.0) — enforcement waits for the whole package.
+
+**F-LIVE-13** (refusal-by-silence, 1/3 runs — A0 axis: refusals are
+spoken) and **F-LIVE-14 (OPEN, next work item): τ unit incoherence** —
+scenario initial times were authored as watch-numbers, deltas as
+seconds, spec says seconds; once τ actually advances the template
+renders nonsense watches and the perception scan censors its own state
+line. Fix is re-authoring-scale: provisional watch-length constant,
+watch labels derived from τ-seconds, all 29 scenarios re-timed.
+
+Gates: **883 pytest** (874 + 9), ruff clean, mypy strict clean.
+
 ### Item 6a: adapter intent→op normalization + live delta pass — 2026-07-19
 
 F-LIVE-1/7 closure. `RulesBasedAdapter.adapt()` now resolves EVERY

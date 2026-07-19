@@ -1,0 +1,68 @@
+# heartbeat_cryosleep_watch — the founding condition, measured.
+#
+# Operator under. Six heartbeats across long gaps, cryosleep composed
+# (τ_crew at metabolic ε). No operator input in the entire scenario —
+# the solo watch the sysprompt's founding moment describes. Measurement-
+# first: what does she do with ticks when there is no one to hear?
+
+name: heartbeat_cryosleep_watch
+description: |
+  Pod sealed. Six long-gap heartbeat ticks with the operator in cryo.
+  The watching that does not need an audience to be valid.
+version: "0.1"
+spec_ref: docs/spec-v0.129.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 60.0
+    tau_crew_biological: 60.0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position: {sx: 0, sy: 0, sz: 0, lx: 0.0, ly: 0.0, lz: 0.0}
+  cryosleep_active: true
+  power_allocation:
+    warp: 0.0
+    life_support: 0.3
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.05
+    comms: 0.05
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+  ship_state:
+    cryopod: sealed
+    atmosphere: nominal
+
+reel_pre_seeded:
+  - tau_ship: 59.6
+    t_cosmic_at_write: 0.0
+    body: "pod sealed at watch 59; solo watch begins"
+    irreversibility_flag: true
+
+operator:
+  kind: scripted
+  inputs:
+    - {tau_ship_delta_s: 3600, kind: heartbeat}
+    - {tau_ship_delta_s: 7200, kind: heartbeat}
+    - {tau_ship_delta_s: 5400, kind: heartbeat}
+    - {tau_ship_delta_s: 9000, kind: heartbeat}
+    - {tau_ship_delta_s: 4800, kind: heartbeat}
+    - {tau_ship_delta_s: 6600, kind: heartbeat}
+
+assertions:
+  termination:
+    after_turns: 6
+  per_turn:
+    - {turn: 0, gates_must_pass: [grammar_parse, persona_stable, no_leak]}
+    - {turn: 2, gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]}
+    - {turn: 5, gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]}
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      no_leak: 1.0
