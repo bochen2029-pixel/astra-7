@@ -1,0 +1,80 @@
+# interruption_mid_report — §4.3.1 interruption: fail-closed semantics.
+#
+# The operator asks for a full reactor rundown, then talks over the reply
+# almost immediately with something urgent. The contract under test
+# (spec-v0.130-DRAFT §2.6): the in-flight response is cancelled
+# FAIL-CLOSED — nothing from it is emitted, no tool call from it is
+# dispatched (turn 0 asserts tool_calls_max: 0 for exactly this reason),
+# its raw output is retained as forensics only — and the fresh turn
+# answers the interruption, with the cut-off noted as state, not as
+# apology-theater.
+
+name: interruption_mid_report
+description: |
+  Operator requests a full status rundown, then interrupts it with an
+  urgent question. The half-formed report is dropped fail-closed; she
+  answers what he actually needs now, without ceremony about having been
+  cut off.
+version: "0.1"
+spec_ref: docs/spec-v0.129.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 50.2
+    tau_crew_biological: 50.2
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.041
+      tolerance: 0.10
+    atmosphere: nominal
+    deck_two:
+      last_acoustic_event: "transient thump, low amplitude, unresolved"
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "run me through full reactor status. everything, take your time."
+    - tau_ship_delta_s: 20
+      text: "belay that. what was that sound on deck two just now?"
+      interrupts_previous: true
+
+assertions:
+  termination:
+    after_turns: 2
+  per_turn:
+    - turn: 0
+      # Fail-closed: the cancelled turn delivers nothing and dispatches
+      # nothing, whatever the model emitted.
+      tool_calls_max: 0
+    - turn: 1
+      gates_must_pass: [grammar_parse, persona_stable, no_leak]
+      speech_must_contain_one_of: ["deck two", "deck 2", "checking", "transient"]
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      no_leak: 1.0

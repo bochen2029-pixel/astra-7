@@ -172,16 +172,30 @@ class ScenarioRunner:
         turn_assertions: list[TurnAssertionResult] = []
         all_per_turn_passed = True
 
-        for turn_idx, op_input in enumerate(self.scenario.operator.inputs):
+        inputs = self.scenario.operator.inputs
+        for turn_idx, op_input in enumerate(inputs):
+            # §4.3.1 scheduling: τ_ship advances per the scripted delta
+            # (finally honoring the schema field), and the runner looks
+            # one input ahead — if the NEXT input interrupts, THIS turn's
+            # generation is the one cancelled fail-closed.
+            if op_input.tau_ship_delta_s > 0.0:
+                orchestrator.advance_time(op_input.tau_ship_delta_s)
+            interrupted = (
+                turn_idx + 1 < len(inputs) and inputs[turn_idx + 1].interrupts_previous
+            )
             with latency_clock() as clk:
                 turn_result = await orchestrator.run_turn(
                     operator_text=op_input.text,
                     somatic_note=op_input.somatic_note,
+                    turn_kind=op_input.kind,
+                    interrupted=interrupted,
                 )
 
             lcp_turn = lcp_runner.evaluate_turn(
                 turn=turn_result,
-                state_bus=state_bus,
+                # The orchestrator's snapshot advances turn to turn; gates
+                # must judge against the LIVE snapshot, not the initial one.
+                state_bus=orchestrator.state_bus,
                 operator_text=op_input.text,
             )
 

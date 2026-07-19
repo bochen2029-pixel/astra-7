@@ -51,6 +51,13 @@ class TurnRecord(BaseModel):
     state_diffs: list[dict[str, Any]] = Field(default_factory=list)
     lcp_gates: dict[str, dict[str, Any]] = Field(default_factory=dict)
     latency_s: float = 0.0
+    # §4.3.1 event-log columns (spec-v0.130-DRAFT §2.6). All declared:
+    # they participate in the Model-Off Replay digest.
+    turn_kind: str = "operator"
+    interrupted: bool = False
+    initiative: bool = False
+    initiative_budget_exceeded: bool = False
+    ephemeral_runs: list[str] = Field(default_factory=list)
 
 
 def _leak_event_dict(e: LeakEvent) -> dict[str, Any]:
@@ -107,6 +114,11 @@ def build_turn_record(
         state_diffs=[dict(d) for d in turn.state_diffs],
         lcp_gates=gates_dict,
         latency_s=latency_s,
+        turn_kind=turn.turn_kind,
+        interrupted=turn.interrupted,
+        initiative=turn.initiative,
+        initiative_budget_exceeded=turn.initiative_budget_exceeded,
+        ephemeral_runs=list(turn.ephemeral_runs),
     )
 
 

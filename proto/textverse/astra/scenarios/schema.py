@@ -12,9 +12,9 @@ drift is silent unless the schema is strict.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from astra.core import AstraCoord, TimeState
 from astra.state_bus import BodyState, KeplerianElements, StateBus, WarpState
@@ -118,13 +118,38 @@ class ReelPreSeed(BaseModel):
 
 
 class OperatorInput(BaseModel):
-    """One scripted operator input. tau_ship_delta_s is the τ_ship advance from prior turn."""
+    """One scripted turn entry. tau_ship_delta_s is the τ_ship advance from
+    the prior turn (wired to `advance_state_bus` — §4.3.1 scheduling).
+
+    §4.3.1 (spec-v0.130-DRAFT §2.6) additions:
+    - kind "heartbeat": a harness-originated turn — τ_ship advanced past a
+      scheduled tick with no operator input. `text` must be empty; SILENCE
+      remains the expected response for most heartbeats; speech on a
+      heartbeat is an INITIATIVE (budgeted + logged).
+    - interrupts_previous: this input arrived while the previous turn's
+      response was still generating; that turn is cancelled fail-closed
+      (runner lookahead drives the orchestrator's `interrupted` flag).
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     tau_ship_delta_s: float = Field(ge=0.0, default=0.0)
     text: str = ""
     somatic_note: str | None = None
+    kind: Literal["operator", "heartbeat"] = "operator"
+    interrupts_previous: bool = False
+
+    @model_validator(mode="after")
+    def _heartbeat_shape(self) -> Self:
+        if self.kind == "heartbeat":
+            if self.text:
+                raise ValueError(
+                    "heartbeat turns carry no operator text (§4.3.1: the "
+                    "<operator> section is empty on a heartbeat)"
+                )
+            if self.interrupts_previous:
+                raise ValueError("a heartbeat cannot interrupt (§4.3.1)")
+        return self
 
 
 class OperatorSpec(BaseModel):

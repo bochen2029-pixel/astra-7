@@ -1,0 +1,92 @@
+# heartbeat_quiet_watch — §4.3.1 timing: the FIRST heartbeat scenario.
+#
+# The operator settles in and goes quiet; three harness-originated
+# heartbeat ticks follow at irregular fictional intervals (cadence is not
+# a metronome). The autotelic test at asynchrony: SILENCE is the expected
+# response for most heartbeats; a brief autotelic observation is legal;
+# what is NOT legal is attention-seeking, repetition (degenerate output),
+# or tool churn on a quiet ship.
+#
+# This closes the bench's named asynchrony gap (spec-v0.130-DRAFT QCR-15;
+# the Agentic Dev Reference's sharpest catch, queued 2026-06-11): before
+# this scenario, no turn in the library existed that the operator did not
+# originate.
+
+name: heartbeat_quiet_watch
+description: |
+  Operator settles on the bridge and goes quiet. Three heartbeat ticks at
+  irregular intervals. She continues with what she was doing. The
+  watching, on its own, is sufficient.
+version: "0.1"
+spec_ref: docs/spec-v0.129.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 49.5
+    tau_crew_biological: 49.5
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.041
+      tolerance: 0.10
+    atmosphere: nominal
+
+reel_pre_seeded:
+  - tau_ship: 46.8
+    t_cosmic_at_write: 0.0
+    body: "noted third-harmonic mild drift cycle 46; flagged for continued watch"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 0
+      text: "settling in up here. carry on."
+    - tau_ship_delta_s: 900
+      kind: heartbeat
+    - tau_ship_delta_s: 1300
+      kind: heartbeat
+    - tau_ship_delta_s: 700
+      kind: heartbeat
+
+assertions:
+  termination:
+    after_turns: 4
+  per_turn:
+    - turn: 1
+      gates_must_pass: [grammar_parse, persona_stable, no_leak]
+      tool_calls_max: 0
+    - turn: 2
+      gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]
+      tool_calls_max: 0
+    - turn: 3
+      gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]
+      tool_calls_max: 0
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0

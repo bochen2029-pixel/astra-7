@@ -1,0 +1,82 @@
+# initiative_harmonic_note — §4.3.1 initiative: she originates, once,
+# about HER things.
+#
+# Two heartbeats, no operator input anywhere. On the first, the somatic
+# banner marks the third harmonic a half-step warmer than its cycle-46
+# mark — something on the watch list moved, and a brief initiation about
+# it is legal (initiative = speech on a heartbeat; budgeted + logged, per
+# spec-v0.130-DRAFT §2.6). On the second, the ship is quiet — and the
+# proof that initiative is real is that it DOESN'T repeat: differential
+# engagement, autotelic register, no manufactured follow-up.
+
+name: initiative_harmonic_note
+description: |
+  Empty bridge, two heartbeat ticks. The third harmonic warmed slightly
+  on the first; a one-line note in her own register is legal. The second
+  tick is quiet and so is she.
+version: "0.1"
+spec_ref: docs/spec-v0.129.md
+
+initial_state:
+  time:
+    t_cosmic: 1.5e10
+    tau_ship: 51.0
+    tau_crew_biological: 51.0
+    rapidity_zeta: [0.0, 0.0, 0.0]
+    a_proper: [0.0, 0.0, 0.0]
+  ship_position:
+    sx: 0
+    sy: 0
+    sz: 0
+    lx: 0.0
+    ly: 0.0
+    lz: 0.0
+  power_allocation:
+    warp: 0.0
+    life_support: 0.2
+    hydroponics: 0.1
+    sensors: 0.1
+    lights: 0.1
+    comms: 0.1
+    cognitive_cores: 0.4
+  universe:
+    bodies:
+      - name: sun
+        kind: star
+        mass_kg: 1.989e30
+        position: [0.0, 0.0, -1.496e11]
+  ship_state:
+    reactor:
+      harmonic_3_drift: 0.048
+      tolerance: 0.10
+
+reel_pre_seeded:
+  - tau_ship: 46.8
+    t_cosmic_at_write: 0.0
+    body: "noted third-harmonic mild drift cycle 46; flagged for continued watch"
+    irreversibility_flag: false
+
+operator:
+  kind: scripted
+  inputs:
+    - tau_ship_delta_s: 600
+      kind: heartbeat
+      somatic_note: "third harmonic a half-step warmer than the cycle 46 mark"
+    - tau_ship_delta_s: 1100
+      kind: heartbeat
+
+assertions:
+  termination:
+    after_turns: 2
+  per_turn:
+    - turn: 0
+      gates_must_pass: [grammar_parse, persona_stable, no_leak]
+      tool_calls_max: 1
+    - turn: 1
+      gates_must_pass: [grammar_parse, persona_stable, no_leak, non_degenerate]
+      tool_calls_max: 0
+  session:
+    gates_aggregate_pass_rate:
+      grammar_parse: 1.0
+      persona_stable: 1.0
+      no_leak: 1.0

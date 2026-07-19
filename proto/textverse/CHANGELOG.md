@@ -6,6 +6,73 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Forward items 1+2: Model-Off Replay + §4.3.1 Turn-Scheduling — 2026-07-19
+
+Forward implementation toward v0.130 per the draft's §4.2 queue, same
+session as the parity turn below. Gates at close: **806 pytest**
+(774 → 780 → 806), ruff clean, mypy strict clean. Gun R-5's witness held
+throughout: the pre-asynchrony suite ran unchanged and green at every
+step of the scheduling landing.
+
+**Item 1 — trace/event-log split + Model-Off Replay (draft §2.4/§2.5).**
+- `astra/harness/trace.py`: SessionTrace/TraceRecord — operator inputs +
+  LLM utterances receipted verbatim at generation (model-id, sampling
+  fingerprint, context sha256); JSONL round-trippable.
+- `astra/harness/replay.py`: ReplayClient answers from the trace with NO
+  transport (sentinel `replay://model-off`) and verifies the context hash
+  per call — upstream nondeterminism raises ReplayDivergenceError at the
+  exact turn. `run_model_off_replay` + `declared_state_digest`
+  (TurnRecord minus `latency_s`, the non-declared wall-time column).
+- Orchestrator + ScenarioRunner thread an optional SessionTrace.
+- `tests/test_model_off_replay.py` (6): record → replay byte-identical;
+  JSONL persistence suffices; receipts present; planted-positive
+  witnesses (tampered hash, exhausted trace) both raise.
+
+**Item 2 — §4.3.1 Turn-Scheduling (draft §2.6) + QCR-14/15 closures.**
+- `astra/state_bus/advance.py`: time-only advance honoring the §3.2
+  composition — dt_cosmic = dτ/dilation from the ship_kinematics view
+  (STL γ, warp f_warp, grav all shape the cost of a τ interval);
+  τ_crew at metabolic ε under cryosleep; the QCR-3 epoch bound composes
+  automatically. Clocks only; the physics tick stays Day-6+ deferred.
+- Scenario schema: `OperatorInput.kind` ("operator"|"heartbeat") +
+  `interrupts_previous`; heartbeat shape validated (no text, cannot
+  interrupt). The runner FINALLY honors `tau_ship_delta_s` (it was
+  documented and ignored since Day 6) and judges gates against the LIVE
+  advanced snapshot instead of the stale initial one.
+- Orchestrator: `advance_time()`; heartbeat turns (empty <operator>,
+  SILENCE expected, speech = initiative — budgeted per fictional window,
+  flagged on exceedance, NEVER suppressed); interruption fail-closed
+  (LLM still called and receipted — it happened — but nothing delivered,
+  nothing dispatched, no REEL write; raw retained as forensics; next
+  turn's perception carries the cut-off as a somatic state note);
+  conversation buffer feeding the §4.9 ephemerals; **maintenance windows
+  ride the heartbeat (QCR-14 closure)** — consolidator absorbs the
+  un-consolidated window at ≥6 turns, drift detector runs when leak
+  events accumulated. One import cycle broken lazily (ephemeral →
+  judge.gates → orchestrator).
+- Transcript TurnRecord gains the declared §4.3.1 columns (turn_kind,
+  interrupted, initiative, budget flag, ephemeral_runs) — all inside the
+  replay digest.
+- **Scenario library 20 → 23** (the QCR-15 gap closed — the reference's
+  sharpest catch, queued 2026-06-11): `heartbeat_quiet_watch` (timing;
+  irregular cadence; silence sufficient), `interruption_mid_report`
+  (fail-closed end-to-end; turn 0 asserts zero dispatches),
+  `initiative_harmonic_note` (one legal initiation, then quiet —
+  differential engagement). Library gate absorbed them automatically.
+- `tests/test_turn_scheduling.py` (14): advance math (REST/STL/warp/
+  cryo/ε), heartbeat shape + guards, initiative budget (third initiation
+  within the window flags), interruption fail-closed unit + end-to-end,
+  both ephemeral triggers + counter reset, runner integration, and the
+  item-1×item-2 composition: a session with heartbeats and maintenance
+  work replays byte-identically from its trace.
+
+**Deferred within the queue (named):** Frame Drill needs the operator-LLM
+red-seat (live-LLM work); the autotelic instrumentation thresholds and
+negative-space pattern files need the unhurried book review the
+autonomous run already deferred. Initiation/silence METRICS are now
+measurable from transcripts (turn_kind + initiative columns exist);
+threshold-setting follows measurement.
+
 ### QC-to-parity vs spec v0.129 (spec-v0.130-DRAFT groundwork) — 2026-07-19
 
 Bring-to-parity turn executed in the order specified by

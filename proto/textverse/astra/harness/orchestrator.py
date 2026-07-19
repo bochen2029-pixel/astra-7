@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from typing import Literal
 
 from astra.grammar import LeakDetector, LeakEvent, StageOutput, parse_stage
 from astra.harness.perception_assembler import (
@@ -32,6 +33,7 @@ from astra.harness.perception_assembler import (
     assemble_perception_bundle_via_narrator,
 )
 from astra.harness.reel import Reel, ReelEntry
+from astra.harness.savefile import ConversationTurn
 from astra.harness.trace import SessionTrace, text_sha256
 from astra.llm.adapter_bundle import AdapterResult, RulesBasedAdapter
 from astra.llm.astra_bundle import AstraBundle
@@ -40,6 +42,26 @@ from astra.llm.validator import CalculatorBoundValidator, ValidationReport
 from astra.ship.api import ToolResult
 from astra.ship.dispatcher import dispatch as dispatch_tool
 from astra.state_bus import StateBus
+from astra.state_bus.advance import advance_state_bus
+
+# NOTE: astra.harness.ephemeral.{consolidator,drift_detector} are imported
+# lazily inside run_turn — the ephemeral package pulls astra.judge.gates
+# (for the persona-discipline canon constants), and judge.gates imports
+# TurnResult from this module. Function-level import breaks the cycle;
+# by the time a heartbeat fires, everything is loaded.
+
+# §4.3.1 scheduling knobs (spec-v0.130-DRAFT §2.6; all provisional [chosen],
+# tuned against bench measurement, never against speculation):
+# - consolidation fires on a heartbeat once this many un-consolidated
+#   conversation turns have accumulated (the §4.9 maintenance window);
+# - initiative (speech on a heartbeat) is budgeted per fictional-time
+#   window — exceeding the budget is FLAGGED and logged, never suppressed
+#   (suppression would be a persona intervention; measurement comes first);
+# - the drift detector reads this many recent conversation turns.
+CONSOLIDATE_MIN_WINDOW_TURNS: int = 6
+INITIATIVE_MAX_PER_WINDOW: int = 2
+INITIATIVE_WINDOW_TAU_S: float = 3600.0
+DRIFT_CHECK_RECENT_TURNS: int = 8
 
 
 @dataclass(slots=True)
@@ -64,6 +86,20 @@ class TurnResult:
     # narrator_fallback_reason to the exception message.
     narrator_validation: ValidationReport | None = None
     narrator_fallback_reason: str = ""
+    # §4.3.1 (spec-v0.130-DRAFT §2.6) event-log fields:
+    # turn_kind: "operator" | "heartbeat". interrupted: this turn's
+    # generation was cancelled fail-closed (nothing delivered, nothing
+    # dispatched); the raw output is retained in interrupted_forensics
+    # like pre_think_raw — forensic, never emitted. initiative: speech on
+    # a heartbeat turn (she originated). The budget flag records
+    # exceedance; it never suppresses. ephemeral_runs: §4.9 maintenance
+    # work that rode this heartbeat (QCR-14 closure).
+    turn_kind: str = "operator"
+    interrupted: bool = False
+    interrupted_forensics: str = ""
+    initiative: bool = False
+    initiative_budget_exceeded: bool = False
+    ephemeral_runs: list[str] = field(default_factory=list)
 
 
 class TurnOrchestrator:
@@ -119,13 +155,60 @@ class TurnOrchestrator:
         # template path on NarratorValidationError (exhausted retries).
         self.narrator_bundle = narrator_bundle
         self._turn_index: int = 0
+        # §4.3.1 scheduling state (spec-v0.130-DRAFT §2.6): the
+        # conversation buffer feeds the §4.9 ephemerals their windows; the
+        # watermark tracks what the consolidator has absorbed; leak events
+        # accumulate toward the next heartbeat's drift check; initiations
+        # are tracked in τ_ship for the budget window; a pending
+        # interruption note surfaces as state in the NEXT turn's
+        # perception.
+        self._conversation: list[ConversationTurn] = []
+        self._consolidated_upto: int = 0
+        self._leaks_since_drift_check: int = 0
+        self._initiations_tau: list[float] = []
+        self._pending_interruption_note: bool = False
+
+    def advance_time(self, delta_tau_s: float) -> None:
+        """Advance the held snapshot's clocks by a τ_ship delta (§4.3.1).
+
+        The snapshot itself stays frozen; the orchestrator's pointer moves
+        to the new one (turn-to-turn progression, per §1.5).
+        """
+        self.state_bus = advance_state_bus(self.state_bus, delta_tau_s)
 
     async def run_turn(
         self,
         operator_text: str = "",
         somatic_note: str | None = None,
+        *,
+        turn_kind: Literal["operator", "heartbeat"] = "operator",
+        interrupted: bool = False,
     ) -> TurnResult:
-        """One turn end-to-end. Returns TurnResult; mutations applied to REEL."""
+        """One turn end-to-end. Returns TurnResult; mutations applied to REEL.
+
+        §4.3.1: a `heartbeat` turn is harness-originated (τ advanced past a
+        tick with no operator input; `operator_text` must be empty; SILENCE
+        is the expected response for most heartbeats; speech on a heartbeat
+        is an initiation). `interrupted=True` marks this turn's generation
+        as cancelled fail-closed: the LLM is still called (and its
+        utterance receipted in the trace — it happened), but nothing is
+        delivered, no tool dispatches, no REEL write; the raw output is
+        retained as forensics and the next turn's perception carries the
+        interruption as state.
+        """
+        if turn_kind == "heartbeat" and operator_text:
+            raise ValueError(
+                "heartbeat turns carry no operator text (§4.3.1: the "
+                "<operator> section is empty on a heartbeat)"
+            )
+        if self._pending_interruption_note:
+            note = (
+                "speech output interrupted mid-emission by incoming operator "
+                "audio; that response was not delivered"
+            )
+            somatic_note = f"{somatic_note}; {note}" if somatic_note else note
+            self._pending_interruption_note = False
+
         # 1. Assemble perception — Narrator path if wired (with calculator-
         # bound auto-validation), template path otherwise. On Narrator
         # validation failure (exhausted retries), fall back to template
@@ -196,6 +279,38 @@ class TurnOrchestrator:
         # 4. Parse STAGE channels
         stage = parse_stage(raw)
 
+        # §4.3.1 interruption: fail-closed. The parsed output is never
+        # delivered — no speech emission, no tool dispatch, no REEL write,
+        # no conversation append for ASTRA's side. The raw output is
+        # retained as forensics (the pre_think_raw pattern); an interrupted
+        # half-thought never half-executes. The operator's words WERE
+        # heard, so they enter the conversation buffer; the next turn's
+        # perception carries the interruption as state.
+        if interrupted:
+            if operator_text:
+                self._conversation.append(
+                    ConversationTurn(
+                        role="operator",
+                        text=operator_text,
+                        tau_ship=self.state_bus.time.tau_ship,
+                    ),
+                )
+            self._pending_interruption_note = True
+            self._turn_index += 1
+            return TurnResult(
+                turn_index=self._turn_index - 1,
+                perception_bundle=cleaned_perception,
+                perception_leaks=perception_leaks,
+                raw_llm_output=raw,
+                stage_output=parse_stage(""),
+                speech_leaks=[],
+                narrator_validation=narrator_validation,
+                narrator_fallback_reason=narrator_fallback_reason,
+                turn_kind=turn_kind,
+                interrupted=True,
+                interrupted_forensics=raw,
+            )
+
         # 5. Leak-scan speech
         cleaned_speech, speech_leaks = self.leak_detector.scan_speech(stage.speech)
         # If the leak scan modified speech, build a new StageOutput with the
@@ -251,6 +366,71 @@ class TurnOrchestrator:
             self.reel.write(entry)
             reel_writes.append(entry)
 
+        # Conversation buffer — the windows the §4.9 ephemerals consume.
+        tau_now = self.state_bus.time.tau_ship
+        if operator_text:
+            self._conversation.append(
+                ConversationTurn(role="operator", text=operator_text, tau_ship=tau_now),
+            )
+        if cleaned_speech.strip():
+            self._conversation.append(
+                ConversationTurn(role="astra", text=cleaned_speech, tau_ship=tau_now),
+            )
+        self._leaks_since_drift_check += len(perception_leaks) + len(speech_leaks)
+
+        # §4.3.1 initiative accounting: speech on a heartbeat = she
+        # originated. Budget exceedance is flagged and logged — never
+        # suppressed (measurement before intervention).
+        initiative = turn_kind == "heartbeat" and bool(cleaned_speech.strip())
+        initiative_budget_exceeded = False
+        if initiative:
+            window_start = tau_now - INITIATIVE_WINDOW_TAU_S
+            recent = [t for t in self._initiations_tau if t >= window_start]
+            initiative_budget_exceeded = len(recent) >= INITIATIVE_MAX_PER_WINDOW
+            recent.append(tau_now)
+            self._initiations_tau = recent
+
+        # §4.9 maintenance windows ride the heartbeat (QCR-14 closure):
+        # the consolidator absorbs the un-consolidated conversation window
+        # once it is large enough; the drift detector runs when leak
+        # events accumulated since its last check. Results are event-log
+        # records; consolidator entries are REEL writes like any other.
+        ephemeral_runs: list[str] = []
+        if turn_kind == "heartbeat":
+            # Lazy imports break the orchestrator↔judge cycle (see the
+            # module-top note); cost is one dict lookup after first load.
+            from astra.harness.ephemeral.consolidator import consolidate_reel
+            from astra.harness.ephemeral.drift_detector import detect_drift
+
+            unconsolidated = self._conversation[self._consolidated_upto:]
+            if len(unconsolidated) >= CONSOLIDATE_MIN_WINDOW_TURNS:
+                consolidation = consolidate_reel(
+                    unconsolidated,
+                    tau_now=tau_now,
+                    t_cosmic_now=self.state_bus.time.t_cosmic,
+                    regime_now=self.state_bus.regime,
+                )
+                self.reel.extend(consolidation.entries)
+                reel_writes.extend(consolidation.entries)
+                self._consolidated_upto = len(self._conversation)
+                ephemeral_runs.append(
+                    f"consolidator: {len(consolidation.entries)} entries "
+                    f"from {len(unconsolidated)} turns",
+                )
+            if self._leaks_since_drift_check > 0:
+                artifact = detect_drift(
+                    self._conversation[-DRIFT_CHECK_RECENT_TURNS:],
+                    tau_now=tau_now,
+                    t_cosmic_now=self.state_bus.time.t_cosmic,
+                    regime_now=self.state_bus.regime,
+                )
+                self._leaks_since_drift_check = 0
+                ephemeral_runs.append(
+                    "drift_detector: correction artifact"
+                    if artifact is not None
+                    else "drift_detector: no drift",
+                )
+
         self._turn_index += 1
         return TurnResult(
             turn_index=self._turn_index - 1,
@@ -265,6 +445,10 @@ class TurnOrchestrator:
             reel_writes=reel_writes,
             narrator_validation=narrator_validation,
             narrator_fallback_reason=narrator_fallback_reason,
+            turn_kind=turn_kind,
+            initiative=initiative,
+            initiative_budget_exceeded=initiative_budget_exceeded,
+            ephemeral_runs=ephemeral_runs,
         )
 
     @property
