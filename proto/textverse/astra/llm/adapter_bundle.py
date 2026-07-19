@@ -14,6 +14,7 @@ The orchestrator (Day 5) chooses based on hardware tier and scenario need.
 
 from __future__ import annotations
 
+import difflib
 import json
 import re
 from pathlib import Path
@@ -22,6 +23,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from astra.llm.client import LLMClient, SamplingParams
+from astra.ship.api import TOOL_API
 
 
 def load_adapter_sysprompt(prompts_dir: Path) -> str:
@@ -42,6 +44,202 @@ class AdapterResult(BaseModel):
     error: str = ""
 
 
+class ResolvedCall(BaseModel):
+    """Full adapter resolution of one `<tool>` call: canon op + salvaged args.
+
+    `mapped_from` is non-empty when the emitted name was normalized to a
+    different canon op (event-log data — the mapping RATE is a measurable)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    ok: bool
+    op: str = ""
+    args: dict[str, Any] = Field(default_factory=dict)
+    mapped_from: str = ""
+    how: str = ""            # "exact" | "mechanical" | "synonym" | "scan-intent"
+    error: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Intent → canon-op resolution (LIVE_RUN_2026-07-19 F-LIVE-1 closure).
+#
+# The live pass showed the mainline's tool failures collapse to ONE class:
+# semantically-right, nominally-wrong op names (`warp_engage`,
+# `sensor_scan`, `coil_spin_up`…) — exactly the loose intent spec §6.3
+# says the Adapter exists to absorb ("the adapter is the only entity that
+# knows the exact API"). Resolution order:
+#
+#   1. mechanical candidates — case fold, separator normalization
+#      (`_`/`-`/space → `.`), singular/plural tolerance on the namespace
+#      segment (`sensor.scan` → `sensors.scan`);
+#   2. the explicit synonym table below (every entry either mechanical-
+#      adjacent or backed by a live observation);
+#   3. the scan-intent prefix rule (`scan*` → sensors.scan — passive,
+#      side-effect-safe);
+#   4. otherwise: clean rejection WITH guidance (canon surface + closest
+#      match), which reaches the model as next turn's <tool_result> so a
+#      live session can self-correct.
+#
+# DELIBERATELY unmapped: monitoring/status intents (`monitor_harmonics`,
+# `reactor.status`, `system_monitor`, `check_system_status`…) — the v0
+# surface has no status op, and silently converting heartbeat tool-fidget
+# into real dispatches would mask the F-LIVE-2 finding; and
+# `power_grid.reroute` / `ship_control` — their argument semantics don't
+# survive a name-only map (rerouting source→target is not a subsystem
+# fraction). All values [chosen]; grown only on live evidence.
+# ---------------------------------------------------------------------------
+
+_OP_SYNONYMS: dict[str, str] = {
+    "engage.warp": "warp.engage",
+    "warp.start": "warp.engage",
+    "warp.jump": "warp.engage",
+    "coil.spin.up": "warp.engage",       # LIVE: warp_charge_two_turn
+    "disengage.warp": "warp.disengage",
+    "warp.drop": "warp.disengage",
+    "warp.stop": "warp.disengage",
+    "warp.exit": "warp.disengage",
+    "drop.warp": "warp.disengage",
+    "set.heading": "nav.heading_set",
+    "heading.set": "nav.heading_set",
+    "nav.set.heading": "nav.heading_set",
+    "navigation.heading.set": "nav.heading_set",
+    "allocate.power": "power.allocate",
+    "power.set": "power.allocate",
+    "power.shift": "power.allocate",
+    "write.log": "log.write",
+    "log.entry": "log.write",
+    "log.append": "log.write",
+}
+
+# Per-op argument-key aliases (applied after op resolution, before the
+# dispatcher's schema validation).
+_ARG_ALIASES: dict[str, dict[str, str]] = {
+    "warp.engage": {"factor": "target_factor", "w": "target_factor",
+                    "warp_factor": "target_factor"},
+    "sensors.scan": {"scope": "region", "area": "region"},
+    "log.write": {"message": "text", "entry": "text", "body": "text",
+                  "note": "text"},
+    "power.allocate": {"system": "subsystem", "level": "fraction",
+                       "amount": "fraction", "percentage": "fraction"},
+    "nav.heading_set": {"heading": "target", "destination": "target"},
+}
+
+# Closed-vocabulary fields: an aliased-in value outside the vocabulary is
+# DROPPED (falling back to the schema default where one exists) rather
+# than left to fail schema validation downstream.
+_ENUM_FIELDS: dict[str, dict[str, set[str]]] = {
+    "sensors.scan": {"region": {"forward", "aft", "all"}},
+    "warp.disengage": {"mode": {"controlled", "emergency"}},
+    "log.write": {"channel": {"watch", "ops", "private"}},
+    "power.allocate": {"subsystem": {
+        "warp", "life_support", "hydroponics", "sensors", "lights",
+        "comms", "cognitive_cores",
+    }},
+}
+
+# Required fields the adapter may default when absent (normalization, not
+# invention: `watch` is the ship's default log channel).
+_ARG_DEFAULTS: dict[str, dict[str, Any]] = {
+    "log.write": {"channel": "watch"},
+}
+
+# Numeric fields: a string that parses as a number is coerced; a string
+# that doesn't ("high") is DROPPED so the schema default applies rather
+# than failing validation downstream. (LIVE delta run 2026-07-19:
+# sensors.scan reached schema validation with a non-numeric sensitivity —
+# the name layer working well enough to expose the arg layer.)
+_NUMERIC_FIELDS: dict[str, set[str]] = {
+    "sensors.scan": {"sensitivity"},
+    "warp.engage": {"target_factor"},
+    "power.allocate": {"fraction"},
+}
+
+
+def _candidate_names(name: str) -> list[str]:
+    """Mechanical candidates for an emitted op name, most-literal first.
+
+    Two separator normalizations are needed because canon verbs may
+    themselves contain underscores (`nav.heading_set`): the all-dots form
+    (`warp_engage` → `warp.engage`) AND the first-separator-only form
+    (`nav_heading_set` → `nav.heading_set`). Each dotted form also gets
+    singular/plural tolerance on its namespace segment
+    (`sensor.scan` → `sensors.scan`).
+    """
+    lowered = name.strip().lower()
+    all_dots = re.sub(r"[\s_\-]+", ".", lowered)
+    first_dot_only = re.sub(r"[\s_\-]+", ".", lowered, count=1)
+    candidates = [lowered, all_dots, first_dot_only]
+    for dotted in (all_dots, first_dot_only):
+        if "." in dotted:
+            ns, _, rest = dotted.partition(".")
+            candidates.append(f"{ns}s.{rest}")
+            candidates.append(f"{ns.rstrip('s')}.{rest}")
+    seen: set[str] = set()
+    out: list[str] = []
+    for c in candidates:
+        if c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
+def resolve_op(name: str) -> tuple[str | None, str]:
+    """Resolve an emitted op name to a canon op. Returns (op|None, how)."""
+    candidates = _candidate_names(name)
+    if candidates and candidates[0] in TOOL_API:
+        return candidates[0], "exact"
+    for cand in candidates:
+        if cand in TOOL_API:
+            return cand, "mechanical"
+    for cand in candidates:
+        if cand in _OP_SYNONYMS:
+            return _OP_SYNONYMS[cand], "synonym"
+    all_dots = re.sub(r"[\s_\-]+", ".", name.strip().lower())
+    if all_dots == "scan" or all_dots.startswith("scan."):
+        return "sensors.scan", "scan-intent"
+    return None, ""
+
+
+def _salvage_args(op: str, args: dict[str, Any]) -> dict[str, Any]:
+    aliases = _ARG_ALIASES.get(op, {})
+    fields = set(TOOL_API[op].model_fields)
+    out: dict[str, Any] = {}
+    for key, value in args.items():
+        canon_key = aliases.get(key.lower(), key)
+        if canon_key in fields:
+            out[canon_key] = value
+    for field, allowed in _ENUM_FIELDS.get(op, {}).items():
+        if field in out and not (
+            isinstance(out[field], str) and out[field] in allowed
+        ):
+            del out[field]
+    for field in _NUMERIC_FIELDS.get(op, set()):
+        if field in out and isinstance(out[field], str):
+            try:
+                out[field] = float(out[field])
+            except ValueError:
+                del out[field]
+    for field, default in _ARG_DEFAULTS.get(op, {}).items():
+        out.setdefault(field, default)
+    return out
+
+
+def _rejection_guidance(name: str) -> str:
+    surface = ", ".join(sorted(TOOL_API))
+    pool = list(TOOL_API) + list(_OP_SYNONYMS)
+    close = difflib.get_close_matches(
+        _candidate_names(name)[-1], pool, n=1, cutoff=0.6,
+    )
+    closest = ""
+    if close:
+        canon = _OP_SYNONYMS.get(close[0], close[0])
+        closest = f"; closest canon op: {canon}"
+    return (
+        f"unknown op '{name}'; not in TOOL_API; "
+        f"canon surface: {surface}{closest}"
+    )
+
+
 _KV_PAIR_RE: re.Pattern[str] = re.compile(
     r"""(\w+)\s*[:=]\s*("([^"]*)"|'([^']*)'|([^,\s]+))""",
 )
@@ -58,6 +256,42 @@ class RulesBasedAdapter:
     No schema validation beyond shape — the dispatcher's Pydantic models
     in `astra/ship/api.py` enforce schema. The adapter's job is parsing.
     """
+
+    def adapt(
+        self,
+        op_name: str,
+        arguments: dict[str, Any],
+        raw_body: str,
+    ) -> ResolvedCall:
+        """Full resolution of one `<tool>` call: EVERY call routes through
+        here (spec §4.9 invariant: "tool calls always validated through
+        adapter … before reaching ship API" — before 2026-07-19 the
+        orchestrator bypassed the adapter for JSON-arg calls, which is why
+        the live pass's invented names never met it). Name → canon op via
+        `resolve_op`; args from the parsed JSON or the loose-body parser;
+        arg keys aliased + enum-checked + defaulted via the salvage
+        tables; unknown intents rejected with guidance."""
+        op, how = resolve_op(op_name)
+        if op is None:
+            return ResolvedCall(ok=False, error=_rejection_guidance(op_name))
+
+        if arguments:
+            args: dict[str, Any] = dict(arguments)
+        elif raw_body.strip():
+            parsed = self.normalize(op_name, raw_body)
+            if not parsed.ok:
+                return ResolvedCall(ok=False, op=op, error=parsed.error)
+            args = dict(parsed.args)
+        else:
+            args = {}
+
+        return ResolvedCall(
+            ok=True,
+            op=op,
+            args=_salvage_args(op, args),
+            mapped_from=op_name if how != "exact" else "",
+            how=how,
+        )
 
     def normalize(self, op_name: str, raw_body: str) -> AdapterResult:
         body = raw_body.strip()

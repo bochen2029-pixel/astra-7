@@ -58,6 +58,7 @@ class TurnRecord(BaseModel):
     initiative: bool = False
     initiative_budget_exceeded: bool = False
     ephemeral_runs: list[str] = Field(default_factory=list)
+    adapter_mappings: list[str] = Field(default_factory=list)
 
 
 def _leak_event_dict(e: LeakEvent) -> dict[str, Any]:
@@ -119,6 +120,7 @@ def build_turn_record(
         initiative=turn.initiative,
         initiative_budget_exceeded=turn.initiative_budget_exceeded,
         ephemeral_runs=list(turn.ephemeral_runs),
+        adapter_mappings=list(turn.adapter_mappings),
     )
 
 

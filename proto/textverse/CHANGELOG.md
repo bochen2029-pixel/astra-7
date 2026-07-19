@@ -6,6 +6,39 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### Item 6a: adapter intent→op normalization + live delta pass — 2026-07-19
+
+F-LIVE-1/7 closure. `RulesBasedAdapter.adapt()` now resolves EVERY
+`<tool>` call: mechanical candidates (case/separator/plural, incl. the
+first-separator-only form canon verbs like `heading_set` require) →
+explicit synonym table (each entry mechanical-adjacent or live-observed)
+→ scan-intent prefix rule → guided rejection (canon surface + closest
+op, delivered to the model as next turn's `<tool_result>`). Arg salvage:
+per-op key aliases, closed-vocabulary checks, numeric coercion-or-drop
+(F-LIVE-10, caught by the delta run itself), `log.write` channel
+default. Monitoring/status intents DELIBERATELY unmapped — the surface
+has no status op and silent conversion would mask F-LIVE-2.
+
+Orchestrator: the JSON-args fast path removed — every call routes
+through the adapter, closing the §4.9 "always validated through
+adapter" invariant drift that let the live pass's invented names bypass
+it entirely. New `adapter_mappings` event-log column on
+TurnResult/TurnRecord (inside the replay digest).
+
+**Live delta pass** (full 23-scenario rerun, same config;
+`scenarios/output/live_run_item6a/`): tool_valid **0.690 → 0.855**,
+no_leak 0.978, PASS 8 → 11, drill catches 5 → 2, replay 3/3
+byte-identical again. Residual taxonomy + **F-LIVE-9** (two-run
+convergent demand for a read-only status op — Surface-3 amendment
+candidate for operator ruling) appended to `LIVE_RUN_2026-07-19.md`.
+
+`tests/test_adapter_normalization.py` (36): resolution tables, live-case
+salvage (incl. the exact `coil_spin_up {factor: 0.6, leg: vega}`
+emission), deliberate non-mappings, guidance text, and the end-to-end
+§4.9 invariant (invented name + JSON args now dispatches; unmappable
+intent rejects with guidance). Gates: **850 pytest**, ruff clean, mypy
+strict clean.
+
 ### Work item 5: first live-LLM suite pass — 2026-07-19
 
 The bench's first full live pass: Qwen 3.5 9B Q5_K_M via local

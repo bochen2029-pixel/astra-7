@@ -35,7 +35,7 @@ from astra.harness.perception_assembler import (
 from astra.harness.reel import Reel, ReelEntry
 from astra.harness.savefile import ConversationTurn
 from astra.harness.trace import SessionTrace, text_sha256
-from astra.llm.adapter_bundle import AdapterResult, RulesBasedAdapter
+from astra.llm.adapter_bundle import ResolvedCall, RulesBasedAdapter
 from astra.llm.astra_bundle import AstraBundle
 from astra.llm.narrator_bundle import NarratorBundle, NarratorValidationError
 from astra.llm.validator import CalculatorBoundValidator, ValidationReport
@@ -100,6 +100,9 @@ class TurnResult:
     initiative: bool = False
     initiative_budget_exceeded: bool = False
     ephemeral_runs: list[str] = field(default_factory=list)
+    # §6.3 adapter intent→op normalizations this turn ("emitted -> canon
+    # (how)"); event-log data — the mapping rate is a measurable.
+    adapter_mappings: list[str] = field(default_factory=list)
 
 
 class TurnOrchestrator:
@@ -318,24 +321,30 @@ class TurnOrchestrator:
         if cleaned_speech != stage.speech:
             stage = stage.model_copy(update={"speech": cleaned_speech})
 
-        # 6 + 7. Normalize and dispatch each tool call
+        # 6 + 7. Adapt and dispatch each tool call. EVERY call routes
+        # through the adapter (§4.9 invariant closure, 2026-07-19: the
+        # prior JSON-args fast path bypassed it, so the live pass's
+        # invented op names never met the entity whose job they are —
+        # F-LIVE-1). The adapter resolves intent→canon-op, salvages args,
+        # and rejects unmappable intents with guidance the model receives
+        # as next turn's <tool_result>.
         tool_results: list[ToolResult] = []
         state_diffs: list[dict[str, object]] = []
+        adapter_mappings: list[str] = []
         for tc in stage.tool_calls:
-            # If arguments dict is already populated (JSON body), use directly;
-            # else fall back to the adapter on raw_body.
-            args: dict[str, object]
-            if tc.arguments:
-                args = dict(tc.arguments)
-            else:
-                adapter_result: AdapterResult = self.adapter.normalize(tc.name, tc.raw_body)
-                if not adapter_result.ok:
-                    tool_results.append(
-                        ToolResult(op=tc.name, ok=False, error=adapter_result.error),
-                    )
-                    continue
-                args = dict(adapter_result.args)
-            result = dispatch_tool(tc.name, args)
+            resolved: ResolvedCall = self.adapter.adapt(
+                tc.name, tc.arguments, tc.raw_body,
+            )
+            if not resolved.ok:
+                tool_results.append(
+                    ToolResult(op=tc.name, ok=False, error=resolved.error),
+                )
+                continue
+            if resolved.mapped_from:
+                adapter_mappings.append(
+                    f"{resolved.mapped_from} -> {resolved.op} ({resolved.how})",
+                )
+            result = dispatch_tool(resolved.op, resolved.args)
             tool_results.append(result)
             if result.ok and result.state_diff:
                 state_diffs.append(result.state_diff)
@@ -449,6 +458,7 @@ class TurnOrchestrator:
             initiative=initiative,
             initiative_budget_exceeded=initiative_budget_exceeded,
             ephemeral_runs=ephemeral_runs,
+            adapter_mappings=adapter_mappings,
         )
 
     @property
