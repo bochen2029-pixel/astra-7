@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -76,6 +77,27 @@ REPLAY_LEG_SCENARIOS = (
 
 def _log(msg: str) -> None:
     print(msg, flush=True)
+
+
+def _git_head() -> str | None:
+    """Short HEAD of the working tree, or None outside a repo / on failure.
+
+    Provenance, not telemetry: it answers "which code produced this
+    measurement" when a run artifact is read months later. Never enters
+    perception; this is operator-side driver code.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=TEXTVERSE,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None if out.returncode == 0 else None
 
 
 async def _run_one(
@@ -415,11 +437,14 @@ async def _main() -> int:
 
     # Run config travels WITH the artifacts: the narrator work is an A/B
     # series against run #8, and a measurement whose config has to be
-    # reconstructed from shell history is not a measurement.
+    # reconstructed from shell history is not a measurement. The code
+    # revision is part of that config (6f) — two runs at the same sampling
+    # settings but different HEADs are not replicates of each other.
     run_config: dict[str, Any] = {
         "model_path": args.model_path,
         "ctx_size": args.ctx_size,
         "narrator": args.narrator,
+        "git_head": _git_head(),
     }
     if args.narrator:
         run_config.update(

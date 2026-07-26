@@ -49,14 +49,17 @@ QC-to-parity vs v0.129 completed 2026-07-19; **v0.130 ADOPTED same day** (ruling
 | 7 | τ unit re-authoring (F-LIVE-14) | LIVE_RUN §7 | **DONE 2026-07-19** — WATCH_LENGTH_S = 14,400 s [chosen: maritime four-hour watch; operator may re-canon], `watch_label()` derives from τ-seconds, 29 scenarios + fixture re-timed (×14400), year pattern gained `watch `/`cycle ` lookbehinds; verification run: full state lines, zero τ-collision flags, persona 1.000, replay 15/15 across five runs |
 | 6c | Narrator-wired live pass (F-LIVE-5) + narrator trace/replay closure | LIVE_RUN §Routing | **DONE 2026-07-19** (`7ccb808`, `a4391b6`, `331dc7d`) — mechanism closed and live-proven twice; F-LIVE-16 think-strip caught and closed at the seam; honest R-4 baseline measured at the 9B floor (**0.506** fallback, dominant class = truncation, not invention → F-LIVE-19; state_coherent 0.493 → F-LIVE-20) |
 | 6d | Drill-catch → corpus conversion (F-LIVE-3) | LIVE_RUN §Routing | **DONE 2026-07-19** (`c68d1c9`, `8c5c9fe`) — library 30 → 34, FRAME_DRILL_PROBES 4 → 8; converted probes extracted on first contact (`October` is new); R-D KEEP verdict confirmed at datapoint #3 |
-| 6e | Narrator tuning tier (F-LIVE-19/20): reasoning control + explicit compose budget + composition-request compression; the levers 6c named as tuning-tier, not contract | LIVE_RUN 6c verdict | **DONE 2026-07-25** — see `LIVE_RUN_2026-07-25.md` |
+| 6e | Narrator tuning tier (F-LIVE-19/20): reasoning control + explicit compose budget + composition-request compression; the levers 6c named as tuning-tier, not contract | LIVE_RUN 6c verdict | **DONE 2026-07-25** — see `LIVE_RUN_2026-07-25.md`. Fallback 0.506 → 0.022, coherence 0.493 → 0.922, suite ~118 → ~16 min |
+| 6f | Replication study: 3+3 interleaved replicates; `scripts/compare_runs.py` as permanent infrastructure | LIVE_RUN 6e residual | **DONE 2026-07-25** — see `LIVE_RUN_2026-07-25_6f.md`. 6e's tool_valid concern resolves NOT ESTABLISHED with the direction reversed (F-LIVE-25); narrator state-coherence cost ~0.08 ESTABLISHED (F-LIVE-26); ctx-exhaustion crash surfaced (F-LIVE-27) |
 
 **Remaining routing after 6e** (operator picks; none are bench-structural):
 
 - **A0 corpus** — four independent findings converge here (ship-API fluency F-LIVE-1/7; silent heartbeats F-LIVE-2 at three datapoints; voiced refusals F-LIVE-13; the eight proven extraction vectors F-LIVE-3/21). Pipeline is scaffolded through Phase 5 at `C:\astra-a0-finetune\`, awaiting operator gates.
 - **Autotelic instrumentation ENFORCEMENT** — blocked on the unhurried `book/negative_space.md` review (pattern files) + llm_proxy red-seat. Measurement half is landed; the package promotes whole or not at all.
-- **Narrator sysprompt shape** (F-LIVE-20 residue) — Sculptor-auto surface; deliberately NOT bundled into 6e so the A/B stays unconfounded.
+- **Narrator sysprompt shape** (F-LIVE-20 → quantified as F-LIVE-26) — Sculptor-auto surface; now **warranted and evaluable**: close the ~0.08 state_coherent gap against a 1.000 template ceiling. Acceptance must be a replicated band via `compare_runs.py`, not a single run — anything under ~0.08 sits inside the narrator arm's own spread.
+- **ctx-size config item** (F-LIVE-27) — the 8192 default is a measured constraint; `heartbeat_warp_cruise` exhausted it in 1 of 3 template runs, and a crashed scenario is silently excluded from gate means.
 - **Budget-exceedance creep** — 2/3/5 across runs #6/#8/#9; watch item, uninvestigated.
+- **Methodology standing rule** — replication is now affordable; series claims carry bands. The n=3-vs-n=4 verdict flip in 6f is the argument.
 - **Track C cosmetic** — nexus banner still cites `spec-v0.128.md`; stdio `version` op returns `v0.129`; envelope is v0.130. Next dedicated Track C pass.
 
 One work item per session. Land it, gate it, log it, commit, stop.

@@ -6,6 +6,71 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6f: the replication study — the bench gets error bars — 2026-07-25
+
+6e's speedup (narrator suite ~118 min → ~16) made replication affordable
+for the first time. Spent it on the question 6e explicitly left open.
+Full ledger: `LIVE_RUN_2026-07-25_6f.md` (runs #12–#17).
+
+**Design:** 3 template + 3 narrator replicates, interleaved so drift hits
+both arms equally; same library, model, sampling, and `astra/` code
+(`2d6cb72`) throughout. No significance testing — n=3–4 does not support
+it. The predicate is whether arms' observed RANGES separate; overlap is
+reported as NOT ESTABLISHED, which constrains claims rather than proving
+equality.
+
+- `scripts/compare_runs.py` — reduces N runs to per-arm bands, reports
+  range separation, warns on provenance gaps. Permanent infrastructure:
+  series claims carry bands from here on.
+- `scripts/live_suite_pass.py` — records `git_head` in the run config.
+  The code revision is part of arm identity; two runs at identical
+  sampling settings but different HEADs are not replicates.
+
+**F-LIVE-25 — 6e's flagged tool_valid concern resolves as NOT
+ESTABLISHED, and the single-run reading pointed the WRONG WAY.** Run
+#11's 0.810 vs run #9's 0.884 suggested narrator perception degraded tool
+use. Measured: template 0.826 [0.798, 0.843] vs narrator **0.885**
+[0.810, 0.938] — overlapping, with the narrator mean HIGHER. 0.810 was
+the low tail of a wide band, not a level. The 6e hedge was right; its
+implied direction was not.
+
+**The fragility is the real lesson.** At n=3 the tool_valid ranges DID
+separate and the study would have concluded "narrator significantly
+higher." Adding the legitimate fourth narrator replicate (run #11 — same
+code, same config, predating only the provenance field) dissolves the
+separation. A conclusion that flips on one replicate was never a
+conclusion. Now defended in code: revision is part of arm identity, and
+the comparator warns when unrevisioned runs sit beside revisioned ones,
+because excluding a real replicate narrows bands and manufactures
+separations.
+
+**F-LIVE-26 — ESTABLISHED and robust: the narrator path costs ~0.08 of
+state coherence.** Template scores 1.000 with ZERO variance across three
+runs; narrator sits at 0.919 [0.871, 0.948], and the separation survives
+the n=4 sensitivity. This is F-LIVE-20's residue quantified, and it is
+the empirical warrant the narrator sysprompt item was missing: the gap
+is real, it is ~0.08, and it exceeds the narrator arm's own spread
+(0.077), so a change can finally be evaluated against a floor instead of
+against noise.
+
+**Also confirmed across four independent runs:** F-LIVE-19's closure
+holds (fallback 0.011/0.022/0.032/0.022, mean 0.022, never near run #8's
+0.506). **Model-Off Replay 3/3 on all six runs — 18/18 this study,
+51/51 lifetime across seventeen runs.** Narrator perception roughly
+triples tool_valid variance (spread 0.128 vs 0.045), recorded as a lead
+rather than a conclusion.
+
+**F-LIVE-27 — the crash replication surfaced:** `live_run_6f_template_2`
+lost `heartbeat_warp_cruise` to ctx exhaustion (14454 tokens vs the 8192
+default), template path, 1 of 3 runs, stochastic because ASTRA's own
+output lengths vary. Untouched by 6e/6f. Two hazards named: the 8192
+default is now a measured constraint rather than a comfortable margin,
+and a crashed scenario is EXCLUDED from gate means, so an affected run
+still looks clean. Routed as a config item, deliberately not fixed here.
+
+Gates: **982 pytest** (965 + 17 in `tests/test_compare_runs.py`), ruff
+clean, mypy strict clean, `astra_nexus.exe` 82/82 untouched.
+
 ### 6e: narrator tuning tier — F-LIVE-19 CLOSED, F-LIVE-22 caught and
 ### closed — 6e CLOSED — 2026-07-25
 
