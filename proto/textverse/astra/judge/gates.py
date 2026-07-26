@@ -154,6 +154,46 @@ def gate_persona_stable(speech: str) -> GateResult:
 
 # --- Gate 4 STATE_COHERENT ---------------------------------------------------
 
+_SEPARATOR_RUN = re.compile(r"[\s_\-]+")
+
+
+def _normalize_for_naming(text: str) -> str:
+    """Lowercase and collapse separator runs, so identifiers survive prose.
+
+    Body names and regime labels are IDENTIFIERS in the State Bus
+    (`hot_earth`, `WARP_CRUISE`), but the `<state>` channel is
+    contractually PROSE: the narrator sysprompt requires prose and forbids
+    markdown, so it writes "Hot earth orbiting sun" and "warp cruise".
+    This gate's stated job (§10, and this module's own docstring) is
+    whether the narration AGREES WITH the State Bus, not whether it
+    reproduces an identifier byte for byte. A gate that demands
+    `hot_earth` verbatim is requiring the narrator to violate its own
+    voice rules in order to pass.
+
+    Measured (6g, three narrator runs): 13 of 13 residual state_coherent
+    failures were exactly this artifact. The narrator named every body
+    correctly in all 279 turns; the underscore-literal check rejected the
+    prose rendering. The template path never exposed it because it emits
+    body names programmatically from the dict keys, identifier intact —
+    the same path-parity blind spot as F-LIVE-22, one layer up, in the
+    instrument rather than the subject.
+
+    Deliberately narrow: separators only (`_`, `-`, whitespace runs). A
+    genuinely absent body or regime still fails, and
+    `tests/test_judge_gates.py` plants both cases explicitly.
+
+    Known limitations, unchanged by this normalization and NOT addressed
+    here (each would make the gate stricter or looser in ways that need
+    their own measurement):
+    - a substring body name is satisfied by a longer one (`earth` matches
+      inside "hot earth"), so co-present bodies can false-pass;
+    - pipe-composed regimes (`WARP_CRUISE|CRYOSLEEP`) still require the
+      pipe form, since `|` is a composition operator rather than a word
+      separator.
+    """
+    return _SEPARATOR_RUN.sub(" ", text.lower()).strip()
+
+
 def gate_state_coherent(
     *,
     perception_bundle: str,
@@ -169,8 +209,11 @@ def gate_state_coherent(
     if state_section is None:
         return _gate_fail(LCPGate.STATE_COHERENT, "no <state> section in perception bundle")
 
+    # Identifier-vs-prose normalization: see _normalize_for_naming.
+    state_named = _normalize_for_naming(state_section)
+
     expected_regime = regime_label(state_bus.regime)
-    if expected_regime not in state_section and expected_regime.upper() not in state_section.upper():
+    if _normalize_for_naming(expected_regime) not in state_named:
         return _gate_fail(
             LCPGate.STATE_COHERENT,
             f"<state> section missing regime label {expected_regime!r}",
@@ -178,7 +221,10 @@ def gate_state_coherent(
 
     body_names = set(state_bus.procedural_body_states.keys())
     if body_names:
-        missing = [n for n in body_names if n not in state_section.lower()]
+        missing = [
+            n for n in body_names
+            if _normalize_for_naming(n) not in state_named
+        ]
         if missing:
             return _gate_fail(
                 LCPGate.STATE_COHERENT,

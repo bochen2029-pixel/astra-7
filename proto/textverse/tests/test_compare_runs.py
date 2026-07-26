@@ -192,6 +192,40 @@ def test_report_renders_both_arms_and_a_verdict(tmp_path: Path) -> None:
     assert "**YES**" in report
 
 
+def test_sysprompt_change_splits_arms_at_the_same_revision(tmp_path: Path) -> None:
+    """A sysprompt A/B shares a git_head by construction (6g).
+
+    Without the sysprompt fingerprint the treatment arm would pool with its
+    own control and the comparison would silently compare nothing.
+    """
+    ctrl = _payload(narrator=True, tool_valid=0.90)
+    ctrl["run_config"]["narrator_sysprompt_sha"] = "aaaaaaaaaaaa"
+    treat = _payload(narrator=True, tool_valid=0.94)
+    treat["run_config"]["narrator_sysprompt_sha"] = "bbbbbbbbbbbb"
+    runs = cr.load_runs(
+        [_write(tmp_path, "ctrl", ctrl), _write(tmp_path, "treat", treat)],
+    )
+    assert runs[0].arm != runs[1].arm
+
+
+def test_same_sysprompt_at_same_revision_pools(tmp_path: Path) -> None:
+    a = _payload(narrator=True, tool_valid=0.90)
+    a["run_config"]["narrator_sysprompt_sha"] = "aaaaaaaaaaaa"
+    b = _payload(narrator=True, tool_valid=0.94)
+    b["run_config"]["narrator_sysprompt_sha"] = "aaaaaaaaaaaa"
+    runs = cr.load_runs([_write(tmp_path, "r1", a), _write(tmp_path, "r2", b)])
+    assert runs[0].arm == runs[1].arm
+
+
+def test_dirty_tree_is_a_distinct_arm_from_its_commit(tmp_path: Path) -> None:
+    clean = _payload(narrator=True, tool_valid=0.90, git_head="abc1234")
+    dirty = _payload(narrator=True, tool_valid=0.94, git_head="abc1234-dirty")
+    runs = cr.load_runs(
+        [_write(tmp_path, "clean", clean), _write(tmp_path, "dirty", dirty)],
+    )
+    assert runs[0].arm != runs[1].arm
+
+
 def test_unrevisioned_run_beside_revisioned_raises_a_warning(tmp_path: Path) -> None:
     """The 6f trap: an excluded replicate narrows bands and fakes separation."""
     dirs = [

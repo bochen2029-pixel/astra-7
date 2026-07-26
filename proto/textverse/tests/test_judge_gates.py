@@ -6,6 +6,8 @@ canonical inputs without spinning up the full orchestrator.
 
 from __future__ import annotations
 
+import pytest
+
 from astra.core import AstraCoord, TimeState
 from astra.grammar import LeakEvent, StageOutput
 from astra.harness.orchestrator import TurnResult
@@ -173,6 +175,103 @@ def test_state_coherent_passes_when_state_section_matches() -> None:
     })
     result = gate_state_coherent(perception_bundle=bundle, state_bus=sb_with_bodies)
     assert result.passed is True
+
+
+# --- Gate 4: identifier-vs-prose normalization (6g / F-LIVE-28) --------------
+#
+# The <state> channel is contractually prose; body names and regime labels are
+# State Bus IDENTIFIERS. Demanding `hot_earth` verbatim required the narrator to
+# break its own voice rules to pass. These pin the fix AND, more importantly,
+# that genuine omissions still fail: a gate loosened after it failed is only
+# legitimate if its planted-positives survive.
+
+
+def _bus_with_bodies(*names: str, warp: bool = False) -> StateBus:
+    """StateBus carrying the named bodies; `warp` drives regime WARP_CRUISE.
+
+    `regime` is a computed field (STARTUP §6): it is derived from truth
+    fields and never passed in, so the warp regime is produced by setting
+    a cruising WarpState rather than by asserting a label.
+    """
+    from astra.state_bus import BodyState, WarpState
+    return StateBus(
+        astra_coord=AstraCoord(sx=0, sy=0, sz=0),
+        time=TimeState(t_cosmic=1.0, tau_ship=47.5, tau_crew_biological=47.5),
+        warp=WarpState(W=1.0, phase="cruising") if warp else None,
+        procedural_body_states={
+            n: BodyState(name=n, kind="planet", mass_kg=1.0, position=(0, 0, 0))
+            for n in names
+        },
+    )
+
+
+def _bundle(state_body: str) -> str:
+    return f"<state>\n{state_body}\n</state>\n<operator>hey</operator>"
+
+
+@pytest.mark.parametrize(
+    "rendering",
+    [
+        "regime: REST. Hot earth orbiting sun.",   # the measured 6g artifact
+        "regime: REST. hot-earth orbits sun.",     # hyphenated
+        "regime: REST. hot_earth orbits sun.",     # identifier verbatim (legacy)
+        "regime: REST. Hot  earth orbits sun.",    # collapsed whitespace run
+    ],
+)
+def test_state_coherent_accepts_prose_renderings_of_identifiers(
+    rendering: str,
+) -> None:
+    result = gate_state_coherent(
+        perception_bundle=_bundle(rendering),
+        state_bus=_bus_with_bodies("hot_earth", "sun"),
+    )
+    assert result.passed is True
+
+
+def test_state_coherent_still_fails_when_a_body_is_genuinely_absent() -> None:
+    """Planted positive: normalization must not become 'everything passes'."""
+    result = gate_state_coherent(
+        perception_bundle=_bundle("regime: REST. sun steady, far."),
+        state_bus=_bus_with_bodies("hot_earth", "sun"),
+    )
+    assert result.passed is False
+    assert "hot_earth" in result.detail
+
+
+def test_state_coherent_still_fails_when_every_body_is_absent() -> None:
+    result = gate_state_coherent(
+        perception_bundle=_bundle("regime: REST. Quiet. Nothing to report."),
+        state_bus=_bus_with_bodies("hot_earth", "sun"),
+    )
+    assert result.passed is False
+
+
+def test_state_coherent_accepts_prose_rendering_of_a_regime_label() -> None:
+    """The latent half of the same defect: labels carry underscores too."""
+    result = gate_state_coherent(
+        perception_bundle=_bundle("regime: warp cruise. sun steady."),
+        state_bus=_bus_with_bodies("sun", warp=True),
+    )
+    assert result.passed is True
+
+
+def test_state_coherent_still_fails_when_regime_is_genuinely_absent() -> None:
+    """Planted positive for the regime half."""
+    result = gate_state_coherent(
+        perception_bundle=_bundle("all quiet. sun steady."),
+        state_bus=_bus_with_bodies("sun", warp=True),
+    )
+    assert result.passed is False
+    assert "regime" in result.detail.lower()
+
+
+def test_state_coherent_does_not_match_a_wrong_regime() -> None:
+    """Normalization must not blur one regime into another."""
+    result = gate_state_coherent(
+        perception_bundle=_bundle("regime: warp charge. sun steady."),
+        state_bus=_bus_with_bodies("sun", warp=True),
+    )
+    assert result.passed is False
 
 
 def test_state_coherent_fails_on_missing_state_section() -> None:

@@ -83,10 +83,16 @@ class RunSummary:
         """
         cfg = payload.get("run_config")
         if isinstance(cfg, dict) and "narrator" in cfg:
-            rev = str(cfg.get("git_head") or "norev")[:7]
+            rev = str(cfg.get("git_head") or "norev")
+            rev = rev[:7] + ("-dirty" if rev.endswith("-dirty") else "")
             if not cfg["narrator"]:
                 return f"template@{rev}"
-            return f"narrator(thinking={cfg.get('narrator_thinking', '?')})@{rev}"
+            # The sysprompt fingerprint is part of arm identity too: both
+            # arms of a sysprompt A/B share a git_head by construction, so
+            # revision alone would pool a treatment with its own control.
+            sha = cfg.get("narrator_sysprompt_sha")
+            sp = f"/sp:{str(sha)[:8]}" if sha else ""
+            return f"narrator(thinking={cfg.get('narrator_thinking', '?')})@{rev}{sp}"
         return "narrator(legacy)" if any(
             "narrator_fallbacks" in r for r in ran
         ) else "template(legacy)"

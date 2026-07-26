@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import subprocess
 import sys
@@ -79,6 +80,15 @@ def _log(msg: str) -> None:
     print(msg, flush=True)
 
 
+def _sysprompt_sha(text: str | None) -> str:
+    """Short digest of the narrator sysprompt actually used this run."""
+    if text is None:
+        text = (TEXTVERSE / "prompts" / "narrator_sysprompt.md").read_text(
+            encoding="utf-8",
+        )
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
 def _git(*args: str) -> str | None:
     try:
         out = subprocess.run(
@@ -121,6 +131,7 @@ async def _run_one(
     narrator_base_url: str | None = None,
     narrator_thinking: str = NARRATOR_THINKING,
     narrator_max_tokens: int = NARRATOR_COMPOSE_MAX_TOKENS,
+    narrator_sysprompt: str | None = None,
 ) -> dict[str, Any]:
     name = yaml_path.stem
     row: dict[str, Any] = {"scenario": name}
@@ -138,6 +149,7 @@ async def _run_one(
         narrator_bundle = (
             NarratorBundle(
                 base_url=narrator_base_url or base_url,
+                sysprompt=narrator_sysprompt,
                 thinking=narrator_thinking,
                 sampling=SamplingParams(
                     temperature=NARRATOR_TEMPERATURE,
@@ -380,6 +392,13 @@ async def _main() -> int:
              "run #8 inherited 2048",
     )
     parser.add_argument(
+        "--narrator-sysprompt", default=None,
+        help="alternate narrator sysprompt file (6g). Makes a sysprompt A/B a "
+             "flag instead of a git checkout; the control arm is e.g. "
+             "`git show <rev>:...prompts/narrator_sysprompt.md > ctrl.md`. "
+             "Defaults to prompts/narrator_sysprompt.md",
+    )
+    parser.add_argument(
         "--output-dir",
         default=str(TEXTVERSE / "scenarios" / "output" / "live_run_item5"),
     )
@@ -387,6 +406,11 @@ async def _main() -> int:
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    narrator_sysprompt_text = (
+        Path(args.narrator_sysprompt).read_text(encoding="utf-8")
+        if args.narrator_sysprompt
+        else None
+    )
     base_url = args.base_url or f"http://127.0.0.1:{args.port}"
 
     server: LlamaServerInstance | None = None
@@ -424,6 +448,7 @@ async def _main() -> int:
                     narrator_base_url=args.narrator_base_url,
                     narrator_thinking=args.narrator_thinking,
                     narrator_max_tokens=args.narrator_max_tokens,
+                    narrator_sysprompt=narrator_sysprompt_text,
                 ),
             )
     finally:
@@ -466,6 +491,11 @@ async def _main() -> int:
                 "narrator_max_tokens": args.narrator_max_tokens,
                 "narrator_temperature": NARRATOR_TEMPERATURE,
                 "narrator_top_p": NARRATOR_TOP_P,
+                # The sysprompt is the surface Sculptor edits most, and two
+                # arms of a sysprompt A/B share a git_head by construction.
+                # Fingerprint the TEXT so the comparator can never pool them.
+                "narrator_sysprompt_path": args.narrator_sysprompt or "(default)",
+                "narrator_sysprompt_sha": _sysprompt_sha(narrator_sysprompt_text),
             },
         )
     (out_dir / "results.json").write_text(
