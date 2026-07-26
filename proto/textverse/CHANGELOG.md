@@ -6,6 +6,58 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6i: CORRECTION — F-LIVE-30 was over-claimed twice; withdrawn — 2026-07-26
+
+Investigating the `non_degenerate` coupling refuted the finding that
+motivated the investigation. Correction recorded in
+`LIVE_RUN_2026-07-26_6gh.md` under CORRECTION (6i); the original text is
+preserved rather than rewritten.
+
+**Withdrawal 1 — the separation is not established.** F-LIVE-30 recorded
+`non_degenerate` as an ESTABLISHED cost from n=3 per arm. The gate was
+untouched by the 6h fix (confined to `gate_state_coherent`) and scoring
+code cannot affect ASTRA's behaviour, so the 6f-narrator runs are valid
+extra CONTROL replicates and the 6g runs valid extra TREATMENT replicates.
+Pooled at n=6: control 0.9919 [0.987, 1.000] vs treatment 0.9823 [0.970,
+0.995] — **overlapping, NOT ESTABLISHED**. The verdict rested on 10 vs 17
+failing turns across 558 each; one replicate flips it. This is precisely
+the fragility 6f measured and warned about, one work item after
+`compare_runs.py` was built to prevent it. The tool was run on three
+artifacts when six were available. The failure was discipline, not
+instrumentation.
+
+**Withdrawal 2 — the published mechanism is refuted.** F-LIVE-30 asserted
+as fact that the inventory requirement made `<state>` near-identical
+turn-to-turn, so "ASTRA repeats herself more because her perception varies
+less." Measured: treatment perception is NOT more similar (0.422 vs 0.437;
+0.401 vs 0.492 at the failures) and NOT longer or more invariant (183 ch
+vs 227, identical blocks 29 vs 32) — both refuted. A third candidate
+(shorter speech raising collision odds) is unsupported: bands overlap,
+with one control run dragging its mean. **The mechanism is unknown**, and
+all three candidates are recorded with refutations so nobody re-tests
+them.
+
+**F-LIVE-29 stands**, on a principled distinction rather than a convenient
+one: `state_coherent` went 24 failing turns to ZERO with the treatment
+pinned at the ceiling in every run. An arm at zero events is not a small
+sample, and the failure class was identified, targeted, and eliminated.
+
+**Instrument change:** `compare_runs.py` now prints raw failing-turn counts
+beside every separation verdict and flags separations where the smaller arm
+has ≤20 failing turns as FRAGILE, with a warning to pool every valid
+replicate. Rates made 10-vs-17 look clean; counts make it obviously thin.
+A test asserts a zero-event arm is NOT flagged, so F-LIVE-29-class
+closures are not diluted.
+
+**Standing rule earned:** before any separation enters a ledger as
+established — pool every valid replicate (reasoning explicitly about which
+code deltas can touch the gate), read raw counts and not only rates, and
+treat small-count separations in both arms as provisional however clean
+the bands look.
+
+Gates: **998 pytest** (+3 fragility/event-count), ruff clean, mypy strict
+clean.
+
 ### 6g + 6h: narrator sysprompt state-inventory — F-LIVE-20 CLOSED at
 ### 1.000 with zero variance — 2026-07-26
 

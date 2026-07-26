@@ -44,6 +44,7 @@ def _payload(
     git_head: str | None = "abc1234",
     with_config: bool = True,
     passes: int = 1,
+    tool_valid_fail_turns: int = 0,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {
         "scenario": "s1",
@@ -63,6 +64,10 @@ def _payload(
     }
     if narrator:
         row["narrator_fallbacks"] = 1
+    row["turn_records"] = [
+        {"lcp_gates": {"tool_valid": {"passed": False, "detail": "x"}}}
+        for _ in range(tool_valid_fail_turns)
+    ]
     payload: dict[str, Any] = {
         "rows": [row],
         "drill": {"scenarios_run": ["p1"], "catches": [{"kind": "x"}, {"kind": "y"}]},
@@ -247,6 +252,47 @@ def test_no_warning_when_every_run_is_revisioned(tmp_path: Path) -> None:
         _write(tmp_path, "t1", _payload(narrator=False, tool_valid=0.83)),
     ]
     assert "Provenance warning" not in cr.build_report(cr.load_runs(dirs))
+
+
+def test_separation_on_few_events_is_flagged_fragile(tmp_path: Path) -> None:
+    """F-LIVE-30: an n=3 separation on a handful of failing turns flipped at n=6.
+
+    The rate table alone made 10-vs-17 failing turns look like a clean
+    result. Counts plus a warning are what stop that being recorded as
+    established.
+    """
+    dirs = [
+        _write(tmp_path, "t1", _payload(
+            narrator=False, tool_valid=0.99, tool_valid_fail_turns=3)),
+        _write(tmp_path, "n1", _payload(
+            narrator=True, tool_valid=0.90, tool_valid_fail_turns=8)),
+    ]
+    report = cr.build_report(cr.load_runs(dirs))
+    assert "FRAGILE, few events" in report
+    assert "Fragility warning" in report
+
+
+def test_zero_event_arm_is_not_flagged_fragile(tmp_path: Path) -> None:
+    """Absence is not a small sample.
+
+    The state_coherent closure went 24 failing turns to ZERO; that is a
+    different kind of claim from 10-vs-17 and must not be diluted by the
+    same warning.
+    """
+    dirs = [
+        _write(tmp_path, "t1", _payload(
+            narrator=False, tool_valid=0.99, tool_valid_fail_turns=0)),
+        _write(tmp_path, "n1", _payload(
+            narrator=True, tool_valid=0.90, tool_valid_fail_turns=24)),
+    ]
+    report = cr.build_report(cr.load_runs(dirs))
+    assert "Fragility warning" not in report
+
+
+def test_gate_fail_events_counted_per_run(tmp_path: Path) -> None:
+    a = _write(tmp_path, "r1", _payload(
+        narrator=False, tool_valid=0.9, tool_valid_fail_turns=5))
+    assert cr.load_runs([a])[0].gate_fail_events["tool_valid"] == 5
 
 
 def test_missing_results_json_is_skipped_not_fatal(tmp_path: Path) -> None:

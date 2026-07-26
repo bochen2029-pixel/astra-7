@@ -33,6 +33,10 @@ from typing import Any
 
 TEXTVERSE = Path(__file__).resolve().parent.parent
 
+"""Below this many failing turns in the smaller arm, a band separation is
+fragile enough that adding one replicate can flip it (F-LIVE-30)."""
+SMALL_EVENT_COUNT = 20
+
 GATES = (
     "grammar_parse",
     "state_coherent",
@@ -60,6 +64,7 @@ class RunSummary:
         self.turns = sum(r.get("turn_count", 0) for r in self.ran)
         self.duration_min = sum(r.get("duration_s", 0.0) for r in rows) / 60.0
         self.gate_means = {g: self._gate_mean(g) for g in GATES}
+        self.gate_fail_events = {g: self._gate_fail_events(g) for g in GATES}
         self.fallbacks = sum(r.get("narrator_fallbacks", 0) for r in self.ran)
         self.fallback_rate = self.fallbacks / self.turns if self.turns else 0.0
         drill = payload.get("drill") or {}
@@ -96,6 +101,22 @@ class RunSummary:
         return "narrator(legacy)" if any(
             "narrator_fallbacks" in r for r in ran
         ) else "template(legacy)"
+
+    def _gate_fail_events(self, gate: str) -> int:
+        """Raw failing-turn count for a gate, not a rate.
+
+        Band separation on a gate whose failures are a handful of events is
+        fragile: the difference between 10 and 17 events across 558 turns
+        can separate at n=3 and dissolve at n=6 (measured, F-LIVE-30).
+        Rates hide that; counts expose it.
+        """
+        n = 0
+        for r in self.ran:
+            for t in r.get("turn_records", []):
+                g = (t.get("lcp_gates") or {}).get(gate)
+                if isinstance(g, dict) and not g.get("passed", True):
+                    n += 1
+        return n
 
     def _gate_mean(self, gate: str) -> float | None:
         vals = [
@@ -201,8 +222,9 @@ def build_report(runs: list[RunSummary]) -> str:
             "constrains what may be claimed rather than proving equality.",
         )
         lines.append("")
-        lines.append("| gate | separated? | reading |")
-        lines.append("|---|---|---|")
+        lines.append("| gate | separated? | events (A/B) | reading |")
+        lines.append("|---|---|---|---|")
+        fragile: list[str] = []
         for gate in GATES:
             va = [r.gate_means[gate] for r in arms[a] if r.gate_means[gate] is not None]
             vb = [r.gate_means[gate] for r in arms[b] if r.gate_means[gate] is not None]
@@ -211,15 +233,36 @@ def build_report(runs: list[RunSummary]) -> str:
             if not fa or not fb:
                 continue
             sep = _separated(fa, fb)
+            ea = sum(r.gate_fail_events[gate] for r in arms[a])
+            eb = sum(r.gate_fail_events[gate] for r in arms[b])
             direction = (
                 f"{a} higher" if statistics.fmean(fa) > statistics.fmean(fb)
                 else f"{b} higher"
             )
+            note = direction if sep else "not established"
+            # A separation resting on few failing turns is the fragile case:
+            # both arms having small nonzero counts is where adding one
+            # replicate flips the verdict. An arm at ZERO events is not
+            # fragile in the same way — absence is not a small sample.
+            if sep and 0 < min(ea, eb) <= SMALL_EVENT_COUNT:
+                note += " — FRAGILE, few events"
+                fragile.append(gate)
             lines.append(
                 f"| {gate} | {'**YES**' if sep else 'no (overlap)'} | "
-                f"{direction if sep else 'not established'} |",
+                f"{ea}/{eb} | {note} |",
             )
         lines.append("")
+        if fragile:
+            lines.append(
+                f"> **Fragility warning:** {', '.join(fragile)} separated on "
+                f"few failing turns (min arm ≤ {SMALL_EVENT_COUNT}). Separations "
+                f"like this flip when replicates are added (measured: "
+                f"non_degenerate separated at n=3 and dissolved at n=6). Pool "
+                f"every valid replicate — including runs from adjacent work "
+                f"items whose code deltas do not touch this gate — before "
+                f"recording it as established.",
+            )
+            lines.append("")
 
     lines.append("## Narrator leg + drill (per run)")
     lines.append("")
