@@ -24,6 +24,7 @@ import typer
 
 from astra import __version__
 from astra.llm import AstraBundle
+from astra.llm.client import build_thinking_payload
 from astra.scenarios import (
     ScenarioRunner,
     load_scenario_file,
@@ -69,19 +70,13 @@ def _resolve_scenario_path(name: str) -> Path:
 def _build_extra_payload(thinking: str) -> dict[str, object] | None:
     """Translate --thinking flag to chat_template_kwargs payload.
 
-    - "auto": do not send chat_template_kwargs (let the server decide).
-    - "on" / "off": send {"chat_template_kwargs": {"enable_thinking": bool}}
-      at the JSON top level (Novita + llama-server both accept this shape).
+    Thin typer-facing wrapper over `astra.llm.client.build_thinking_payload`
+    (single source of truth; the Narrator bundle uses the same helper).
     """
-    if thinking == "auto":
-        return None
-    if thinking == "on":
-        return {"chat_template_kwargs": {"enable_thinking": True}}
-    if thinking == "off":
-        return {"chat_template_kwargs": {"enable_thinking": False}}
-    raise typer.BadParameter(
-        f"--thinking must be one of: auto / on / off (got: {thinking!r})",
-    )
+    try:
+        return build_thinking_payload(thinking)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
 
 async def _run_single(

@@ -103,6 +103,29 @@ class SamplingParams(BaseModel):
     seed: int | None = None  # None = nondeterministic; int = reproducible
 
 
+THINKING_MODES = ("auto", "on", "off")
+
+
+def build_thinking_payload(thinking: str) -> dict[str, Any] | None:
+    """Translate a thinking mode to a `chat_template_kwargs` extra payload.
+
+    - "auto": return None — send nothing, let the server's chat template decide.
+    - "on" / "off": `{"chat_template_kwargs": {"enable_thinking": bool}}` at the
+      JSON top level (llama-server and Novita both accept this shape).
+
+    Shared by the CLI (`--thinking`) and the Narrator bundle, which defaults
+    to "off": a renderer has nothing to reason about, and at the 9B floor its
+    unbounded cognition was the dominant narrator failure class (F-LIVE-19).
+    """
+    if thinking not in THINKING_MODES:
+        raise ValueError(
+            f"thinking must be one of {'/'.join(THINKING_MODES)} (got: {thinking!r})",
+        )
+    if thinking == "auto":
+        return None
+    return {"chat_template_kwargs": {"enable_thinking": thinking == "on"}}
+
+
 class LLMClientError(RuntimeError):
     """Raised on HTTP failure, SSE parse error, or invalid response shape."""
 

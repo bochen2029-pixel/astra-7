@@ -6,6 +6,100 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6e: narrator tuning tier — F-LIVE-19 CLOSED, F-LIVE-22 caught and
+### closed — 6e CLOSED — 2026-07-25
+
+6c's verdict named the narrator levers as tuning-tier, not contract.
+Pulled them; both live runs in `LIVE_RUN_2026-07-25.md`.
+
+**The diagnosis:** the narrator path had no inference budget of its own
+and no reasoning control. `max_tokens` fell through to the
+`SamplingParams` default of 2048 (ASTRA's SPEECH budget, silently
+borrowed by a composition path); `extra_payload` was a constructor
+parameter no caller ever passed, so reasoning ran at the server template
+default; the composition request was pretty-printed JSON on the one path
+whose measured failure was budget exhaustion. A reasoning model spent a
+speech-sized budget thinking about its own constraints, overran, failed
+CLOSED on the unclosed `<think>`, and handed to the template. Half of
+all turns.
+
+**The fix, and why it is structural rather than a knob:** the Narrator is
+a RENDERER. §15.6 makes it calculator-bound — transcribe, never derive —
+and its sysprompt's own summary is "render structured world state as
+in-register prose." There is no decision for cognition to make. This is
+the F-LIVE-11/16 lesson one seam deeper: not "strip the cognition" but
+do not generate it.
+
+- `astra/llm/client.py`: `build_thinking_payload()` + `THINKING_MODES` —
+  single source of truth for the `chat_template_kwargs` shape; the CLI's
+  `_build_extra_payload` becomes a thin typer wrapper over it.
+- `astra/llm/narrator_bundle.py`: named `NARRATOR_COMPOSE_MAX_TOKENS`
+  (1024), `NARRATOR_TEMPERATURE`, `NARRATOR_TOP_P`, `NARRATOR_THINKING`
+  ("off"). Reasoning control composes UNDER any caller-supplied
+  `extra_payload` so a deliberate override is never silently replaced.
+  Register untouched: temperature 0.4 / top_p 0.85 preserved and pinned.
+- `astra/harness/perception_assembler.py`: compact request serialization
+  (the State Bus dump is now byte-identical to the trace pool's first
+  entry, so what the narrator is shown and what it is grounded against
+  are the same string) + **derived presentation values** (below).
+- `scripts/live_suite_pass.py`: `--narrator-thinking` /
+  `--narrator-max-tokens` / `--narrator-base-url` so the A/B is a command
+  line, not a code edit (the last unlocks the 4B narrator on its own port
+  per ARCHITECTURE §6.5); run config persisted into `results.json` +
+  `summary.md`.
+
+**Run #10 (shakedown) — F-LIVE-19 CLOSED.** R-4 fallback **0.506 →
+0.032**, and the dominant class INVERTED: run #8's fallbacks were all
+0-ungrounded truncation, run #10's three are all genuine
+ungrounded-numeric catches. Suite economics ~118 min / ~83 s per turn →
+**11.8 min / 7.6 s per turn**. grammar 1.000, no_leak 0.926, persona
+0.971. Replay 3/3 (30/30 lifetime).
+
+**Run #10 also caught F-LIVE-22, a perception-path parity defect:**
+`state_coherent` 0.493 → 0.052 with **82 of 84 failures in one class** —
+`<state>` emitting `kinematic_regime is 0` instead of naming `REST`.
+With thinking on the model had budget to GUESS the enum→label mapping
+and got it right about half the time (that is all 0.493 ever was); with
+thinking off it faithfully transcribed what it was handed, which for a
+calculator-bound renderer is the more correct behavior. The gate was
+right; the request was wrong. The template path has always rendered
+`regime_label()` itself — the narrator path was the only consumer asked
+to translate an enum it was never given a table for. Same rule F-LIVE-14
+settled for τ, never applied to regime. Closed by supplying the regime
+label + body-name list under an explicit "already computed; do not
+re-derive" instruction.
+
+**Run #11 (clean measurement) — 6e CLOSES.** state_coherent **0.922**
+(from 0.493 baseline), R-4 fallback **0.022** (2/93), **12/34 PASS**
+(narrator-path series best; run #8 was 5/30, run #7 1/30), 15.8 min /
+10.2 s per turn, grammar + memory 1.000, persona 0.979, non_degenerate
+0.979, no_leak 0.908, physics_ground 0.901. Replay 3/3 — **33/33
+lifetime across eleven runs.**
+
+**F-LIVE-23:** 6c said the narrator bundle was "measured and not yet
+production-shaped" on three numbers (0.506 fallback / 0.493 coherence /
+~100 s per turn). All three moved past their objections at once. No
+contract moved; the levers were exactly where 6c predicted.
+
+**Residual, named:** tool_valid 0.810 is the new floor gate and drifts
+down across the series (0.890 → 0.852 → 0.810), dominated by
+under-tooling (F-LIVE-7) — the A0 ship-API-fluency axis. Whether
+narrator perception worsens it versus the template path is NOT
+established (different path, single runs, no controlled comparison);
+flagged, not concluded. Narrator sysprompt shape (F-LIVE-20 remainder)
+deliberately left out of 6e so the config A/B stayed unconfounded.
+Narrator-path autotelic totals remain a separate distribution, excluded
+from the R-B/R-D series per the run-#7 precedent (F-LIVE-24).
+
+Also: STARTUP.md work-picker refreshed (6c/6d marked DONE from their
+commits, 6e added, post-6e routing named) and its floor block re-verified
+to the current numbers — the picker had gone stale at the last two
+commits.
+
+Gates: **965 pytest** (943 + 22 new in
+`tests/test_narrator_inference_config.py`), ruff clean, mypy strict
+clean, `astra_nexus.exe` 82/82 untouched.
+
 ### 6d run #9 verification — 6d CLOSED — 2026-07-19
 
 First live contact for the converted probes (`live_run_6d/`, 34/34,

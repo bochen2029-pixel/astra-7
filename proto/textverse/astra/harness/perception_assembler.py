@@ -271,8 +271,26 @@ def _build_narrator_composition_request(
     REEL entries + somatic note + operator text round out the context.
     The Narrator's sysprompt (loaded by NarratorBundle) defines the
     output shape; this request body provides the data only.
+
+    **Compact serialization (6e):** both JSON blocks are emitted without
+    pretty-printing. Indentation was pure input-token cost on a path whose
+    measured failure was budget exhaustion (F-LIVE-19), and the compact
+    State Bus dump is now BYTE-IDENTICAL to the trace pool's first entry
+    (`_build_narrator_trace_pool` has always used the compact form), so
+    what the narrator is shown and what it is grounded against are the
+    same string. Semantics unchanged: same fields, same values.
+
+    **Derived presentation values (6e run #10, F-LIVE-22):** the request
+    now supplies the regime LABEL and the body-name list rather than
+    leaving the narrator to re-derive them from `kinematic_regime: 0`.
+    This closes a path-parity defect: the template path above renders
+    `regime_label(state_bus.regime)` itself, while the narrator path was
+    the only consumer asked to translate an enum it was never given a
+    table for. A calculator-bound renderer must not derive — the same
+    rule F-LIVE-14 settled for τ (watch labels are DERIVED presentation,
+    computed here, never inferred downstream), applied to regime.
     """
-    state_json = state_bus.model_dump_json(indent=2)
+    state_json = state_bus.model_dump_json()
     retrievals_json = json.dumps(
         [
             {
@@ -283,17 +301,23 @@ def _build_narrator_composition_request(
             }
             for e in retrievals
         ],
-        indent=2,
+        separators=(",", ":"),
     )
+    body_names = ", ".join(sorted(state_bus.procedural_body_states)) or "(none)"
     return (
         "Generate a four-section perception bundle for ASTRA-LLM in "
         "the canonical <state>/<somatic>/<recent>/<operator> form.\n\n"
         f"State Bus snapshot (JSON):\n{state_json}\n\n"
+        "Derived presentation values (already computed; use these exact "
+        "terms, do not re-derive them from the raw fields):\n"
+        f"- regime label for kinematic_regime: {regime_label(state_bus.regime)}\n"
+        f"- bodies present: {body_names}\n\n"
         f"Recent REEL retrievals (JSON):\n{retrievals_json}\n\n"
         "Somatic note (sensor reading this tick):\n"
         f"{somatic_note or '(none)'}\n\n"
         "Operator input (verbatim; may be empty for SILENCE):\n"
         f"{operator_text or '(none)'}\n\n"
+        "The <state> section names the regime label and every body above. "
         "Every numeric you cite MUST appear in the State Bus snapshot "
         "or REEL entries above. Use τ_ship + watch numbers (no Earth "
         "dates). Brief — this is ASTRA's input, not narrative."

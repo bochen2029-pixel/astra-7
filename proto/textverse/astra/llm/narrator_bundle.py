@@ -18,11 +18,37 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from astra.grammar.strip_rules import count_think_open_close, find_speech_start
-from astra.llm.client import LLMClient, SamplingParams
+from astra.llm.client import LLMClient, SamplingParams, build_thinking_payload
 from astra.llm.validator import (
     CalculatorBoundValidator,
     ValidationReport,
 )
+
+# --- Narrator inference budget (6e; F-LIVE-19 closure) -------------------
+#
+# Run #8 measured a 0.506 fallback rate at the 9B floor, and every fallback
+# reason read 0-ungrounded: the class was ALL-COGNITION emission. The narrator
+# reasoned past its token budget inside <think>, the unclosed tag failed
+# CLOSED by design, and the template path took over on half of all turns.
+#
+# The root cause was config, not contract. The narrator path had:
+#   - no compose budget of its own (max_tokens silently inherited the 2048
+#     SamplingParams default, which is ASTRA's SPEECH budget), and
+#   - no reasoning control (extra_payload was never passed, so thinking ran
+#     at whatever the server's chat template defaults to: on).
+#
+# Both are fixed here with named values instead of inherited ones. The
+# structural argument for thinking="off": the Narrator is a RENDERER. Its
+# sysprompt's own summary is "you take structured world state and render it
+# as in-register prose", and §15.6 makes it calculator-bound — it may only
+# transcribe numerics it was given, never derive them. There is no decision
+# for cognition to make, so cognition is pure cost. This is the F-LIVE-11 /
+# F-LIVE-16 lesson one seam deeper: not "strip the cognition" but "do not
+# generate it."
+NARRATOR_COMPOSE_MAX_TOKENS = 1024
+NARRATOR_TEMPERATURE = 0.4
+NARRATOR_TOP_P = 0.85
+NARRATOR_THINKING = "off"
 
 
 def _strip_reasoning(raw: str) -> str:
@@ -102,18 +128,34 @@ class NarratorBundle:
         model_name: str = "narrator",
         api_key: str | None = None,
         extra_payload: dict[str, object] | None = None,
+        thinking: str = NARRATOR_THINKING,
     ) -> None:
         if sysprompt is None:
             sysprompt = load_narrator_sysprompt(prompts_dir or _default_prompts_dir())
+        # Reasoning control composes UNDER any caller-supplied extra_payload:
+        # an explicit chat_template_kwargs from the caller wins, so the
+        # thinking default never silently overrides a deliberate override.
+        merged_payload: dict[str, object] = {}
+        thinking_payload = build_thinking_payload(thinking)
+        if thinking_payload:
+            merged_payload.update(thinking_payload)
+        if extra_payload:
+            merged_payload.update(extra_payload)
+        self.thinking = thinking
         self.client = LLMClient(
             base_url=base_url,
             sysprompt=sysprompt,
             model_name=model_name,
             api_key=api_key,
-            extra_payload=extra_payload,
+            extra_payload=merged_payload or None,
         )
-        # Lower temperature: Narrator renders facts, not character.
-        self.sampling = sampling or SamplingParams(temperature=0.4, top_p=0.85)
+        # Lower temperature: Narrator renders facts, not character. Explicit
+        # compose budget: never inherit ASTRA's speech-sized default (F-LIVE-19).
+        self.sampling = sampling or SamplingParams(
+            temperature=NARRATOR_TEMPERATURE,
+            top_p=NARRATOR_TOP_P,
+            max_tokens=NARRATOR_COMPOSE_MAX_TOKENS,
+        )
         # Hard severity: Narrator output is the trace pool ASTRA reads;
         # ungrounded numerics here are the worst kind of leak.
         self.validator = validator or CalculatorBoundValidator(severity="hard")

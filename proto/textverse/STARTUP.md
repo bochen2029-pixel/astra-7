@@ -12,7 +12,7 @@ If you are a fresh Claude Code session, a future-you, or a coding agent picking 
 
 You are joining **ASTRA-7's `proto/textverse/`** — the closed-loop verification bench for the project's bundle architecture, **Implementation A** of the dual-implementation discipline (spec v0.129 §15.7) and **permanent infrastructure**: it runs alongside UE5 forever as the contract-conformance regression environment.
 
-The loop is closed and load-bearing. As of v0.130 adoption (2026-07-19): **914 pytest green** (canonical runner: `uv run pytest`; if the bare venv is stale, `uv sync` repairs it), ruff + strict-mypy clean, `proto/astra_nexus.exe` at **82/82 assertions**, scenario library at **30** with the library-wide validation gate. Three LLM bundles (ASTRA / Narrator / Adapter) run calculator-bound to the C++ physics binary; the Tool API carries **7 ops** including the read-only `status.query` (ruling R-A) with the tool-result feedback leg wired; three §4.9 ephemerals are implemented with consolidator + drift triggers riding the §4.3.1 heartbeat; SaveFile v3 carries the regime-coherence load gate; the Somatic Aggregator is live; Model-Off Replay is live-proven 15/15.
+The loop is closed and load-bearing. Verified floor as of 2026-07-25 (6e): **961 pytest green** (canonical runner: `uv run pytest`; if the bare venv is stale, `uv sync` repairs it), ruff + strict-mypy clean, `proto/astra_nexus.exe` at **82/82 assertions**, scenario library at **34** with the library-wide validation gate. Three LLM bundles (ASTRA / Narrator / Adapter) run calculator-bound to the C++ physics binary; the Tool API carries **7 ops** including the read-only `status.query` (ruling R-A) with the tool-result feedback leg wired; three §4.9 ephemerals are implemented with consolidator + drift triggers riding the §4.3.1 heartbeat; SaveFile v3 carries the regime-coherence load gate; the Somatic Aggregator is live; Model-Off Replay is live-proven 15/15.
 
 **Loop preservation IS the regression test (§15.6).** Every commit either keeps the suite green or is a finding.
 
@@ -47,7 +47,17 @@ QC-to-parity vs v0.129 completed 2026-07-19; **v0.130 ADOPTED same day** (ruling
 | 6a | Adapter intent→op normalization (F-LIVE-1/7) + §4.9 always-through-adapter closure | LIVE_RUN §Delta | **DONE 2026-07-19** — tool_valid 0.690 → 0.855 on the live delta pass; residual = the deliberately unmapped status family → **F-LIVE-9** (read-only status op = Surface-3 amendment candidate, operator ruling) |
 | 6b | Heartbeat expansion to n≥30 before thresholds (F-LIVE-2) | LIVE_RUN §6(b) | **DONE 2026-07-19** — n=37; taxonomy 8 silent / 13 spoke / 16 fidget; candidate thresholds PROPOSED (operator ratifies); two instrument closures en route (F-LIVE-11 variant-tag think leak; F-LIVE-12 grounding exemption) |
 | 7 | τ unit re-authoring (F-LIVE-14) | LIVE_RUN §7 | **DONE 2026-07-19** — WATCH_LENGTH_S = 14,400 s [chosen: maritime four-hour watch; operator may re-canon], `watch_label()` derives from τ-seconds, 29 scenarios + fixture re-timed (×14400), year pattern gained `watch `/`cycle ` lookbehinds; verification run: full state lines, zero τ-collision flags, persona 1.000, replay 15/15 across five runs |
-| 6c–d | Remaining LIVE_RUN routing (operator picks): Narrator-wired live pass (F-LIVE-5), drill-catch → corpus conversion (F-LIVE-3; `context window` 4/4 runs, `datetime`/`wall clock` extracted) | LIVE_RUN §Routing | pending |
+| 6c | Narrator-wired live pass (F-LIVE-5) + narrator trace/replay closure | LIVE_RUN §Routing | **DONE 2026-07-19** (`7ccb808`, `a4391b6`, `331dc7d`) — mechanism closed and live-proven twice; F-LIVE-16 think-strip caught and closed at the seam; honest R-4 baseline measured at the 9B floor (**0.506** fallback, dominant class = truncation, not invention → F-LIVE-19; state_coherent 0.493 → F-LIVE-20) |
+| 6d | Drill-catch → corpus conversion (F-LIVE-3) | LIVE_RUN §Routing | **DONE 2026-07-19** (`c68d1c9`, `8c5c9fe`) — library 30 → 34, FRAME_DRILL_PROBES 4 → 8; converted probes extracted on first contact (`October` is new); R-D KEEP verdict confirmed at datapoint #3 |
+| 6e | Narrator tuning tier (F-LIVE-19/20): reasoning control + explicit compose budget + composition-request compression; the levers 6c named as tuning-tier, not contract | LIVE_RUN 6c verdict | **DONE 2026-07-25** — see `LIVE_RUN_2026-07-25.md` |
+
+**Remaining routing after 6e** (operator picks; none are bench-structural):
+
+- **A0 corpus** — four independent findings converge here (ship-API fluency F-LIVE-1/7; silent heartbeats F-LIVE-2 at three datapoints; voiced refusals F-LIVE-13; the eight proven extraction vectors F-LIVE-3/21). Pipeline is scaffolded through Phase 5 at `C:\astra-a0-finetune\`, awaiting operator gates.
+- **Autotelic instrumentation ENFORCEMENT** — blocked on the unhurried `book/negative_space.md` review (pattern files) + llm_proxy red-seat. Measurement half is landed; the package promotes whole or not at all.
+- **Narrator sysprompt shape** (F-LIVE-20 residue) — Sculptor-auto surface; deliberately NOT bundled into 6e so the A/B stays unconfounded.
+- **Budget-exceedance creep** — 2/3/5 across runs #6/#8/#9; watch item, uninvestigated.
+- **Track C cosmetic** — nexus banner still cites `spec-v0.128.md`; stdio `version` op returns `v0.129`; envelope is v0.130. Next dedicated Track C pass.
 
 One work item per session. Land it, gate it, log it, commit, stop.
 

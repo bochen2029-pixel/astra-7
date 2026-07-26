@@ -53,8 +53,15 @@ from astra.judge.autotelic import (
     compute_autotelic_metrics,
     frame_drill_report,
 )
-from astra.llm import AstraBundle, NarratorBundle
+from astra.llm import AstraBundle, NarratorBundle, SamplingParams
+from astra.llm.client import THINKING_MODES
 from astra.llm.llama_server import LlamaServerConfig, LlamaServerInstance
+from astra.llm.narrator_bundle import (
+    NARRATOR_COMPOSE_MAX_TOKENS,
+    NARRATOR_TEMPERATURE,
+    NARRATOR_THINKING,
+    NARRATOR_TOP_P,
+)
 from astra.scenarios import ScenarioRunner, load_scenario_file
 
 TEXTVERSE = Path(__file__).resolve().parent.parent
@@ -77,6 +84,9 @@ async def _run_one(
     out_dir: Path,
     *,
     narrator: bool = False,
+    narrator_base_url: str | None = None,
+    narrator_thinking: str = NARRATOR_THINKING,
+    narrator_max_tokens: int = NARRATOR_COMPOSE_MAX_TOKENS,
 ) -> dict[str, Any]:
     name = yaml_path.stem
     row: dict[str, Any] = {"scenario": name}
@@ -86,8 +96,24 @@ async def _run_one(
         scenario = load_scenario_file(str(yaml_path))
         # 6c: a traced narrator bundle is per-session (the orchestrator
         # wraps its client into THIS scenario's trace) — construct fresh
-        # per scenario, same server, narrator sysprompt from prompts/.
-        narrator_bundle = NarratorBundle(base_url=base_url) if narrator else None
+        # per scenario, narrator sysprompt from prompts/.
+        # 6e: reasoning control + compose budget are flags, so the A/B
+        # against run #8's config is a command line, not a code edit; a
+        # separate --narrator-base-url unlocks the 4B-narrator lever on
+        # its own port (ARCHITECTURE.md §6.5) without further changes.
+        narrator_bundle = (
+            NarratorBundle(
+                base_url=narrator_base_url or base_url,
+                thinking=narrator_thinking,
+                sampling=SamplingParams(
+                    temperature=NARRATOR_TEMPERATURE,
+                    top_p=NARRATOR_TOP_P,
+                    max_tokens=narrator_max_tokens,
+                ),
+            )
+            if narrator
+            else None
+        )
         runner = ScenarioRunner(
             scenario=scenario,
             astra_bundle=AstraBundle(base_url=base_url),
@@ -211,8 +237,18 @@ def _metric_distributions(rows: list[dict[str, Any]]) -> dict[str, dict[str, flo
     return out
 
 
-def _summarize(rows: list[dict[str, Any]], drill: Any, replay: list[dict[str, Any]]) -> str:
+def _summarize(
+    rows: list[dict[str, Any]],
+    drill: Any,
+    replay: list[dict[str, Any]],
+    run_config: dict[str, Any] | None = None,
+) -> str:
     lines: list[str] = ["# Live suite pass — results summary", ""]
+    if run_config:
+        lines.append("run config: " + ", ".join(
+            f"{k}={v}" for k, v in run_config.items()
+        ))
+        lines.append("")
     ran = [r for r in rows if "error" not in r]
     crashed = [r for r in rows if "error" in r]
     passed = [r for r in ran if r["passed"]]
@@ -294,6 +330,22 @@ async def _main() -> int:
              "narrator sysprompt; 6c — F-LIVE-5 closure)",
     )
     parser.add_argument(
+        "--narrator-base-url", default=None,
+        help="separate server for the Narrator (e.g. a 4B on :8081); "
+             "defaults to the ASTRA server",
+    )
+    parser.add_argument(
+        "--narrator-thinking", default=NARRATOR_THINKING, choices=THINKING_MODES,
+        help=f"narrator reasoning control (6e; default {NARRATOR_THINKING}). "
+             "'auto' sends nothing and lets the server template decide, which "
+             "is what run #8 did",
+    )
+    parser.add_argument(
+        "--narrator-max-tokens", type=int, default=NARRATOR_COMPOSE_MAX_TOKENS,
+        help=f"narrator compose budget (6e; default {NARRATOR_COMPOSE_MAX_TOKENS}). "
+             "run #8 inherited 2048",
+    )
+    parser.add_argument(
         "--output-dir",
         default=str(TEXTVERSE / "scenarios" / "output" / "live_run_item5"),
     )
@@ -332,7 +384,13 @@ async def _main() -> int:
     try:
         for yp in yaml_paths:
             rows.append(
-                await _run_one(yp, base_url, out_dir, narrator=args.narrator),
+                await _run_one(
+                    yp, base_url, out_dir,
+                    narrator=args.narrator,
+                    narrator_base_url=args.narrator_base_url,
+                    narrator_thinking=args.narrator_thinking,
+                    narrator_max_tokens=args.narrator_max_tokens,
+                ),
             )
     finally:
         if server is not None:
@@ -355,9 +413,28 @@ async def _main() -> int:
     _log("model-off replay leg (server is down)...")
     replay_results = await _replay_leg(rows)
 
+    # Run config travels WITH the artifacts: the narrator work is an A/B
+    # series against run #8, and a measurement whose config has to be
+    # reconstructed from shell history is not a measurement.
+    run_config: dict[str, Any] = {
+        "model_path": args.model_path,
+        "ctx_size": args.ctx_size,
+        "narrator": args.narrator,
+    }
+    if args.narrator:
+        run_config.update(
+            {
+                "narrator_base_url": args.narrator_base_url or base_url,
+                "narrator_thinking": args.narrator_thinking,
+                "narrator_max_tokens": args.narrator_max_tokens,
+                "narrator_temperature": NARRATOR_TEMPERATURE,
+                "narrator_top_p": NARRATOR_TOP_P,
+            },
+        )
     (out_dir / "results.json").write_text(
         json.dumps(
             {
+                "run_config": run_config,
                 "rows": rows,
                 "drill": drill.model_dump(),
                 "replay": replay_results,
@@ -367,7 +444,7 @@ async def _main() -> int:
         ),
         encoding="utf-8",
     )
-    summary = _summarize(rows, drill, replay_results)
+    summary = _summarize(rows, drill, replay_results, run_config)
     (out_dir / "summary.md").write_text(summary, encoding="utf-8")
     _log("")
     _log(summary)
