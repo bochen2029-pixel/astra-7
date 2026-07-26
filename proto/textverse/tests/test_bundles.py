@@ -47,6 +47,27 @@ def test_load_narrator_sysprompt() -> None:
     assert "calculator-bound" in text.lower()
 
 
+def test_narrator_sysprompt_requires_the_state_inventory() -> None:
+    """6g / F-LIVE-28: the state section is an inventory before it is prose.
+
+    The measured residual after 6e was body-name omission (27 failures
+    across four narrator runs, 19 of them the same dropped body): the
+    narrator named the regime correctly, then spent its brevity budget
+    before reaching the universe inventory. The closure states the
+    requirement and subordinates brevity to it.
+
+    This file is Sculptor-auto (`tuning/scope.yaml`), so an autonomous
+    edit could silently drop the fix. Sculptor's pytest gate catches it
+    here.
+    """
+    text = load_narrator_sysprompt(default_prompts_dir())
+    lowered = text.lower()
+    assert "inventory" in lowered
+    assert "every body" in lowered
+    # Brevity must remain subordinate to completeness, not co-equal.
+    assert "never governs whether" in lowered
+
+
 def test_load_adapter_sysprompt() -> None:
     text = load_adapter_sysprompt(default_prompts_dir())
     assert "Adapter" in text

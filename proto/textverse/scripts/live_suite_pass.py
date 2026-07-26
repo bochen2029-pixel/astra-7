@@ -79,16 +79,10 @@ def _log(msg: str) -> None:
     print(msg, flush=True)
 
 
-def _git_head() -> str | None:
-    """Short HEAD of the working tree, or None outside a repo / on failure.
-
-    Provenance, not telemetry: it answers "which code produced this
-    measurement" when a run artifact is read months later. Never enters
-    perception; this is operator-side driver code.
-    """
+def _git(*args: str) -> str | None:
     try:
         out = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
+            ["git", *args],
             cwd=TEXTVERSE,
             capture_output=True,
             text=True,
@@ -97,7 +91,25 @@ def _git_head() -> str | None:
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    return out.stdout.strip() or None if out.returncode == 0 else None
+    return out.stdout if out.returncode == 0 else None
+
+
+def _git_head() -> str | None:
+    """Short HEAD, suffixed `-dirty` when the tree has uncommitted changes.
+
+    Provenance, not telemetry: it answers "which code produced this
+    measurement" when a run artifact is read months later. The dirty
+    suffix matters as much as the hash — a run made against uncommitted
+    edits is NOT a replicate of a run made at that commit, and labelling
+    it with the bare hash is exactly the mislabelling `compare_runs.py`
+    exists to catch. Never enters perception; operator-side driver code.
+    """
+    head = _git("rev-parse", "--short", "HEAD")
+    if head is None or not head.strip():
+        return None
+    status = _git("status", "--porcelain")
+    dirty = bool(status and status.strip())
+    return f"{head.strip()}-dirty" if dirty else head.strip()
 
 
 async def _run_one(
