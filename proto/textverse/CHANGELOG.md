@@ -6,6 +6,76 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6g + 6h: narrator sysprompt state-inventory — F-LIVE-20 CLOSED at
+### 1.000 with zero variance — 2026-07-26
+
+Full ledger: `LIVE_RUN_2026-07-26_6gh.md` (runs #18–#26). 6f's warrant was
+narrator `state_coherent` 0.919 [0.871, 0.948] vs a flat 1.000 template
+ceiling: a real ~0.08 gap exceeding the arm's own spread.
+
+**6g (`d3e7813`) — the change, and a FAILED criterion.** Diagnosis: all 27
+residual failures were body-name omission; the narrator named the regime,
+then spent its brevity budget before the universe inventory. The
+composition request demanded every body; the sysprompt's "Brief, 2-5
+sentences, do not embellish" outranked it. Closure at the sysprompt (the
+surface that owns bundle shape): a `What <state> must contain` section
+stating the inventory and subordinating brevity to it. Pre-registered
+criterion was separation above [0.871, 0.948]; measured 0.942 [0.909,
+0.982]. **Overlapping. Criterion FAILED, recorded as such.**
+
+**F-LIVE-28 — the instrument was capping the result.** The targeted class
+was eliminated (`sun` 24 → 0, `earth` 5 → 0) and all 13 survivors were one
+gate artifact: `gate_state_coherent` demanded the literal identifier
+`hot_earth` while the narrator wrote "Hot earth orbiting sun". The
+narrator sysprompt requires prose and forbids markdown, so the gate
+demanded a token the contract forbids. Same path-parity blind spot as
+F-LIVE-22 one layer up, in the instrument rather than the subject; the
+template path passes trivially because it emits identifiers verbatim from
+dict keys. `gates.py`'s own docstring had flagged the exposure years
+earlier: these gates "become load-bearing when the Narrator-LLM
+activates."
+
+**6h (`85b784b`) — instrument fixed, both arms re-measured.** Separator
+normalization on both sides of the naming check, applied to body names AND
+regime labels (the regime half is latent, not failing — so preventive
+rather than outcome-driven). Planted-positives carry the test weight since
+a gate loosened after failing is only legitimate if they survive: absent
+body still fails, absent regime still fails, wrong regime does not blur
+into right. 6g's numbers were then dead evidence, so both arms were re-run
+— requiring `--narrator-sysprompt` and a `narrator_sysprompt_sha` in arm
+identity, because both arms of a sysprompt A/B share a `git_head` by
+construction and revision alone would have pooled a treatment with its own
+control.
+
+**F-LIVE-29 — the re-registered criterion CLEARS.** state_coherent
+control 0.903 [0.886, 0.924] → treatment **1.000 [1.000, 1.000]**,
+separated, zero variance across three runs, matching the template ceiling
+exactly. Turn-level: 24 failures → **ZERO** over 279 turns. Scenario PASS
+10/11/12 → **15/15/15**, also separated. F-LIVE-20, open since run #8's
+0.493, is closed.
+
+**F-LIVE-30 — and it costs something, established.** `non_degenerate`
+separates in the CONTROL's favour (0.995 → 0.979), failure class "speech
+AND tool calls identical to prior turn" rising 3 → 10. Mechanism:
+requiring the full inventory every turn makes `<state>` near-identical
+turn to turn on quiet heartbeats, and near-identical perception induces
+near-identical speech. **ASTRA repeats herself more because her perception
+varies less** — the run-#8 coupling one level deeper (that was perception
+REGISTER bleeding into her register; this is perception VARIABILITY
+bleeding into her variability). persona_stable trends down 0.993 → 0.955
+without separating; same suspected root, not claimed. Verdict KEEP: gain
+~6× the cost on separated measures. Routed as an open question whose right
+owner is probably not the sysprompt.
+
+Also fixed in passing: `_git_head()` ran a repo-wide `git status`, so
+unrelated untracked directories at the project root marked every run
+`-dirty` while the bench subtree was clean. Now path-scoped. The 6h
+artifacts carry the mislabel identically on both arms, so the comparison
+is unaffected.
+
+Gates: **995 pytest** (+9 gate normalization incl. planted-positives, +5
+comparator arm-identity), ruff clean, mypy strict clean, nexus 82/82.
+
 ### 6f: the replication study — the bench gets error bars — 2026-07-25
 
 6e's speedup (narrator suite ~118 min → ~16) made replication affordable

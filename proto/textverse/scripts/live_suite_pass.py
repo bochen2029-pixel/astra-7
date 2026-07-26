@@ -117,7 +117,12 @@ def _git_head() -> str | None:
     head = _git("rev-parse", "--short", "HEAD")
     if head is None or not head.strip():
         return None
-    status = _git("status", "--porcelain")
+    # Path-scoped to the bench subtree. Bare `git status --porcelain`
+    # reports the WHOLE repo, so unrelated untracked directories at the
+    # project root marked every run dirty regardless of the bench's actual
+    # state (caught in 6h: the arm label read `-dirty` while textverse was
+    # clean). A provenance flag that is always on carries no information.
+    status = _git("status", "--porcelain", "--", ".")
     dirty = bool(status and status.strip())
     return f"{head.strip()}-dirty" if dirty else head.strip()
 
