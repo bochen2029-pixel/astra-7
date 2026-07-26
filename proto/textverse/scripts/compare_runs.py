@@ -216,6 +216,15 @@ def build_report(runs: list[RunSummary]) -> str:
         a, b = arm_names
         lines.append(f"## Range separation: `{a}` vs `{b}`")
         lines.append("")
+        thin = [n for n in arm_names if len(arms[n]) < 2]
+        if thin:
+            lines.append(
+                f"> **Single-run arm warning:** {', '.join(thin)} has n=1 — its "
+                f"'band' is a point, and separation against a point is a "
+                f"single-run delta, not a replicated result. Treat every "
+                f"verdict below as directional until the arm is replicated.",
+            )
+            lines.append("")
         lines.append(
             "Ranges that do not overlap are the weakest honest claim of a real "
             "difference at these n. Overlap means NOT ESTABLISHED, which "
@@ -241,10 +250,13 @@ def build_report(runs: list[RunSummary]) -> str:
             )
             note = direction if sep else "not established"
             # A separation resting on few failing turns is the fragile case:
-            # both arms having small nonzero counts is where adding one
-            # replicate flips the verdict. An arm at ZERO events is not
-            # fragile in the same way — absence is not a small sample.
-            if sep and 0 < min(ea, eb) <= SMALL_EVENT_COUNT:
+            # small counts are where adding one replicate flips the verdict.
+            # Criterion is MAX of the two arms (6j audit fix): the original
+            # min>0 form exempted every zero arm, which let a 0-vs-2-event
+            # "separation" pass silently. A zero arm earns the exemption only
+            # when the opposite arm's count is large (24-vs-0 = a failure
+            # class eliminated; 2-vs-0 = two events of noise).
+            if sep and max(ea, eb) <= SMALL_EVENT_COUNT:
                 note += " — FRAGILE, few events"
                 fragile.append(gate)
             lines.append(

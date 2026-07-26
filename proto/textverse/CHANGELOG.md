@@ -6,6 +6,52 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6j: session self-audit — one residual over-claim downgraded, two
+### verification gaps closed, the fragility heuristic itself corrected — 2026-07-26
+
+Full-session audit against artifacts (not memory) plus a design-level
+review. Verified clean: the 6h treatment `state_coherent` 1.000 survives
+the documented substring limitation (87 hot_earth-naming turns, ZERO
+where `earth` was credited only via the substring inside "hot earth") —
+the closure is real, not gate-artifact inflation.
+
+**Gap 1 (verification): the replay legs of runs #18–#26 were never
+checked.** The run loops end in `echo`, so the background exit code 0
+attested nothing about replay divergence. Verified now from artifacts:
+9/9 runs, 27/27 byte-identical — **lifetime 78/78 across 26 live runs.**
+Process fix is procedural: never take a loop's exit code as a gate signal.
+
+**Gap 2 (residual over-claim): the 6f ledger's non_degenerate
+template-vs-narrator row said ESTABLISHED.** Audit: it rests on **3-vs-10
+failing turns**. Unlike F-LIVE-30 it survives every valid replicate
+available (template n=4 adding run #9; narrator n=4), so it is downgraded
+rather than withdrawn: **ESTABLISHED → PROVISIONAL (fragile, few
+events)**. Addendum appended to `LIVE_RUN_2026-07-25_6f.md`; original
+text preserved.
+
+**Gap 3 (instrument): the 6i fragility criterion had a hole.** `min(arm)
+> 0` exempted every zero arm, so a 0-vs-2-event "separation" (two turns
+of noise) would pass unflagged. Corrected to `max(arm) ≤ 20`: still
+leaves 24-vs-0-class closures (a failure class eliminated) alone, catches
+the noise case. Plus a **single-run-arm warning**: a band of n=1 is a
+point, and separation against a point is a single-run delta wearing a
+replicated result's clothes. Both pinned by tests.
+
+Design-level concerns surfaced to the operator (no unilateral action):
+narrator value-measurement blind spot (gates measure failure, not whether
+narrator perception is BETTER than template — the §6.4 investment
+currently has no falsifiable upside metric); `tuning/sampling.json` vs
+in-code NARRATOR_* constants = two sources of sampling truth for the
+narrator; `docs/narrator-spec.md` stale w.r.t. 6e–6h; canon-prompt
+em-dash inventory (narrator 4 / STAGE addendum 9 / adapter 1) vs the
+persona_stable failure class; latent pipe-composed-regime gate edge
+(documented in 6h, no library scenario exercises it); ctx-8192 still the
+open F-LIVE-27 config item; `test_savefile` Hypothesis deadline flake
+under GPU load.
+
+Gates: **1001 pytest** (+3 audit tests on the corrected heuristics), ruff
+clean, mypy strict clean, nexus 82/82.
+
 ### 6i: CORRECTION — F-LIVE-30 was over-claimed twice; withdrawn — 2026-07-26
 
 Investigating the `non_degenerate` coupling refuted the finding that

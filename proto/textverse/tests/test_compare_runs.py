@@ -272,8 +272,8 @@ def test_separation_on_few_events_is_flagged_fragile(tmp_path: Path) -> None:
     assert "Fragility warning" in report
 
 
-def test_zero_event_arm_is_not_flagged_fragile(tmp_path: Path) -> None:
-    """Absence is not a small sample.
+def test_zero_event_arm_with_large_opposite_is_not_flagged(tmp_path: Path) -> None:
+    """Absence is not a small sample — WHEN the opposite arm is large.
 
     The state_coherent closure went 24 failing turns to ZERO; that is a
     different kind of claim from 10-vs-17 and must not be diluted by the
@@ -287,6 +287,43 @@ def test_zero_event_arm_is_not_flagged_fragile(tmp_path: Path) -> None:
     ]
     report = cr.build_report(cr.load_runs(dirs))
     assert "Fragility warning" not in report
+
+
+def test_zero_vs_few_events_is_flagged_fragile(tmp_path: Path) -> None:
+    """6j audit fix: the original min>0 criterion exempted every zero arm,
+    so a 0-vs-2-event 'separation' — two turns of noise — passed silently.
+    Max-based catches it while leaving 0-vs-24 alone."""
+    dirs = [
+        _write(tmp_path, "t1", _payload(
+            narrator=False, tool_valid=0.999, tool_valid_fail_turns=0)),
+        _write(tmp_path, "n1", _payload(
+            narrator=True, tool_valid=0.90, tool_valid_fail_turns=2)),
+    ]
+    report = cr.build_report(cr.load_runs(dirs))
+    assert "FRAGILE, few events" in report
+
+
+def test_single_run_arm_raises_a_warning(tmp_path: Path) -> None:
+    """A band of n=1 is a point; separation against a point is a single-run
+    delta wearing a replicated result's clothes."""
+    dirs = [
+        _write(tmp_path, "t1", _payload(narrator=False, tool_valid=0.99)),
+        _write(tmp_path, "n1", _payload(narrator=True, tool_valid=0.90)),
+        _write(tmp_path, "n2", _payload(narrator=True, tool_valid=0.91)),
+    ]
+    report = cr.build_report(cr.load_runs(dirs))
+    assert "Single-run arm warning" in report
+
+
+def test_no_single_run_warning_when_both_arms_replicated(tmp_path: Path) -> None:
+    dirs = [
+        _write(tmp_path, "t1", _payload(narrator=False, tool_valid=0.99)),
+        _write(tmp_path, "t2", _payload(narrator=False, tool_valid=0.98)),
+        _write(tmp_path, "n1", _payload(narrator=True, tool_valid=0.90)),
+        _write(tmp_path, "n2", _payload(narrator=True, tool_valid=0.91)),
+    ]
+    report = cr.build_report(cr.load_runs(dirs))
+    assert "Single-run arm warning" not in report
 
 
 def test_gate_fail_events_counted_per_run(tmp_path: Path) -> None:
