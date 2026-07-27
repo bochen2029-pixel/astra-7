@@ -1,10 +1,60 @@
-# Narrator-LLM Contract — v0.1
+# Narrator-LLM Contract — v0.2
 
-**DRAFT v0.1 — documents implementation; not spec adoption.** Closes the
-`docs/narrator-spec.md` "forthcoming" pointer (spec v0.128 §6.4, §14) by
-describing the implemented subset in `proto/textverse/` as of 2026-06-10,
-and naming the §6.4 items that are NOT yet implemented. Code is the source
-of truth here; the spec sketch remains the envelope.
+**DRAFT v0.2 (2026-07-26; anchor refresh for the 6c–6k arc) — documents
+implementation; not spec adoption.** v0.1 (2026-06-10) described the
+pre-live-run implementation. Code is the source of truth here; the spec
+sketch remains the envelope.
+
+## 0. Measured state (v0.2 headline; ledgers are authoritative)
+
+Across the 2026-07 live series (26 runs, ledgers
+`proto/textverse/LIVE_RUN_*.md`): fallback rate **0.506 → 0.022**
+(F-LIVE-19 closed: the dominant class was reasoning-budget truncation,
+config not contract), state_coherent **0.493 → 1.000 zero-variance**
+(F-LIVE-20/28/29: sysprompt inventory requirement + the
+identifier-vs-prose gate fix), narrator-path Model-Off Replay proven
+retry-loops-included. **Development status: FROZEN per F-LIVE-31 (6k)** —
+narrator perception shows no measured behavioral effect on ASTRA's
+autotelic register at the 9B floor at 4–5× template wall-clock; the path
+is maintained contract-conformant infrastructure, re-opened by a
+perception-quality instrument or the 27B era.
+
+## 0.1 Inference discipline (NEW at 6e; constants in `narrator_bundle.py`)
+
+- **Reasoning OFF by default** (`NARRATOR_THINKING = "off"` via
+  `chat_template_kwargs`): the Narrator is a renderer under §15.6 — it
+  transcribes numerics it was handed, never derives, so cognition is pure
+  cost. The F-LIVE-11/16 lesson one seam deeper: not "strip the
+  cognition" but do not generate it. Caller-supplied `extra_payload`
+  overrides compose UNDER it (a deliberate override is never silently
+  replaced).
+- **Own compose budget** (`NARRATOR_COMPOSE_MAX_TOKENS = 1024`): never
+  inherits ASTRA's speech-sized SamplingParams default (the silent
+  inheritance was F-LIVE-19's root cause). Temperature 0.4 / top_p 0.85
+  unchanged (rendering, not improvising).
+- **Think-strip at the seam regardless** (`_strip_reasoning`,
+  last-`</think>` rule; unclosed fails CLOSED; strip-before-validate):
+  defense-in-depth stays even with thinking off.
+- Sampling scope note: `tuning/sampling.json` governs the ASTRA bundle
+  only; narrator constants live in code (see the file's `_comment`).
+
+## 0.2 Composition-request contract (NEW at 6e/6h)
+
+- **Compact serialization:** the StateBus JSON in the request is
+  byte-identical to the trace pool's first entry — what the narrator is
+  shown and what it is grounded against are the same string.
+- **Derived presentation values:** the request supplies the regime LABEL
+  (`regime_label()`) and the body-name list under an explicit "already
+  computed; do not re-derive" instruction (F-LIVE-22: no LLM is asked to
+  re-derive what the harness computed — same rule as τ/watch labels).
+- **State-section inventory:** the narrator sysprompt requires `<state>`
+  to name the regime label and every body, with brevity explicitly
+  subordinate ("brevity governs how, never whether") — the F-LIVE-26→29
+  closure, guarded by `tests/test_bundles.py`.
+- **Prose-channel naming rule (gate side):** `gate_state_coherent`
+  normalizes separators when checking names — the `<state>` channel is
+  contractually prose, and demanding identifier syntax (`hot_earth`)
+  there required the narrator to violate its own voice rules (F-LIVE-28).
 
 ## 1. Role (implemented)
 
@@ -67,5 +117,14 @@ Strict by default; bypass requires an explicit debug flag.
 
 ## 5. Cross-references
 
-Spec v0.128 §6.4, §15.6 · v0.129-TENTATIVE §6.4 edits · `docs/stage-protocol.md`
-· `tests/test_narrator_pathway.py`, `tests/test_narrator_calculator_bound.py`.
+Spec v0.130 §6.4, §15.6 (adopted envelope) · `docs/stage-protocol.md` ·
+`proto/textverse/LIVE_RUN_2026-07-25.md` (6e), `…_6f.md`, `…_6gh.md`
+(6g/6h + corrections), `…_6k.md` (F-LIVE-31 freeze verdict) ·
+`tests/test_narrator_pathway.py`, `test_narrator_calculator_bound.py`,
+`test_narrator_think_strip.py`, `test_narrator_replay.py`,
+`test_narrator_inference_config.py`.
+
+*(v0.1 sections 1–4 above retain their 2026-06-10 text where still true;
+the trace/replay closure (6c: `TracingLLMClient` receipts every attempt,
+narrator sessions replay byte-identically model-off) supersedes §2's
+silence on tracing.)*

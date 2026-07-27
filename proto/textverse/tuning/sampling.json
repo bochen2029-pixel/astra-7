@@ -1,5 +1,5 @@
 {
-  "_comment": "Sculptor's current sampling configuration. Sculptor edits this file freely (auto category). Baseline values match astra.llm.SamplingParams defaults.",
+  "_comment": "Sculptor's current sampling configuration for the ASTRA bundle. Sculptor edits this file freely (auto category). Baseline values match astra.llm.SamplingParams defaults. SCOPE NOTE (6m, 2026-07-26): the NARRATOR's sampling is NOT governed here - its constants (temperature 0.4, top_p 0.85, max_tokens 1024, thinking off) live in astra/llm/narrator_bundle.py as NARRATOR_* per the 6e F-LIVE-19 closure; a Sculptor loop over narrator sampling would need its own file plus driver wiring, deliberately not pre-built.",
   "temperature": 0.7,
   "top_p": 0.9,
   "top_k": 40,

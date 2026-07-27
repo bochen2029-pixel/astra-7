@@ -23,7 +23,7 @@ import json
 from pathlib import Path
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from astra.core.astra_coord import AstraCoord
@@ -255,6 +255,12 @@ def test_reflex_identity_carries_training_corpus_version(tmp_path: Path) -> None
 # --- Property: roundtrip across the kinematic envelope ----------------------
 
 
+# deadline=None: this property performs real file I/O per example, and the
+# default 200 ms per-example deadline flaked once under concurrent GPU load
+# (2026-07-26, live suite running beside the gate run). Correctness is
+# unaffected by wall time; Hypothesis' deadline exists to catch pathological
+# slowdowns, which the suite-level timeout still bounds.
+@settings(deadline=None)
 @given(
     zx=st.floats(min_value=-9.0, max_value=9.0, allow_nan=False, allow_infinity=False),
     zy=st.floats(min_value=-9.0, max_value=9.0, allow_nan=False, allow_infinity=False),
