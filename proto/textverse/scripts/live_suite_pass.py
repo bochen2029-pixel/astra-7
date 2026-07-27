@@ -307,6 +307,16 @@ def _summarize(
         f"scenarios: {len(rows)} | ran: {len(ran)} | PASS: {len(passed)} | "
         f"FINDINGS: {len(ran) - len(passed)} | crashed: {len(crashed)}",
     )
+    if crashed:
+        # F-LIVE-27's silent-exclusion hazard: a crashed scenario vanishes
+        # from every gate mean below, so an affected run LOOKS clean. Say it
+        # where the aggregates are read.
+        lines.append(
+            f"> **CRASH WARNING: every aggregate below excludes "
+            f"{len(crashed)} crashed scenario(s)** "
+            f"({', '.join(r['scenario'] for r in crashed)}). "
+            f"Rates are conditional on the scenarios that survived.",
+        )
     lines.append("")
     lines.append("| scenario | result | turns | s | worst gates |")
     lines.append("|---|---|---|---|---|")
@@ -369,7 +379,13 @@ async def _main() -> int:
         "--model-path", default=r"C:\models\Qwen3.5-9B-Q5_K_M.gguf",
     )
     parser.add_argument("--port", type=int, default=8080)
-    parser.add_argument("--ctx-size", type=int, default=8192)
+    # 16384 default per F-LIVE-27 (6l): a 6-turn heartbeat scenario measured
+    # 14454 request tokens and crashed the 8192 ceiling in 1 of 3 template
+    # replicates — stochastically, because ASTRA's own output lengths vary.
+    # Verified 2026-07-26: full 34-scenario pass at 16384, 0 crashed, the
+    # crash-prone scenario PASS; loaded VRAM 10.2 GiB of 16.4 (9B Q5_K_M,
+    # all layers GPU) — ~6 GiB headroom.
+    parser.add_argument("--ctx-size", type=int, default=16384)
     parser.add_argument("--base-url", default=None)
     parser.add_argument(
         "--skip-server", action="store_true",

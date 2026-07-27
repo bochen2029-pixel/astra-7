@@ -6,6 +6,21 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6l: F-LIVE-27 CLOSED — ctx default 8192 → 16384, measured — 2026-07-26
+
+The crash was arithmetic, not stochastic in mechanism: a 6-turn heartbeat
+scenario accumulated a 14454-token request against the 8192 ceiling
+(stochastic only in whether ASTRA's output lengths tipped it).
+Verification at 16384 (`scenarios/output/live_run_6l_ctx16384/`): full
+template pass, **34/34 ran, 0 crashed, heartbeat_warp_cruise PASS all
+gates 1.0**; loaded VRAM measured **10.2 GiB of 16.4** (9B Q5_K_M, all
+layers GPU) — ~6 GiB headroom. Driver default changed with the receipt in
+the comment.
+
+Also closes the silent-exclusion hazard the finding named: the summary
+now prints a **CRASH WARNING** naming excluded scenarios whenever
+crashed > 0, so a run that lost scenarios can never read as clean.
+
 ### 6k: the narrator-value question answered from artifacts — no measured
 ### behavioral effect at the 9B floor — 2026-07-26
 
