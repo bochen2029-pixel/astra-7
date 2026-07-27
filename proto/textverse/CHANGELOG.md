@@ -6,6 +6,44 @@ Per-day implementation entries. Each entry should include: what was built, what 
 
 ## Unreleased
 
+### 6k: the narrator-value question answered from artifacts — no measured
+### behavioral effect at the 9B floor — 2026-07-26
+
+The 6j audit's deepest concern (§6.4 narrator has no falsifiable upside
+metric) is resolved the cheapest honest way: cross-arm analysis of the
+seventeen runs already on disk, ASTRA-side code identical throughout, arms
+differing only in perception path. EXPLORATORY per the standing rule;
+expectations pre-registered in `LIVE_RUN_2026-07-26_6k.md` before any
+number was computed.
+
+**F-LIVE-31:** template n=4 vs narrator-old n=7 vs narrator-new n=6 —
+**full overlap on every autotelic measure** (silence, fidget, initiation
+rate + brevity, operator-response rate). Narrator perception has NO
+measured behavioral signature on ASTRA at this floor, while costing 4–5×
+wall-clock. Routing: **freeze narrator polish** (mechanism stays proven +
+maintained); value question re-opens with a perception-quality instrument
+or at the 27B/A0 era. Budget-exceedance lead (narrator means higher,
+overlapping) recorded exploratory; the 2/3/5 "creep" watch item SOFTENS
+(template replicates measured 0/2/2 — variance, not trend).
+
+**F-LIVE-32:** perception em-dash inventory. ~4 turns/run in BOTH paths:
+mostly operator-quoted (legitimate — his voice, not hers), plus ONE
+scenario-authored instance (`power_shift_request` somatic note, YAML line
+84) reaching ASTRA's body-sense channel 13× across the corpus — an
+authoring inconsistency (the narrator is banned from em-dashes in
+perception; scenario YAML is not), routed as an operator/authoring
+decision since scenario edits invalidate series comparability. The
+em-dash register-bleed hypothesis is **unsupported in this corpus** (that
+scenario produced zero speech em-dashes in 17 runs; 13 speech events
+across ~5,000+ turns, scattered) — the 6j "cheapest persona win" ranking
+for canon-em-dash cleanup is weakened accordingly.
+
+Instrument: `compare_runs.py` gains a standing per-arm **Autotelic
+register** section (rates + em-dash counts in both channels).
+
+Gates: **1003 pytest** (+2 register extraction), ruff clean, mypy strict
+clean.
+
 ### 6j: session self-audit — one residual over-claim downgraded, two
 ### verification gaps closed, the fragility heuristic itself corrected — 2026-07-26
 

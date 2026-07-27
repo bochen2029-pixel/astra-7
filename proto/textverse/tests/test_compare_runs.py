@@ -326,6 +326,48 @@ def test_no_single_run_warning_when_both_arms_replicated(tmp_path: Path) -> None
     assert "Single-run arm warning" not in report
 
 
+# --- autotelic register extraction (6k) --------------------------------------
+
+
+def _register_payload() -> dict[str, Any]:
+    """Two heartbeats (one silent, one fidget), one answered operator turn,
+    one em-dash in a bundle."""
+    p = _payload(narrator=True, tool_valid=0.9)
+    p["rows"][0]["metrics"] = {"budget_exceedances": 2}
+    p["rows"][0]["turn_records"] = [
+        {"turn_kind": "heartbeat", "speech": "", "tool_calls": [],
+         "perception_bundle": "<state>quiet</state>", "lcp_gates": {}},
+        {"turn_kind": "heartbeat", "speech": "", "tool_calls": [{"op": "x"}],
+         "perception_bundle": "<state>drift — warm</state>", "lcp_gates": {}},
+        {"turn_kind": "operator", "speech": "Here.", "tool_calls": [],
+         "perception_bundle": "<state>ok</state>", "lcp_gates": {}},
+    ]
+    return p
+
+
+def test_register_totals_extracted(tmp_path: Path) -> None:
+    run = cr.load_runs([_write(tmp_path, "r1", _register_payload())])[0]
+    reg = run.register
+    assert reg["heartbeat_turns"] == 2
+    assert reg["silence_rate"] == pytest.approx(0.5)
+    assert reg["fidget_rate"] == pytest.approx(0.5)
+    assert reg["initiation_rate"] == 0.0
+    assert reg["response_rate"] == 1.0
+    assert reg["budget_exceedances"] == 2.0
+    assert reg["bundle_emdash_turns"] == 1.0   # the bleed vector
+    assert reg["speech_emdash_turns"] == 0.0
+
+
+def test_register_section_renders_with_separation_line(tmp_path: Path) -> None:
+    dirs = [
+        _write(tmp_path, "a1", _register_payload()),
+        _write(tmp_path, "b1", _payload(narrator=False, tool_valid=0.9)),
+    ]
+    report = cr.build_report(cr.load_runs(dirs))
+    assert "Autotelic register" in report
+    assert "register separations:" in report
+
+
 def test_gate_fail_events_counted_per_run(tmp_path: Path) -> None:
     a = _write(tmp_path, "r1", _payload(
         narrator=False, tool_valid=0.9, tool_valid_fail_turns=5))

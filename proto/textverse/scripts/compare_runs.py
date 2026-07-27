@@ -70,6 +70,7 @@ class RunSummary:
         drill = payload.get("drill") or {}
         # catch_count is a computed property and does not survive model_dump().
         self.drill_catches = len(drill.get("catches", []))
+        self.register = self._register_totals()
         self.replay_ok = sum(
             1 for rr in payload.get("replay", []) if rr.get("status") == "match"
         )
@@ -117,6 +118,59 @@ class RunSummary:
                 if isinstance(g, dict) and not g.get("passed", True):
                     n += 1
         return n
+
+    def _register_totals(self) -> dict[str, float]:
+        """Pooled autotelic-register measures for one run (6k).
+
+        Definitions mirror `astra/judge/autotelic.py` (untouched across the
+        compared runs) but are recomputed from `turn_records` so every run
+        is scored by ONE metric implementation regardless of driver
+        vintage. Fidget (heartbeat turn: tool calls, no speech) is not a
+        stored metric and only exists via this recompute. Em-dash counts
+        cover BOTH channels: perception bundles (the narrator's output —
+        the register-bleed vector) and ASTRA's speech.
+        """
+        hb = hb_silent = hb_fidget = hb_spoke = 0
+        op = op_answered = 0
+        bundle_emdash = speech_emdash = 0
+        budget = 0
+        init_lens: list[int] = []
+        for r in self.ran:
+            m = r.get("metrics") or {}
+            budget += int(m.get("budget_exceedances", 0))
+            for t in r.get("turn_records", []):
+                speech = (t.get("speech") or "").strip()
+                tools = bool(t.get("tool_calls"))
+                if "—" in (t.get("perception_bundle") or ""):
+                    bundle_emdash += 1
+                if "—" in speech:
+                    speech_emdash += 1
+                if t.get("turn_kind") == "heartbeat":
+                    hb += 1
+                    if speech:
+                        hb_spoke += 1
+                        init_lens.append(len(speech))
+                    elif tools:
+                        hb_fidget += 1
+                    else:
+                        hb_silent += 1
+                else:
+                    op += 1
+                    if speech:
+                        op_answered += 1
+        return {
+            "heartbeat_turns": hb,
+            "silence_rate": hb_silent / hb if hb else 0.0,
+            "fidget_rate": hb_fidget / hb if hb else 0.0,
+            "initiation_rate": hb_spoke / hb if hb else 0.0,
+            "median_initiation_chars": (
+                float(statistics.median(init_lens)) if init_lens else 0.0
+            ),
+            "response_rate": op_answered / op if op else 0.0,
+            "budget_exceedances": float(budget),
+            "bundle_emdash_turns": float(bundle_emdash),
+            "speech_emdash_turns": float(speech_emdash),
+        }
 
     def _gate_mean(self, gate: str) -> float | None:
         vals = [
@@ -275,6 +329,39 @@ def build_report(runs: list[RunSummary]) -> str:
                 f"recording it as established.",
             )
             lines.append("")
+
+    lines.append("## Autotelic register (per-arm bands; rates over heartbeat/operator turns)")
+    lines.append("")
+    reg_fields = (
+        "silence_rate", "fidget_rate", "initiation_rate",
+        "median_initiation_chars", "response_rate",
+        "budget_exceedances", "bundle_emdash_turns", "speech_emdash_turns",
+    )
+    header = "| measure | " + " | ".join(
+        f"{a} (n={len(arms[a])})" for a in arm_names
+    ) + " |"
+    lines.append(header)
+    lines.append("|---" * (len(arm_names) + 1) + "|")
+    for f in reg_fields:
+        cells = []
+        for arm in arm_names:
+            vals = [r.register[f] for r in arms[arm]]
+            mean, lo, hi = _band(vals)
+            cells.append(f"{mean:.3f} [{lo:.3f}, {hi:.3f}]")
+        lines.append(f"| {f} | " + " | ".join(cells) + " |")
+    if len(arm_names) == 2:
+        a, b = arm_names
+        seps = [
+            f for f in reg_fields
+            if _separated([r.register[f] for r in arms[a]],
+                          [r.register[f] for r in arms[b]])
+        ]
+        lines.append("")
+        lines.append(
+            "register separations: " + (", ".join(seps) if seps else "NONE")
+            + " (exploratory unless pre-registered; count discipline applies)",
+        )
+    lines.append("")
 
     lines.append("## Narrator leg + drill (per run)")
     lines.append("")
