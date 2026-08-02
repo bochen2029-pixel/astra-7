@@ -206,16 +206,29 @@ encouraged.
 STATUS.
 ================================================================
 
-Pre-development as of 2026-05-12. Public presence established
-(GitHub repo, Hugging Face bundle, this Steam page, the website).
-The game itself is in early scaffolding.
+In development as of 2026-08-02. No playable build yet.
 
-Phase order:
+The order of work here is unusual and deliberate. Rather than
+build a room and bolt an AI into it, the architecture is being
+proven in instrumented rigs first, each one falsifiable on its
+own terms.
 
-  0. Public presence              [complete]
-  1. Project skeleton             [in progress]
-  2. Vertical slice               [planned]
-  3. Build-out                    [planned]
+  Public presence                 [complete]
+  Physics core                    [complete, 82 assertions green]
+  AI bundle verification loop     [complete, closed 2026-05-15,
+                                   1003 tests green, running as
+                                   permanent regression infra]
+  Visual physics testbed          [shipped v0.1.0, 12 scenes,
+                                   pixel-verified against the math]
+  Warp hull audio                 [first light, tuning pending]
+  Fine-tune corpus pipeline       [built, generation pending]
+  Ship interior and game plugin   [not started]
+  Vertical slice                  [not started]
+
+What that means in plain terms: the mind works and is measured,
+the physics works and is proven, the sound and the visuals work
+and have been checked against the same equations. The ship you
+walk around in does not exist yet.
 
 The game ships when the AI works. Not before. There is no
 release date. There will be no Early Access until the vertical

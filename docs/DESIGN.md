@@ -66,7 +66,11 @@ An AI girlfriend game. A combat or action game. A walking simulator with chatbot
 
 ## Status
 
-Pre-development. Design canon established. ASTRA-7 sysprompt drafted ([astra-sysprompt.md](astra-sysprompt.md)). Bundle architecture validated empirically via predecessor K-line work.
+In development; no playable build. Verified 2026-08-02: the closed-loop verification bench is green (1003 tests), the physics binary holds 82 assertions, the CUDA/OpenGL visual testbed shipped v0.1.0 with 12/12 scenes, and the UE 5.7 warp-hull audio PoC compiles. Spec envelope is v0.130, adopted 2026-07-19. Live measurement runs on a local Qwen3.5 9B; the 27B substrate awaits the A0 fine-tune (Phase 6 complete). ASTRA-7 sysprompt is canon at [astra-sysprompt.md](astra-sysprompt.md).
+
+Ship interior, UE5 game plugin, and playable slice: not started.
+
+Full measured state: [CLAUDE.md](../CLAUDE.md) §Current Status.
 
 ---
 

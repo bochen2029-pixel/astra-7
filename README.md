@@ -30,7 +30,21 @@ The technical name for this is *autotelic*. The encounter is the value; the work
 
 ## Status
 
-Pre-development. Design canon established. See [CLAUDE.md](CLAUDE.md) for the full canonical design.
+In development. No playable build yet.
+
+The strategy has been to prove the architecture in instrumented rigs before committing engine work. As of 2026-08-02:
+
+- **Bundle architecture — proven.** A closed-loop verification bench runs three LLM bundles (ASTRA, Narrator, Adapter) calculator-bound to a C++ physics binary, across 34 canonical scenarios. 1003 tests green. The loop closed 2026-05-15 and is now permanent regression infrastructure, not scaffolding.
+- **Physics — proven.** The 14-equation framework composes in ~70 KB of C++ with 82 assertions green.
+- **Visuals — shipped as a testbed.** A standalone CUDA + OpenGL rig renders 12 scenes (warp field, Cherenkov cone, retarded-time orbit reversal, chaos instability, lensing) with pixel-level assertions verified against the same math. Not the game; the proof the math is renderable.
+- **Audio — first light.** A UE 5.7 module builds the five-layer warp-hull synthesis procedurally at runtime. Zero binary assets. Awaiting ear-tuning.
+- **The spec** is at v0.130, adopted 2026-07-19. Revisions require empirical findings, not ideas.
+
+Everything above runs on a local Qwen3.5 9B — the current measurement floor. The 27B substrate the design targets awaits a fine-tune pipeline now at Phase 6.
+
+Not yet started: the ship interior, the UE5 game plugin, any playable slice.
+
+See [CLAUDE.md](CLAUDE.md) for the full canonical design and the measured state.
 
 ## Architecture
 

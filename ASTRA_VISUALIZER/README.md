@@ -2,7 +2,11 @@
 
 A standalone Windows 11 / Linux executable that renders 12 visual physics scenes demonstrating ASTRA-7 spec v0.129's claimed phenomena. Engine-agnostic ground-truth between the math (`libastra_nexus`) and the eventual UE5 rendering.
 
-**Status:** specification phase. Implementation begins when a coding agent reads `CLAUDE.md` + `DESIGN_SPEC.md` and starts V0.
+**Status: SUPERSEDED — read for provenance only.** Active work moved to the sibling `ASTRA_VISUALIZER_02/`, which shipped v0.1.0 on 2026-05-16.
+
+*(Corrected 2026-08-02. This line previously read "specification phase," which was never true after the first build session: implementation reached **V1.13 = 12/12 scenes, 100/100 assertions, complete spec coverage**, then V1.14 QC + bubble alpha polish on 2026-05-17. The README was simply never updated post-build. See `BUILD_LOG.md` for the actual arc.)*
+
+Remaining open items from this rig, carried forward rather than finished here: operator S05 sign-off, Layer-2 heatmap-diff, golden capture, optional CUDA port of the S09 chaos PDE. Two spec-revision empirical findings originated here and still stand: the Cherenkov "narrows→opens" wording (V0) and the linear kin-redshift model (V1.7).
 
 ---
 

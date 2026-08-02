@@ -2,7 +2,7 @@
 
 *Cold-start sequence for drafting the next cycle. Works for both post-compaction and fresh-session scenarios. Optimized for the 1M context window: read everything; the order matters because constraints prime voice.*
 
-*Updated 2026-05-15 evening after cycles 1-4 filed.*
+*Written 2026-05-15 evening after cycles 1-4 filed. **Status corrected 2026-08-02: the manuscript is COMPLETE** — all 14 cycles are filed, plus 5 front-matter and 5 back-matter pieces. This file's reading order still applies to revision passes; read "the four already filed" as "the relevant prior cycles."*
 
 ---
 

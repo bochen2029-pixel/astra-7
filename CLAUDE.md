@@ -11,11 +11,14 @@ This CLAUDE.md is the canonical design document. Read it first. Update it as dec
 ASTRA-7 has multiple parallel tracks, each with its own implementation surface. Pick your track, then read its track-specific orientation directive **before** writing any code or prose. The spec envelope is `docs/spec-v0.130.md` (adopted 2026-07-19 by operator ruling over the finalization packet, rulings R-A…R-D; binding on all tracks; v0.129 and the 07-19 amendment DRAFT are superseded history).
 
 - **Track A — textverse (LLM bundle bench, current build focus):** `proto/textverse/STARTUP.md`
-- **Track B — UE5 plugin (visual / engine):** `proto/ue5plugin/STARTUP.md` *(forthcoming)*
-- **Track C — physics binary (`proto/astra_nexus`):** locked; only additive changes (e.g., Day 2's `--stdio-server` mode); existing 82 assertions must keep passing
-- **Book drafting (parallel session lineage):** see the latest book session dump in `memory/`; manuscript at `book/manuscript/`; canon at `book/CANON.md` + `book/negative_space.md`
+- **Track B — UE5 game plugin (visual / engine):** **not begun.** `proto/ue5plugin/STARTUP.md` does not exist. Do not cite it as a reading source.
+- **Track C — physics binary (`proto/astra_nexus`):** locked; only additive changes; existing 82 assertions must keep passing. `--stdio-server` mode already landed.
+- **Visual testbed (`ASTRA_VISUALIZER_02/`):** scope-locked sandbox with its own `CLAUDE.md` operating contract. SHIPPED v0.1.0; 12/12 scenes. Read anywhere under `C:\ASTRA-7\`, write only inside that folder. Its predecessor `ASTRA_VISUALIZER/` is superseded — read for provenance only.
+- **Audio PoC (`ASTRA_AUDIO/`):** UE 5.7 project, five-layer MetaSound warp-hull synthesis, zero binary assets. Own `CLAUDE.md` + `DESIGN_SPEC.md`. PoC v0 compiles; ear-tuning sign-off pending.
+- **A0 fine-tune (`C:\astra-a0-finetune\`, separate git repo):** Phase 6 complete. Orchestration docs at `astra-a0-bootstrap/`; evidence map at `ASTRA-A0_EVIDENCE_MAP_2026-07-26.md`.
+- **Book drafting (parallel session lineage):** manuscript at `book/manuscript/` (14 cycles, complete); canon at `book/CANON.md` + `book/negative_space.md`; cold-start at `book/RESUME.md`.
 
-For project-state at-a-glance: `memory/MEMORY.md` is auto-loaded at session start; `memory/project_status.md` is the current snapshot.
+For project-state at-a-glance: read the **Current Status** section of this file, then `proto/textverse/CHANGELOG.md` (top entry) and `proto/textverse/STARTUP.md` §2 for live routing. Claude Code's harness memory at `C:\Users\user\.claude\projects\C--ASTRA-7\memory\` auto-loads a small `MEMORY.md` index; there is **no `memory/` directory in this repo** and no `project_status.md` — older docs that cite them are wrong. `___INDEX_CACHE/000_MASTER_INDEX_2026-06-24.md` is the operator's whole-repo deep-read index (untracked).
 
 For fresh-session bootstrap procedure (cwd choice, reading order, what to do first): `BOOTSTRAP.md` at the project root.
 
@@ -206,7 +209,7 @@ The discipline is: **we don't build for Apple, we don't test on Apple, we don't 
 - **Distribution:** Steam (free, no DRM, no monetization)
 - **Code:** GitHub (MIT or Apache 2)
 - **Weights:** Hugging Face (base model license respected)
-- **Status:** Pre-development / design canon phase
+- **Status:** Active development. Empirical loop closed 2026-05-15; three rigs green; spec envelope v0.130 adopted 2026-07-19. No playable slice yet. See Current Status below for measured state.
 - **Hardware target:** RTX 5090 recommended, RTX 4090 minimum, 24-32GB VRAM
 - **Platform:** Windows 11 primary, Linux x86_64 acceptable second; no Apple/Mac (see Platform Discipline)
 
@@ -510,35 +513,71 @@ The deeper claim being made about the form should be left for players to discove
 
 ## Open Source Plan
 
-### Repository Structure (Initial)
+### Repository Structure (actual, verified 2026-08-02)
+
+The 2026-05-12 aspirational layout below the fold never materialized in that shape. The repository grew around the *research rigs* instead, and that is the honest structure. 647 tracked files.
 
 ```
-/astra-7/
-  CLAUDE.md                  (this file)
-  README.md
-  LICENSE
-  
-  /docs/
-    DESIGN.md                (canonical design summary)
-    astra-sysprompt.md       (ASTRA-7 system prompt, canon)
-    ship-api.md              (ship subsystem API spec)
-    architecture.md          (technical architecture)
-    
-  /game/
-    UnrealProject/           (UE 5.x project files)
-    
-  /ai/
-    /bundle/
-      sysprompt.md           (mirror of /docs/astra-sysprompt.md, loaded by harness)
-      /harness/              (memory, tool routing, time abstraction)
-    /fine-tuning/            (synthetic data, training scripts, LoRA configs)
-    
-  /infra/
-    /bridge/                 (UE ↔ LLM bridge)
-    /inference/              (llama.cpp setup, model configs)
-    
-  /assets/                   (UE marketplace integrations, custom assets)
+C:\ASTRA-7\
+  CLAUDE.md                  (this file — project canon)
+  BOOTSTRAP.md               (fresh-session doorway)
+  README.md  LICENSE
+
+  /docs/                     26 tracked files
+    spec-v0.130.md           THE ENVELOPE (adopted 2026-07-19, rulings R-A..R-D)
+    spec-v0.130-FINALIZATION-PACKET-2026-07-19.md   adoption record
+    spec-v0.{1,123,125,126,127,128,129}.md          historical lineage
+    astra-sysprompt.md  astra-sysprompt-addendum-stage.md   Surface 5 canon
+    stage-protocol.md  narrator-spec.md              implemented contracts
+    DESIGN.md  architecture.md  synthesis.md  qualia-1-bridge.md
+    AUDIT_METHODOLOGY.md  STEAM_AI_DISCLOSURE_DRAFT.md  /external/
+    (no ship-api.md — the Tool API is defined in code at
+     proto/textverse/astra/ship/spec.py, 7 ops, test-enforced)
+
+  /proto/                    225 tracked files — TRACK A + TRACK C
+    astra_nexus.cpp          Track C physics binary, ~70 KB C++, 82/82 assertions
+    build.bat  astra_nexus.exe
+    verify_nexus.py          FROZEN legacy mirror (Language Discipline)
+    /textverse/              TRACK A — the closed-loop bench, Python carve-out
+      STARTUP.md             Track A orientation directive (read first)
+      CHANGELOG.md           ~179 KB, the running implementation record
+      ARCHITECTURE.md        original ground-up design (historical plan-of-record)
+      LIVE_RUN_*.md          live-LLM findings ledgers (5 files)
+      /astra/                78 .py, ~13.8K LOC — harness, judge, sculptor,
+                             grammar, llm, physics, ship, state_bus, universe,
+                             scenarios, operator, persona_test, core, cli
+      /tests/                59 .py, ~12.6K LOC — 1003 passing
+      /scenarios/library/    34 scenario YAMLs + validation gate
+      /prompts/  /tuning/  /scripts/  /docs/
+
+  /ASTRA_VISUALIZER_02/      173 tracked files — CUDA + OpenGL visual testbed
+                             SHIPPED v0.1.0 (2026-05-16). 12/12 scenes, CI green.
+  /ASTRA_VISUALIZER/         103 tracked files — superseded v1.x first attempt.
+                             Reached 12/12 scenes / 100 assertions before _02.
+  /ASTRA_AUDIO/              18 tracked files — UE 5.7 project, five-layer
+                             MetaSound warp-hull synthesis. PoC v0 built.
+
+  /book/                     57 tracked files — "The Long Watch"
+    CANON.md  negative_space.md  long_watch_dev.md  RESUME.md
+    /manuscript/             14 cycles + front matter + back matter (complete)
+    /production/             DORMANT (Python; closed to new work)
+
+  /tests/                    byte-identical canon mirrors (CI-enforced)
+    wall_clock_patterns.txt  qc3_events.txt
+
+  /astra-a0-bootstrap/       orchestration docs for the A0 fine-tune build
+  /brainstorm/               research scratch (do NOT load)
+
+  # Present but empty scaffolding from the 2026-05-12 layout — no tracked files:
+  /game/UnrealProject/  /ai/bundle/  /ai/fine-tuning/  /infra/bridge/  /infra/inference/
 ```
+
+**Outside the repo, load-bearing:**
+
+- `C:\astra-a0-finetune\` — the A0 fine-tune pipeline. **Separate git repo.** Phase 6 complete (2026-07-26); 67 tests green; proven end-to-end against a live endpoint.
+- `C:\models\` — local GGUF weights (Qwen3.5-9B-Q5_K_M is the current measurement floor; also 8B, 4B, embedding + reranker, whisper models).
+- `C:\Users\user\.claude\projects\C--ASTRA-7\memory\` — Claude Code harness memory (`MEMORY.md` + three fact files). **Note:** this holds four small files, not the session-dump lineage older docs describe.
+- `___INDEX_CACHE/` — operator-built whole-repo deep-read index (2026-06-24), untracked. `000_MASTER_INDEX_2026-06-24.md` is the entry point.
 
 ### Distribution
 
@@ -555,10 +594,10 @@ The deeper claim being made about the form should be left for players to discove
 
 ---
 
-## Tech Stack (Provisional)
+## Tech Stack (Provisional target; see Current Status for what is actually running)
 
-- **Engine:** Unreal Engine 5.5+
-- **LLM:** Qwen 3.6 27B GGUF (Q5_K_M for 5090, Q4_K_M for 4090)
+- **Engine:** Unreal Engine 5.5+ (`ASTRA_AUDIO` is on 5.7)
+- **LLM:** Qwen 3.6 27B GGUF (Q5_K_M for 5090, Q4_K_M for 4090) — **target, not current.** All live measurement runs on Qwen3.5-9B-Q5_K_M at `C:\models\`; ctx default 16384 (F-LIVE-27, measured 2026-07-26: 10.2 GiB of 16.4 loaded VRAM, all layers GPU)
 - **Inference:** llama.cpp with multimodal support
 - **ASR:** whisper.cpp (C/C++, no Python wrappers)
 - **TTS:** Piper-TTS or sherpa-onnx (C/C++, offline; replaces prior Coqui/Bark mention per Language Discipline)
@@ -568,62 +607,46 @@ The deeper claim being made about the form should be left for players to discove
 
 ---
 
-## Current Status
+## Current Status (verified 2026-08-02)
 
-- Pre-development
-- Design canon established (this document)
-- ASTRA-7 sysprompt drafted (canonical at `/docs/astra-sysprompt.md`)
-- Bundle architecture validated empirically via predecessor work (K-line research)
+**Not pre-development.** Three research rigs are built and green; the empirical loop closed 2026-05-15 and has been running as the project's oracle ever since. 103 commits on `main`.
+
+The **Verified 2026-08-02** column means a command was actually run on that date. **Artifact** means the claim was read off a build artifact or report file on disk, not re-executed.
+
+| Rig | State | Evidence | How |
+|---|---|---|---|
+| **Track A — textverse bench** (`proto/textverse/`) | Closed loop, permanent infrastructure | **1003 pytest passed** (12.6 s); ruff clean; mypy strict clean across 78 source files | Verified 2026-08-02 (`uv run pytest` · `ruff check astra tests` · `mypy astra`) |
+| **Track C — physics binary** (`proto/astra_nexus.cpp`) | Locked, additive-only | **82 passed, 0 failed** | Verified 2026-08-02 (`astra_nexus.exe`) |
+| — Tool API / scenario library | | **7 ops**, **34** scenarios | Verified 2026-08-02 (source + file count) |
+| **Visual testbed** (`ASTRA_VISUALIZER_02/`) | **SHIPPED v0.1.0** (2026-05-16) | 12/12 scenes; 44/44 scene+golden assertions, all golden diffs mean 0.0000; `build/astra_visualizer.exe` present | Artifact (`ci_results/report.json`); **not re-run 2026-08-02** |
+| **Audio PoC** (`ASTRA_AUDIO/`) | UE 5.7 module compiles; PoC v0 | `Binaries/Win64/UnrealEditor-AstraAudio.dll`, 225 KB | Artifact (DLL on disk + `BUILD_LOG.md`); **first PIE never run — ear-tuning sign-off pending** |
+| **Book — "The Long Watch"** (`book/`) | Manuscript complete | 14 cycles + 5 front + 5 back matter filed | Verified 2026-08-02 (file count) |
+| **A0 fine-tune** (`C:\astra-a0-finetune\`, separate repo) | **Phase 6 complete** (2026-07-26) | 67 tests green; pipeline proven end-to-end against a live endpoint | Artifact (`PILOT_2026-07-26.md`); **suite not re-run 2026-08-02** |
+
+**Bench specifics (Track A, from `STARTUP.md` §0 and the CHANGELOG; corroborated by test-module presence, not independently re-measured):** 3 LLM bundles (ASTRA / Narrator / Adapter) running calculator-bound to the C++ binary · Tool API at **7 ops** (`log.write`, `nav.heading_set`, `power.allocate`, `sensors.scan`, `status.query`, `warp.disengage`, `warp.engage`) · **34** scenarios with a library-wide validation gate · three §4.9 ephemerals with consolidator + drift triggers on the §4.3.1 heartbeat · SaveFile v3 with regime-coherence load gate · Somatic Aggregator live · Model-Off Replay live-proven 78/78 across 26 live runs.
+
+**Spec:** envelope is `docs/spec-v0.130.md`, adopted 2026-07-19 (rulings R-A…R-D). QC-to-parity complete. Revisions require empirical findings from a closed loop (§15.4; Mode 6 is the named failure mode).
+
+**Public presence:** GitHub repo live (`origin` → `github.com/bochen2029-pixel/astra-7`) · Hugging Face namespace claimed (`bochen2079/ASTRA-7`, bundle placeholder; LoRA pending A0 training) · website `astra-7.com` · Steam copy drafted at `docs/external/steam-coming-soon.md` and `docs/STEAM_AI_DISCLOSURE_DRAFT.md` (page status not verifiable from the repo).
+
+**Substrate reality check:** all live measurement to date runs on **Qwen3.5-9B-Q5_K_M** — "the 9B floor." The 27B target in the Tech Stack section remains aspirational and is the A0 fine-tune's destination. Several findings are explicitly floor-limited (F-LIVE-31: narrator perception has no measured behavioral signature at 9B; the A0 pilot: a 9B cannot generate training data for a 27B).
+
+**Not yet started:** Track B (a UE5 *game* plugin — distinct from the audio PoC), the ship interior, any playable slice. `game/`, `ai/`, `infra/` are empty scaffolding.
 
 ---
 
 ## Immediate Tasks
 
-### Phase 0: Public Presence
+Phases 0–2 as originally written (2026-05-12) are retired: Phase 0 is done, and Phases 1–2 were overtaken by the textverse-first strategy, which proved the bundle architecture in a text substrate before committing engine work. The verified state above is the new baseline. Live routing lives in `proto/textverse/STARTUP.md` §2; the durable items are:
 
-1. **Create GitHub repository**
-   - Name: `astra-7`
-   - Visibility: Public
-   - Initial commit: this CLAUDE.md + README.md + LICENSE (MIT or Apache 2)
-   - README contains the Vision section above plus links to Steam/HF coming-soon pages
-   - Add topics: `unreal-engine`, `local-llm`, `qwen`, `singleplayer`, `ai-game`, `open-source`
+1. **A0 corpus + fine-tune** — the convergence point. Four independent live findings route here (ship-API fluency F-LIVE-1/7; silent heartbeats F-LIVE-2; voiced refusals F-LIVE-13; the eight proven extraction vectors F-LIVE-3/21). Pipeline is at Phase 6 complete. Next gate is operator authorization for SOTA-model batch generation — the 2026-07-26 pilot established the local 9B cannot do it (0 / 23 / 1 traces across three identical calls).
+2. **Autotelic instrumentation ENFORCEMENT** — measurement half landed; blocked on the unhurried `book/negative_space.md` pattern-file review and the llm_proxy red-seat. Promotes whole or not at all.
+3. **Operator sign-off gates, two outstanding** — Scene S05 orbit-reversal visual (`ASTRA_VISUALIZER_02/KNOWN_ISSUES.md`) and the warp-hull ear-tuning pass (`ASTRA_AUDIO/DESIGN_SPEC.md` §6). Both are the same shape: a human perceptual judgment the rigs cannot self-certify.
+4. **Track B — UE5 game plugin** — not begun. `proto/ue5plugin/STARTUP.md` does not exist. When it starts, §15.7 dual-implementation binds it to the same five contract surfaces textverse consumes.
+5. **Track C cosmetic pass** — nexus banner still cites `spec-v0.128.md`; stdio `version` op returns `v0.129`; envelope is v0.130.
+6. **Scenario-authoring register rule** (F-LIVE-32) — `power_shift_request` carries an em-dash into perception. Fix-or-ratify; scenario edits invalidate series comparability, so not touched unilaterally.
 
-2. **Create Hugging Face presence**
-   - Org or user namespace
-   - Initial repo: `astra-7-bundle`
-   - README explaining the project, links back to GitHub
-   - Placeholder for sysprompt and LoRA artifacts
-   - Tag: `text-generation`, `conversational`, `gaming`
-
-3. **Create Steam "Coming Soon" landing page**
-   - Use Steamworks (operator has prior experience)
-   - Title: ASTRA-7
-   - Genre: Simulation, Adventure, Indie
-   - Tags: AI, Singleplayer, Space, Atmospheric, Story Rich, Sci-fi, Open Source
-   - Short description: "You and an AI on a starship. The relationship is the game."
-   - Long description: drawn from Vision section above
-   - Links to GitHub and HF in the External Links section
-
-### Phase 1: Project Skeleton
-
-4. Set up UE 5.x project (blank starting template, first-person or VR-ready)
-5. Set up Python environment for AI development (venv, requirements.txt)
-6. Set up llama.cpp build with Qwen 3.6 27B GGUF and multimodal support
-7. Build minimal bridge: UE plugin that can send/receive text to local LLM endpoint
-8. Verify ASTRA-7 sysprompt loads and responds coherently on vanilla Qwen 3.6 27B
-9. Document the bridge architecture in `/docs/architecture.md`
-
-### Phase 2: Vertical Slice
-
-10. Design and implement one ship subsystem with full API surface (suggested: lights and doors, low-risk)
-11. Wire ASTRA-7 to actually control that subsystem via tool calls
-12. Build one ship room in UE (suggested: the bridge, signature space)
-13. Test player interaction: speak to ASTRA, she responds and adjusts lights
-14. Document the pattern; subsequent subsystems follow it
-
-### Phase 3 and onward
-
-To be expanded as Phase 2 stabilizes. Probable order: more rooms, more systems, navigation, then cryosleep mechanics, then full ship, then warp, then voyage arc, then polish.
+Frozen deliberately: **narrator development** (F-LIVE-31 — no measured behavioral effect at the 9B floor at 4–5× cost; mechanism stays proven and maintained; re-opens with a perception-quality instrument or at the 27B/A0 era).
 
 ---
 
